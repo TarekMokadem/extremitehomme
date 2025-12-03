@@ -58,6 +58,14 @@ const selectClient = (client: typeof mockClients[0]): void => {
   searchQuery.value = `${client.firstName} ${client.lastName}`;
 };
 
+// Sélectionner le premier client avec Entrée
+const handleClientSearchKeydown = (event: KeyboardEvent): void => {
+  if (event.key === 'Enter' && clientSearchResults.value.length > 0) {
+    event.preventDefault();
+    selectClient(clientSearchResults.value[0]);
+  }
+};
+
 // Autocomplétion adresse
 let addressDebounceTimer: number | null = null;
 const handleAddressInput = (event: Event): void => {
@@ -85,6 +93,14 @@ const selectAddress = (suggestion: AddressSuggestion): void => {
   currentClient.postalCode = suggestion.postcode;
   showAddressSuggestions.value = false;
   clearSuggestions();
+};
+
+// Sélectionner la première adresse avec Entrée
+const handleAddressKeydown = (event: KeyboardEvent): void => {
+  if (event.key === 'Enter' && showAddressSuggestions.value && addressSuggestions.value.length > 0) {
+    event.preventDefault();
+    selectAddress(addressSuggestions.value[0]);
+  }
 };
 
 // Autocomplétion ville
@@ -115,6 +131,14 @@ const selectCity = (suggestion: AddressSuggestion): void => {
   clearSuggestions();
 };
 
+// Sélectionner la première ville avec Entrée
+const handleCityKeydown = (event: KeyboardEvent): void => {
+  if (event.key === 'Enter' && showCitySuggestions.value && addressSuggestions.value.length > 0) {
+    event.preventDefault();
+    selectCity(addressSuggestions.value[0]);
+  }
+};
+
 // Labels des champs
 const formFields = [
   { key: 'lastName', label: 'Nom', type: 'text', placeholder: 'Dupont', span: 1 },
@@ -135,6 +159,7 @@ const formFields = [
         <Search class="absolute left-4 md:left-5 top-1/2 -translate-y-1/2 w-4 h-4 md:w-5 md:h-5 text-gray-400 pointer-events-none z-10" />
         <input
           v-model="searchQuery"
+          @keydown="handleClientSearchKeydown"
           type="text"
           placeholder="Rechercher un client..."
           class="w-full pl-11 md:pl-14 pr-4 md:pr-5 py-3 md:py-3.5 bg-gray-50 border border-gray-300 rounded-xl text-xs md:text-sm font-medium focus:outline-none focus:border-gray-900 focus:ring-2 focus:ring-gray-900/10 hover:border-gray-400 transition-all"
@@ -215,6 +240,7 @@ const formFields = [
             v-model="currentClient.address"
             @input="handleAddressInput"
             @blur="() => setTimeout(() => showAddressSuggestions = false, 200)"
+            @keydown="handleAddressKeydown"
             type="text"
             placeholder="123 Rue de la Paix"
             class="w-full px-3 md:px-4 py-2.5 md:py-3 bg-white border border-gray-300 rounded-xl text-xs md:text-sm font-medium focus:outline-none focus:border-gray-900 focus:ring-2 focus:ring-gray-900/10 hover:border-gray-400 transition-all"
@@ -259,6 +285,7 @@ const formFields = [
               v-model="currentClient.city"
               @input="handleCityInput"
               @blur="() => setTimeout(() => showCitySuggestions = false, 200)"
+              @keydown="handleCityKeydown"
               type="text"
               placeholder="Paris"
               class="w-full px-3 md:px-4 py-2.5 md:py-3 bg-white border border-gray-300 rounded-xl text-xs md:text-sm font-medium focus:outline-none focus:border-gray-900 focus:ring-2 focus:ring-gray-900/10 hover:border-gray-400 transition-all"

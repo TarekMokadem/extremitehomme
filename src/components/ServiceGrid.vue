@@ -4,6 +4,10 @@ import { Search } from 'lucide-vue-next';
 import { services } from '../data/services';
 import type { Service } from '../types';
 import ServiceCard from './ServiceCard.vue';
+import { useCart } from '../composables/useCart';
+
+// Composables
+const { addToCart } = useCart();
 
 // State
 const searchQuery = ref<string>('');
@@ -53,6 +57,17 @@ const selectService = (service: Service): void => {
   showAutocomplete.value = false;
 };
 
+// Sélectionner la première suggestion avec Entrée et l'ajouter au panier
+const handleSearchKeydown = (event: KeyboardEvent): void => {
+  if (event.key === 'Enter' && autocompleteResults.value.length > 0) {
+    event.preventDefault();
+    const firstResult = autocompleteResults.value[0];
+    addToCart(firstResult);
+    searchQuery.value = '';
+    showAutocomplete.value = false;
+  }
+};
+
 watch(searchQuery, (newVal) => {
   if (newVal.trim().length < 2) {
     showAutocomplete.value = false;
@@ -72,6 +87,7 @@ watch(searchQuery, (newVal) => {
             @input="handleSearchInput"
             @focus="handleSearchFocus"
             @blur="handleSearchBlur"
+            @keydown="handleSearchKeydown"
             type="text"
             placeholder="Rechercher un service..."
             class="w-full pl-11 md:pl-14 pr-4 md:pr-5 py-3 md:py-3.5 bg-gray-50 border border-gray-300 rounded-xl text-sm font-medium focus:outline-none focus:border-gray-900 focus:ring-2 focus:ring-gray-900/10 hover:border-gray-400 transition-all"
