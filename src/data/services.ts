@@ -19,7 +19,6 @@ export const services: Service[] = [
   { id: 13, name: 'Taille + contour bi-mensuel', price: 120, duration: 20, category: 'barbe' },
 
   // Soins
-  { id: 14, name: 'Décoloration', price: 0, duration: 45, category: 'soins' },
   { id: 15, name: 'Cover', price: 21, duration: 30, category: 'soins' },
   { id: 16, name: 'Permanente dessus de tête et coupe', price: 50, duration: 60, category: 'soins' },
   { id: 17, name: 'Permanente tête complète + coupe', price: 70, duration: 90, category: 'soins' },
@@ -46,8 +45,7 @@ export const services: Service[] = [
   { id: 34, name: 'Massage des mains', price: 20, duration: 15, category: 'massage' },
 
   // Autres
-  { id: 35, name: 'Bon cadeau', price: 0, category: 'autres' },
-  { id: 36, name: 'Forfait ZZZZZ', price: 15, category: 'autres' },
+  // (services non utilisés dans la nouvelle caisse volontairement retirés)
 ];
 
 /**
