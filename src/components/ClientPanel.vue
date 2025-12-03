@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
-import { Search, Save, Trash2, History, MapPin } from 'lucide-vue-next';
+import { Search, Save, Trash2, History, MapPin, UserPlus, UserPen } from 'lucide-vue-next';
 import { useClient } from '../composables/useClient';
 import { useAddressAutocomplete } from '../composables/useAddressAutocomplete';
 import type { AddressSuggestion } from '../composables/useAddressAutocomplete';
+import type { Client } from '../types';
 
 // Composables
-const { currentClient, clearClient, hasClientInfo } = useClient();
+const { currentClient, isEditMode, clearClient, loadClient, hasClientInfo, saveClient } = useClient();
 const { suggestions: addressSuggestions, searchAddress, searchCity, clearSuggestions } = useAddressAutocomplete();
 
 // State local
@@ -14,11 +15,47 @@ const searchQuery = ref<string>('');
 const showAddressSuggestions = ref(false);
 const showCitySuggestions = ref(false);
 
-// Clients mockés pour la recherche
-const mockClients = [
-  { id: '1', firstName: 'Jean', lastName: 'Dupont', phone: '06 12 34 56 78' },
-  { id: '2', firstName: 'Marie', lastName: 'Martin', phone: '06 98 76 54 32' },
-  { id: '3', firstName: 'Pierre', lastName: 'Bernard', phone: '07 11 22 33 44' },
+// Clients mockés pour la recherche (données complètes)
+const mockClients: Client[] = [
+  { 
+    id: '1', 
+    firstName: 'Jean', 
+    lastName: 'Dupont', 
+    phone: '06 12 34 56 78',
+    phone2: '',
+    email: 'jean.dupont@email.com',
+    address: '15 Rue de la Paix',
+    city: 'Paris',
+    postalCode: '75002',
+    birthDate: '1985-03-15',
+    notes: 'Client fidèle, préfère les coupes courtes'
+  },
+  { 
+    id: '2', 
+    firstName: 'Marie', 
+    lastName: 'Martin', 
+    phone: '06 98 76 54 32',
+    phone2: '01 42 33 44 55',
+    email: 'marie.martin@gmail.com',
+    address: '8 Avenue des Champs-Élysées',
+    city: 'Paris',
+    postalCode: '75008',
+    birthDate: '1990-07-22',
+    notes: ''
+  },
+  { 
+    id: '3', 
+    firstName: 'Pierre', 
+    lastName: 'Bernard', 
+    phone: '07 11 22 33 44',
+    phone2: '',
+    email: '',
+    address: '25 Boulevard Haussmann',
+    city: 'Paris',
+    postalCode: '75009',
+    birthDate: '',
+    notes: 'Allergie aux produits parfumés'
+  },
 ];
 
 const clientSearchResults = computed(() => {
@@ -34,12 +71,14 @@ const clientSearchResults = computed(() => {
 
 const showClientSearch = computed(() => searchQuery.value.trim().length >= 2 && clientSearchResults.value.length > 0);
 
-const hasClient = computed((): boolean => hasClientInfo());
-
 // Handlers
-const handleSave = (): void => {
-  if (!hasClient.value) return;
-  alert('Client enregistré !');
+const handleSave = async (): Promise<void> => {
+  const result = await saveClient();
+  if (result.success) {
+    alert(result.message);
+  } else {
+    alert(result.message);
+  }
 };
 
 const handleClear = (): void => {
@@ -51,10 +90,9 @@ const handleShowHistory = (): void => {
   alert('Historique client à implémenter');
 };
 
-const selectClient = (client: typeof mockClients[0]): void => {
-  currentClient.firstName = client.firstName;
-  currentClient.lastName = client.lastName;
-  currentClient.phone = client.phone;
+const selectClient = (client: Client): void => {
+  // Charger toutes les données du client dans le formulaire
+  loadClient(client);
   searchQuery.value = `${client.firstName} ${client.lastName}`;
 };
 
@@ -154,7 +192,22 @@ const formFields = [
   <div class="card h-full flex flex-col overflow-hidden">
     <!-- En-tête avec recherche -->
     <div class="p-4 md:p-6 border-b border-gray-200 bg-white">
-      <h2 class="text-xs md:text-sm font-semibold text-gray-900 mb-3 md:mb-4 uppercase tracking-wider">Client</h2>
+      <div class="flex items-center justify-between mb-3 md:mb-4">
+        <h2 class="text-xs md:text-sm font-semibold text-gray-900 uppercase tracking-wider">Client</h2>
+        <!-- Badge mode création/modification -->
+        <div 
+          v-if="hasClientInfo"
+          :class="[
+            'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] md:text-xs font-semibold transition-colors',
+            isEditMode 
+              ? 'bg-blue-100 text-blue-700' 
+              : 'bg-emerald-100 text-emerald-700'
+          ]"
+        >
+          <component :is="isEditMode ? UserPen : UserPlus" class="w-3 h-3" />
+          <span>{{ isEditMode ? 'Modification' : 'Nouveau' }}</span>
+        </div>
+      </div>
       <div class="relative">
         <Search class="absolute left-4 md:left-5 top-1/2 -translate-y-1/2 w-4 h-4 md:w-5 md:h-5 text-gray-400 pointer-events-none z-10" />
         <input
@@ -350,7 +403,7 @@ const formFields = [
       <div class="grid grid-cols-3 gap-2 md:gap-3">
         <button
           @click="handleShowHistory"
-          :disabled="!hasClient"
+          :disabled="!isEditMode"
           class="btn-secondary text-[10px] md:text-xs px-2 md:px-4 py-2.5 md:py-3"
         >
           <History class="w-3.5 h-3.5 md:w-4 md:h-4" />
@@ -359,10 +412,10 @@ const formFields = [
         
         <button
           @click="handleClear"
-          :disabled="!hasClient"
+          :disabled="!hasClientInfo"
           :class="[
             'inline-flex items-center justify-center gap-1 md:gap-2 px-2 md:px-4 py-2.5 md:py-3 text-[10px] md:text-xs font-medium rounded-xl transition-all duration-200',
-            hasClient
+            hasClientInfo
               ? 'bg-white border border-gray-300 text-red-600 hover:bg-red-50 hover:border-red-200'
               : 'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200'
           ]"
@@ -373,11 +426,14 @@ const formFields = [
         
         <button
           @click="handleSave"
-          :disabled="!hasClient"
-          class="btn-primary text-[10px] md:text-xs px-2 md:px-4 py-2.5 md:py-3"
+          :disabled="!hasClientInfo"
+          :class="[
+            'btn-primary text-[10px] md:text-xs px-2 md:px-4 py-2.5 md:py-3',
+            isEditMode ? 'bg-blue-600 hover:bg-blue-700' : 'bg-emerald-600 hover:bg-emerald-700'
+          ]"
         >
-          <Save class="w-3.5 h-3.5 md:w-4 md:h-4" />
-          <span class="hidden sm:inline">Enregistrer</span>
+          <component :is="isEditMode ? Save : UserPlus" class="w-3.5 h-3.5 md:w-4 md:h-4" />
+          <span class="hidden sm:inline">{{ isEditMode ? 'Modifier' : 'Créer' }}</span>
         </button>
       </div>
     </div>
