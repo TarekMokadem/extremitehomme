@@ -1,0 +1,365 @@
+<script setup lang="ts">
+import { ref, computed } from 'vue';
+import { Search, Save, Trash2, History, MapPin } from 'lucide-vue-next';
+import { useClient } from '../composables/useClient';
+import { useAddressAutocomplete } from '../composables/useAddressAutocomplete';
+import type { AddressSuggestion } from '../composables/useAddressAutocomplete';
+
+// Composables
+const { currentClient, clearClient, hasClientInfo } = useClient();
+const { suggestions: addressSuggestions, searchAddress, searchCity, clearSuggestions } = useAddressAutocomplete();
+
+// State local
+const searchQuery = ref<string>('');
+const showAddressSuggestions = ref(false);
+const showCitySuggestions = ref(false);
+
+// Clients mockés pour la recherche (à remplacer par une vraie API)
+const mockClients = [
+  { id: '1', firstName: 'Jean', lastName: 'Dupont', phone: '06 12 34 56 78' },
+  { id: '2', firstName: 'Marie', lastName: 'Martin', phone: '06 98 76 54 32' },
+  { id: '3', firstName: 'Pierre', lastName: 'Bernard', phone: '07 11 22 33 44' },
+];
+
+const clientSearchResults = computed(() => {
+  const query = searchQuery.value.toLowerCase().trim();
+  if (query.length < 2) return [];
+  
+  return mockClients.filter(client => 
+    client.lastName.toLowerCase().includes(query) ||
+    client.firstName.toLowerCase().includes(query) ||
+    client.phone.includes(query)
+  );
+});
+
+const showClientSearch = computed(() => searchQuery.value.trim().length >= 2 && clientSearchResults.value.length > 0);
+
+// Computed
+const clientInitials = computed((): string => {
+  const first = currentClient.firstName?.[0] || '';
+  const last = currentClient.lastName?.[0] || '';
+  return (first + last).toUpperCase() || '?';
+});
+
+const hasClient = computed((): boolean => hasClientInfo());
+
+// Handlers
+const handleSave = (): void => {
+  if (!hasClient.value) return;
+  alert('Client enregistré !');
+};
+
+const handleClear = (): void => {
+  clearClient();
+  searchQuery.value = '';
+};
+
+const handleShowHistory = (): void => {
+  alert('Historique client à implémenter');
+};
+
+const selectClient = (client: typeof mockClients[0]): void => {
+  currentClient.firstName = client.firstName;
+  currentClient.lastName = client.lastName;
+  currentClient.phone = client.phone;
+  searchQuery.value = `${client.firstName} ${client.lastName}`;
+};
+
+// Autocomplétion adresse
+let addressDebounceTimer: number | null = null;
+const handleAddressInput = (event: Event): void => {
+  const target = event.target as HTMLInputElement;
+  const value = target.value;
+  
+  if (addressDebounceTimer) {
+    clearTimeout(addressDebounceTimer);
+  }
+  
+  if (value.trim().length >= 3) {
+    addressDebounceTimer = window.setTimeout(() => {
+      searchAddress(value);
+      showAddressSuggestions.value = true;
+    }, 300);
+  } else {
+    clearSuggestions();
+    showAddressSuggestions.value = false;
+  }
+};
+
+const selectAddress = (suggestion: AddressSuggestion): void => {
+  currentClient.address = suggestion.street;
+  currentClient.city = suggestion.city;
+  currentClient.postalCode = suggestion.postcode;
+  showAddressSuggestions.value = false;
+  clearSuggestions();
+};
+
+// Autocomplétion ville
+let cityDebounceTimer: number | null = null;
+const handleCityInput = (event: Event): void => {
+  const target = event.target as HTMLInputElement;
+  const value = target.value;
+  
+  if (cityDebounceTimer) {
+    clearTimeout(cityDebounceTimer);
+  }
+  
+  if (value.trim().length >= 2) {
+    cityDebounceTimer = window.setTimeout(() => {
+      searchCity(value);
+      showCitySuggestions.value = true;
+    }, 300);
+  } else {
+    clearSuggestions();
+    showCitySuggestions.value = false;
+  }
+};
+
+const selectCity = (suggestion: AddressSuggestion): void => {
+  currentClient.city = suggestion.city;
+  currentClient.postalCode = suggestion.postcode;
+  showCitySuggestions.value = false;
+  clearSuggestions();
+};
+
+// Labels des champs
+const formFields = [
+  { key: 'lastName', label: 'Nom', type: 'text', placeholder: 'Dupont', span: 1 },
+  { key: 'firstName', label: 'Prénom', type: 'text', placeholder: 'Jean', span: 1 },
+  { key: 'phone', label: 'Tél. 1', type: 'tel', placeholder: '06 12 34 56 78', span: 1 },
+  { key: 'phone2', label: 'Tél. 2', type: 'tel', placeholder: '01 23 45 67 89', span: 1 },
+  { key: 'email', label: 'Email', type: 'email', placeholder: 'jean@email.com', span: 2 },
+  { key: 'birthDate', label: 'Anniversaire', type: 'date', placeholder: '', span: 2 },
+] as const;
+</script>
+
+<template>
+  <div class="card h-full flex flex-col overflow-hidden">
+    <!-- En-tête avec recherche -->
+    <div class="p-6 border-b border-gray-200 bg-white">
+      <h2 class="text-sm font-semibold text-gray-900 mb-4 uppercase tracking-wider">Client</h2>
+      <div class="relative">
+        <Search class="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none z-10" />
+        <input
+          v-model="searchQuery"
+          type="text"
+          placeholder="Rechercher un client..."
+          class="w-full pl-14 pr-5 py-3.5 bg-gray-50 border border-gray-300 rounded-xl text-sm font-medium focus:outline-none focus:border-gray-900 focus:ring-2 focus:ring-gray-900/10 hover:border-gray-400 transition-all"
+          autocomplete="off"
+        />
+
+        <!-- Résultats recherche client -->
+        <Transition
+          enter-active-class="transition ease-out duration-100"
+          enter-from-class="opacity-0 translate-y-1"
+          enter-to-class="opacity-100 translate-y-0"
+          leave-active-class="transition ease-in duration-75"
+          leave-from-class="opacity-100 translate-y-0"
+          leave-to-class="opacity-0 translate-y-1"
+        >
+          <div
+            v-if="showClientSearch"
+            class="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-xl border border-gray-200 py-2 z-50"
+          >
+            <button
+              v-for="client in clientSearchResults"
+              :key="client.id"
+              @click="selectClient(client)"
+              class="w-full px-5 py-3 text-left hover:bg-gray-50 transition-colors"
+            >
+              <p class="text-sm font-medium text-gray-900">{{ client.firstName }} {{ client.lastName }}</p>
+              <p class="text-xs text-gray-500 mt-0.5">{{ client.phone }}</p>
+            </button>
+          </div>
+        </Transition>
+      </div>
+    </div>
+
+    <!-- Formulaire client -->
+    <div class="flex-1 overflow-y-auto p-6 min-h-0 space-y-5 bg-gray-50">
+      <!-- Champs du formulaire -->
+      <div class="grid grid-cols-2 gap-4">
+        <div
+          v-for="field in formFields.filter(f => f.span !== 2)"
+          :key="field.key"
+          class="space-y-2"
+        >
+          <label class="block text-xs text-gray-600 font-semibold uppercase tracking-wider">
+            {{ field.label }}
+          </label>
+          <input
+            v-model="(currentClient as any)[field.key]"
+            :type="field.type"
+            :placeholder="field.placeholder"
+            class="w-full px-4 py-3 bg-white border border-gray-300 rounded-xl text-sm font-medium focus:outline-none focus:border-gray-900 focus:ring-2 focus:ring-gray-900/10 hover:border-gray-400 transition-all"
+          />
+        </div>
+        
+        <!-- Champs pleine largeur -->
+        <template v-for="field in formFields.filter(f => f.span === 2)" :key="field.key">
+          <div class="col-span-2 space-y-2">
+            <label class="block text-xs text-gray-600 font-semibold uppercase tracking-wider">
+              {{ field.label }}
+            </label>
+            <input
+              v-model="(currentClient as any)[field.key]"
+              :type="field.type"
+              :placeholder="field.placeholder"
+              class="w-full px-4 py-3 bg-white border border-gray-300 rounded-xl text-sm font-medium focus:outline-none focus:border-gray-900 focus:ring-2 focus:ring-gray-900/10 hover:border-gray-400 transition-all"
+            />
+          </div>
+        </template>
+      </div>
+
+      <!-- Adresse avec autocomplétion -->
+      <div class="col-span-2 space-y-2 relative">
+        <label class="block text-xs text-gray-600 font-semibold uppercase tracking-wider flex items-center gap-2">
+          <MapPin class="w-3.5 h-3.5" />
+          <span>Adresse</span>
+        </label>
+        <div class="relative">
+          <input
+            v-model="currentClient.address"
+            @input="handleAddressInput"
+            @blur="() => setTimeout(() => showAddressSuggestions = false, 200)"
+            type="text"
+            placeholder="123 Rue de la Paix"
+            class="w-full px-4 py-3 bg-white border border-gray-300 rounded-xl text-sm font-medium focus:outline-none focus:border-gray-900 focus:ring-2 focus:ring-gray-900/10 hover:border-gray-400 transition-all"
+            autocomplete="off"
+          />
+
+          <!-- Suggestions adresse -->
+          <Transition
+            enter-active-class="transition ease-out duration-100"
+            enter-from-class="opacity-0 translate-y-1"
+            enter-to-class="opacity-100 translate-y-0"
+            leave-active-class="transition ease-in duration-75"
+            leave-from-class="opacity-100 translate-y-0"
+            leave-to-class="opacity-0 translate-y-1"
+          >
+            <div
+              v-if="showAddressSuggestions && addressSuggestions.length > 0"
+              class="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-xl border border-gray-200 py-2 z-50 max-h-60 overflow-y-auto"
+            >
+              <button
+                v-for="(suggestion, index) in addressSuggestions"
+                :key="index"
+                @click="selectAddress(suggestion)"
+                class="w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors"
+              >
+                <p class="text-sm font-medium text-gray-900">{{ suggestion.label }}</p>
+                <p class="text-xs text-gray-500 mt-0.5">{{ suggestion.context }}</p>
+              </button>
+            </div>
+          </Transition>
+        </div>
+      </div>
+
+      <!-- Ville et Code postal -->
+      <div class="grid grid-cols-2 gap-4">
+        <div class="space-y-2 relative">
+          <label class="block text-xs text-gray-600 font-semibold uppercase tracking-wider">
+            Ville
+          </label>
+          <div class="relative">
+            <input
+              v-model="currentClient.city"
+              @input="handleCityInput"
+              @blur="() => setTimeout(() => showCitySuggestions = false, 200)"
+              type="text"
+              placeholder="Paris"
+              class="w-full px-4 py-3 bg-white border border-gray-300 rounded-xl text-sm font-medium focus:outline-none focus:border-gray-900 focus:ring-2 focus:ring-gray-900/10 hover:border-gray-400 transition-all"
+              autocomplete="off"
+            />
+
+            <!-- Suggestions ville -->
+            <Transition
+              enter-active-class="transition ease-out duration-100"
+              enter-from-class="opacity-0 translate-y-1"
+              enter-to-class="opacity-100 translate-y-0"
+              leave-active-class="transition ease-in duration-75"
+              leave-from-class="opacity-100 translate-y-0"
+              leave-to-class="opacity-0 translate-y-1"
+            >
+              <div
+                v-if="showCitySuggestions && addressSuggestions.length > 0"
+                class="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-xl border border-gray-200 py-2 z-50 max-h-60 overflow-y-auto"
+              >
+                <button
+                  v-for="(suggestion, index) in addressSuggestions"
+                  :key="index"
+                  @click="selectCity(suggestion)"
+                  class="w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors"
+                >
+                  <p class="text-sm font-medium text-gray-900">{{ suggestion.city }}</p>
+                  <p class="text-xs text-gray-500">{{ suggestion.postcode }}</p>
+                </button>
+              </div>
+            </Transition>
+          </div>
+        </div>
+        <div class="space-y-2">
+          <label class="block text-xs text-gray-600 font-semibold uppercase tracking-wider">
+            CP
+          </label>
+          <input
+            v-model="currentClient.postalCode"
+            type="text"
+            placeholder="75001"
+            class="w-full px-4 py-3 bg-white border border-gray-300 rounded-xl text-sm font-medium focus:outline-none focus:border-gray-900 focus:ring-2 focus:ring-gray-900/10 hover:border-gray-400 transition-all"
+          />
+        </div>
+      </div>
+
+      <!-- Notes / Commentaire -->
+      <div class="space-y-2">
+        <label class="block text-xs text-gray-600 font-semibold uppercase tracking-wider">
+          Notes
+        </label>
+        <textarea
+          v-model="currentClient.notes"
+          placeholder="Commentaires, préférences..."
+          rows="3"
+          class="w-full px-4 py-3 bg-white border border-gray-300 rounded-xl text-sm font-medium focus:outline-none focus:border-gray-900 focus:ring-2 focus:ring-gray-900/10 hover:border-gray-400 transition-all resize-none"
+        ></textarea>
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="p-6 border-t border-gray-200 bg-white">
+      <div class="grid grid-cols-3 gap-3">
+        <button
+          @click="handleShowHistory"
+          :disabled="!hasClient"
+          class="btn-secondary text-xs"
+        >
+          <History class="w-4 h-4" />
+          <span>Historique</span>
+        </button>
+        
+        <button
+          @click="handleClear"
+          :disabled="!hasClient"
+          :class="[
+            'inline-flex items-center justify-center gap-2 px-4 py-3 text-xs font-medium rounded-xl transition-all duration-200',
+            hasClient
+              ? 'bg-white border border-gray-300 text-red-600 hover:bg-red-50 hover:border-red-200'
+              : 'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200'
+          ]"
+        >
+          <Trash2 class="w-4 h-4" />
+          <span>Effacer</span>
+        </button>
+        
+        <button
+          @click="handleSave"
+          :disabled="!hasClient"
+          class="btn-primary text-xs"
+        >
+          <Save class="w-4 h-4" />
+          <span>Enregistrer</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</template>
