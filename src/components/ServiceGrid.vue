@@ -1,26 +1,13 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
 import { Search } from 'lucide-vue-next';
-import { CATEGORIES } from '../types';
-import { services, getServicesByCategory } from '../data/services';
+import { services } from '../data/services';
 import type { Service } from '../types';
 import ServiceCard from './ServiceCard.vue';
 
 // State
-const activeCategory = ref<string>('all');
 const searchQuery = ref<string>('');
 const showAutocomplete = ref<boolean>(false);
-
-// Catégories avec "Tous" en premier
-const categories = computed(() => [
-  { id: 'all', label: 'Tous' },
-  ...CATEGORIES.map(c => ({ id: c.id, label: c.label }))
-]);
-
-// Services filtrés par catégorie
-const filteredByCategory = computed(() => {
-  return getServicesByCategory(activeCategory.value);
-});
 
 // Services pour l'autocomplétion
 const autocompleteResults = computed((): Service[] => {
@@ -35,21 +22,14 @@ const autocompleteResults = computed((): Service[] => {
 // Services affichés dans la grille
 const displayedServices = computed(() => {
   const query = searchQuery.value.toLowerCase().trim();
-  if (!query) return filteredByCategory.value;
-  
-  return filteredByCategory.value.filter(service => 
+  if (!query) return services;
+
+  return services.filter(service =>
     service.name.toLowerCase().includes(query)
   );
 });
 
-// Nombre de services affichés
-const servicesCount = computed(() => displayedServices.value.length);
-
 // Handlers
-const handleCategoryChange = (categoryId: string): void => {
-  activeCategory.value = categoryId;
-  showAutocomplete.value = false;
-};
 
 const handleSearchInput = (event: Event): void => {
   const target = event.target as HTMLInputElement;
@@ -84,9 +64,9 @@ watch(searchQuery, (newVal) => {
 </script>
 
 <template>
-  <div class="card h-full flex flex-col overflow-hidden">
-    <!-- Barre de recherche et filtres -->
-    <div class="p-6 border-b border-gray-200 space-y-5 flex-shrink-0 bg-white">
+  <div class="card flex flex-col bg-white">
+    <!-- Barre de recherche -->
+    <div class="p-6 border-b border-gray-200 space-y-5 bg-white">
       <!-- Recherche avec autocomplétion -->
       <div class="relative">
         <div class="relative">
@@ -134,30 +114,10 @@ watch(searchQuery, (newVal) => {
           </div>
         </Transition>
       </div>
-
-      <!-- Catégories -->
-      <div class="flex flex-wrap gap-2.5">
-        <button
-          v-for="cat in categories"
-          :key="cat.id"
-          @click="handleCategoryChange(cat.id)"
-          :class="[
-            'category-btn',
-            activeCategory === cat.id && 'active'
-          ]"
-        >
-          {{ cat.label }}
-        </button>
-      </div>
-
-      <!-- Compteur -->
-      <p class="text-sm text-gray-500 font-medium">
-        <span class="text-gray-900 font-semibold">{{ servicesCount }}</span> service{{ servicesCount > 1 ? 's' : '' }}
-      </p>
     </div>
 
-    <!-- Grille de services -->
-    <div class="flex-1 overflow-y-auto p-6 min-h-0 bg-gray-50">
+    <!-- Grille de services (prend toute la hauteur disponible, la page scrolle si besoin) -->
+    <div class="p-6 bg-gray-50">
       <div 
         v-if="displayedServices.length > 0"
         class="grid grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3.5"

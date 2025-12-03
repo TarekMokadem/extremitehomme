@@ -146,48 +146,55 @@ const maxDiscount = computed(() => {
       </div>
     </div>
 
-    <!-- Réduction avec toggle €/% -->
+    <!-- Réduction avec sélecteur élégant € / % -->
     <div class="px-5 py-4 border-t border-gray-100">
-      <div class="flex items-center gap-3">
-        <label class="text-sm text-gray-600 font-medium min-w-[75px]">Réduction</label>
-        
-        <!-- Toggle €/% -->
-        <div class="flex rounded-lg border border-gray-300 overflow-hidden">
-          <button
-            @click="setDiscountType('euro')"
-            :class="[
-              'px-3 py-1.5 text-xs font-medium transition-colors flex items-center gap-1',
-              discountType === 'euro' 
-                ? 'bg-gray-900 text-white' 
-                : 'bg-white text-gray-600 hover:bg-gray-50'
-            ]"
-          >
-            <Euro class="w-3.5 h-3.5" />
-            <span>€</span>
-          </button>
-          <button
-            @click="setDiscountType('percent')"
-            :class="[
-              'px-3 py-1.5 text-xs font-medium transition-colors flex items-center gap-1 border-l border-gray-300',
-              discountType === 'percent' 
-                ? 'bg-gray-900 text-white' 
-                : 'bg-white text-gray-600 hover:bg-gray-50'
-            ]"
-          >
-            <Percent class="w-3.5 h-3.5" />
-            <span>%</span>
-          </button>
+      <div class="flex flex-col gap-3">
+        <div class="flex items-center justify-between gap-3">
+          <label class="text-sm text-gray-600 font-medium">Réduction</label>
+
+          <!-- Segmented control moderne -->
+          <div class="inline-flex items-center bg-gray-100 rounded-full p-0.5 shadow-inner border border-gray-200">
+            <button
+              @click="setDiscountType('euro')"
+              :class="[
+                'inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded-full transition-all duration-150',
+                discountType === 'euro'
+                  ? 'bg-white text-gray-900 shadow-sm'
+                  : 'text-gray-500 hover:text-gray-800'
+              ]"
+            >
+              <Euro class="w-3.5 h-3.5" />
+              <span>Montant</span>
+            </button>
+            <button
+              @click="setDiscountType('percent')"
+              :class="[
+                'inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded-full transition-all duration-150',
+                discountType === 'percent'
+                  ? 'bg-white text-gray-900 shadow-sm'
+                  : 'text-gray-500 hover:text-gray-800'
+              ]"
+            >
+              <Percent class="w-3.5 h-3.5" />
+              <span>Pourcentage</span>
+            </button>
+          </div>
         </div>
-        
-        <input
-          type="number"
-          :value="discount"
-          @input="handleDiscountChange"
-          min="0"
-          :max="maxDiscount"
-          step="0.01"
-          class="flex-1 px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-lg text-sm text-right focus:outline-none focus:border-gray-900 focus:ring-2 focus:ring-gray-900/10 hover:border-gray-400 transition-all tabular-nums"
-        />
+
+        <div class="flex items-center gap-2">
+          <input
+            type="number"
+            :value="discount"
+            @input="handleDiscountChange"
+            min="0"
+            :max="maxDiscount"
+            step="0.01"
+            class="flex-1 px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-lg text-sm text-right focus:outline-none focus:border-gray-900 focus:ring-2 focus:ring-gray-900/10 hover:border-gray-400 transition-all tabular-nums"
+          />
+          <span class="text-sm font-medium text-gray-500 min-w-[32px] text-center">
+            {{ discountType === 'percent' ? '%' : '€' }}
+          </span>
+        </div>
       </div>
     </div>
 

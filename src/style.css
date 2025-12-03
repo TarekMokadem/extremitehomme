@@ -1,6 +1,12 @@
 @import "tailwindcss";
 
 @layer base {
+  /* Dézoom global de 10% pour afficher tout l'écran sans scroll
+     (principalement pour un poste fixe de caisse) */
+  html {
+    zoom: 0.85;
+  }
+
   * {
     @apply box-border;
   }

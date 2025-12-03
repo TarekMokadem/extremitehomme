@@ -6,12 +6,12 @@ import ClientPanel from './components/ClientPanel.vue';
 </script>
 
 <template>
-  <div class="h-screen flex flex-col overflow-hidden bg-gray-50">
+  <div class="min-h-screen flex flex-col bg-gray-50">
     <!-- Header -->
     <AppHeader />
 
-    <!-- Main content - 3 colonnes avec meilleurs espacements -->
-    <main class="flex-1 flex gap-6 p-6 min-h-0">
+    <!-- Main content - 3 colonnes -->
+    <main class="flex-1 flex gap-6 p-6">
       <!-- Colonne gauche : Ticket & Paiement -->
       <aside class="w-80 flex-shrink-0">
         <TicketPanel />
