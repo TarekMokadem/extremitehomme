@@ -1,14 +1,20 @@
 @import "tailwindcss";
 
 @layer base {
-  /* Dézoom global de 10% pour afficher tout l'écran sans scroll
-     (principalement pour un poste fixe de caisse) */
-  html {
-    zoom: 0.85;
-  }
-
   * {
     @apply box-border;
+  }
+
+  html {
+    /* Pas de zoom sur mobile/tablette */
+    zoom: 1;
+  }
+
+  /* Dézoom uniquement sur les grands écrans (desktop/caisse) */
+  @media (min-width: 1024px) {
+    html {
+      zoom: 0.9;
+    }
   }
 
   body {
@@ -22,22 +28,24 @@
     @apply font-semibold leading-tight;
   }
 
-  /* Scrollbars personnalisées */
-  ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
-  }
+  /* Scrollbars personnalisées (desktop uniquement) */
+  @media (min-width: 768px) {
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
 
-  ::-webkit-scrollbar-track {
-    @apply bg-gray-100 rounded-full;
-  }
+    ::-webkit-scrollbar-track {
+      @apply bg-gray-100 rounded-full;
+    }
 
-  ::-webkit-scrollbar-thumb {
-    @apply bg-gray-300 rounded-full;
-  }
+    ::-webkit-scrollbar-thumb {
+      @apply bg-gray-300 rounded-full;
+    }
 
-  ::-webkit-scrollbar-thumb:hover {
-    @apply bg-gray-400;
+    ::-webkit-scrollbar-thumb:hover {
+      @apply bg-gray-400;
+    }
   }
 
   /* États de focus visibles pour l'accessibilité */
@@ -53,13 +61,13 @@
 @layer components {
   /* Carte générique */
   .card {
-    @apply bg-white rounded-2xl shadow-sm border border-gray-200;
+    @apply bg-white rounded-xl md:rounded-2xl shadow-sm border border-gray-200;
   }
 
   /* Boutons primaires */
   .btn-primary {
-    @apply inline-flex items-center justify-center gap-2;
-    @apply px-6 py-3 rounded-xl;
+    @apply inline-flex items-center justify-center gap-1.5 md:gap-2;
+    @apply px-4 md:px-6 py-2.5 md:py-3 rounded-xl;
     @apply bg-gray-900 text-white font-medium;
     @apply hover:bg-gray-800 active:scale-[0.98];
     @apply disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-gray-900;
@@ -68,8 +76,8 @@
 
   /* Boutons secondaires */
   .btn-secondary {
-    @apply inline-flex items-center justify-center gap-2;
-    @apply px-6 py-3 rounded-xl;
+    @apply inline-flex items-center justify-center gap-1.5 md:gap-2;
+    @apply px-4 md:px-6 py-2.5 md:py-3 rounded-xl;
     @apply bg-white border border-gray-300 text-gray-700 font-medium;
     @apply hover:bg-gray-50 active:scale-[0.98];
     @apply disabled:opacity-50 disabled:cursor-not-allowed;
@@ -79,7 +87,7 @@
   /* Boutons icônes compacts */
   .btn-icon-sm {
     @apply inline-flex items-center justify-center;
-    @apply p-3 rounded-xl;
+    @apply p-2.5 md:p-3 rounded-xl;
     @apply bg-white border border-gray-300 text-gray-700;
     @apply hover:bg-gray-50 active:scale-95;
     @apply disabled:opacity-50 disabled:cursor-not-allowed;
@@ -88,8 +96,8 @@
 
   /* Boutons de catégorie */
   .category-btn {
-    @apply px-4 py-2.5 rounded-xl;
-    @apply text-sm font-medium;
+    @apply px-3 md:px-4 py-2 md:py-2.5 rounded-xl;
+    @apply text-xs md:text-sm font-medium;
     @apply bg-white border border-gray-300 text-gray-700;
     @apply hover:bg-gray-100 hover:border-gray-400;
     @apply transition-all duration-200;
@@ -101,9 +109,9 @@
 
   /* Boutons de paiement */
   .payment-btn {
-    @apply inline-flex flex-col items-center justify-center gap-2;
-    @apply p-3 rounded-xl;
-    @apply text-xs font-medium;
+    @apply inline-flex flex-col items-center justify-center gap-1 md:gap-2;
+    @apply p-2 md:p-3 rounded-xl;
+    @apply text-[10px] md:text-xs font-medium;
     @apply bg-white border border-gray-300 text-gray-700;
     @apply hover:bg-gray-50 hover:border-gray-400;
     @apply transition-all duration-200;
@@ -115,7 +123,7 @@
 
   /* Élément de panier */
   .cart-item {
-    @apply p-4 rounded-xl bg-gray-50 border border-gray-200;
+    @apply p-3 md:p-4 rounded-xl bg-gray-50 border border-gray-200;
     @apply hover:bg-gray-100 transition-colors duration-200;
   }
 }

@@ -57,39 +57,40 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <header class="bg-gray-900 text-white px-8 py-4 flex items-center justify-between flex-shrink-0 shadow-xl">
+  <header class="bg-gray-900 text-white px-4 py-3 md:px-6 md:py-4 lg:px-8 flex items-center justify-between flex-shrink-0 shadow-xl">
     <!-- Logo & Nom -->
-    <div class="flex items-center gap-4">
-      <div class="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center backdrop-blur-sm">
-        <Scissors class="w-5 h-5" />
+    <div class="flex items-center gap-2 md:gap-4">
+      <div class="w-8 h-8 md:w-10 md:h-10 rounded-xl bg-white/10 flex items-center justify-center backdrop-blur-sm">
+        <Scissors class="w-4 h-4 md:w-5 md:h-5" />
       </div>
       <div>
-        <h1 class="text-lg font-semibold tracking-tight leading-tight">
-          EXTRÉMITÉS <span class="font-normal text-gray-300">HOMME</span>
+        <h1 class="text-sm md:text-lg font-semibold tracking-tight leading-tight">
+          EXTRÉMITÉS <span class="font-normal text-gray-300 hidden sm:inline">HOMME</span>
         </h1>
-        <p class="text-[11px] text-gray-400 uppercase tracking-widest mt-0.5">Coiffeur · Barbier</p>
+        <p class="text-[10px] md:text-[11px] text-gray-400 uppercase tracking-widest mt-0.5 hidden sm:block">Coiffeur · Barbier</p>
       </div>
     </div>
 
-    <!-- Date & Heure -->
-    <div class="flex items-center gap-8">
-      <div class="text-right">
-        <p class="text-xs text-gray-400 mb-1">{{ currentDate }}</p>
-        <p class="text-xl font-mono font-medium tabular-nums">{{ currentTime }}</p>
+    <!-- Date & Heure & Vendeur -->
+    <div class="flex items-center gap-3 md:gap-6 lg:gap-8">
+      <!-- Date/Heure - masqué sur très petit écran -->
+      <div class="text-right hidden sm:block">
+        <p class="text-[10px] md:text-xs text-gray-400 mb-0.5 md:mb-1">{{ currentDate }}</p>
+        <p class="text-base md:text-xl font-mono font-medium tabular-nums">{{ currentTime }}</p>
       </div>
       
-      <div class="w-px h-10 bg-gray-700"></div>
+      <div class="w-px h-8 md:h-10 bg-gray-700 hidden sm:block"></div>
       
       <!-- Sélecteur de vendeur -->
       <div class="relative">
         <button
           @click="showVendorMenu = !showVendorMenu"
-          class="flex items-center gap-3 px-4 py-2 rounded-xl bg-gray-800 hover:bg-gray-700 transition-colors"
+          class="flex items-center gap-2 md:gap-3 px-2 py-1.5 md:px-4 md:py-2 rounded-xl bg-gray-800 hover:bg-gray-700 transition-colors"
         >
-          <div :class="['w-10 h-10 rounded-full flex items-center justify-center ring-2 ring-gray-600 font-semibold', currentVendor.color || 'bg-gray-600']">
+          <div :class="['w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center ring-2 ring-gray-600 font-semibold text-sm md:text-base', currentVendor.color || 'bg-gray-600']">
             {{ currentVendor.initials }}
           </div>
-          <div class="text-left">
+          <div class="text-left hidden md:block">
             <p class="text-sm font-medium leading-tight">{{ currentVendor.name }}</p>
             <p class="text-xs text-emerald-400 mt-0.5">● En service</p>
           </div>
@@ -107,7 +108,7 @@ onUnmounted(() => {
         >
           <div
             v-if="showVendorMenu"
-            class="absolute right-0 top-full mt-2 w-64 bg-white rounded-xl shadow-2xl border border-gray-200 py-2 z-50"
+            class="absolute right-0 top-full mt-2 w-56 md:w-64 bg-white rounded-xl shadow-2xl border border-gray-200 py-2 z-50"
           >
             <button
               v-for="vendor in vendors"

@@ -56,8 +56,9 @@ const handleAddToCart = (): void => {
     <div class="service-info">
       <span class="service-price">{{ service.price }}€</span>
       <span v-if="service.duration" class="service-duration">
-        <Clock class="w-3.5 h-3.5" />
-        {{ service.duration }}min
+        <Clock class="w-3 h-3 md:w-3.5 md:h-3.5" />
+        <span class="hidden sm:inline">{{ service.duration }}min</span>
+        <span class="sm:hidden">{{ service.duration }}'</span>
       </span>
     </div>
   </button>
@@ -68,11 +69,11 @@ const handleAddToCart = (): void => {
 
 .service-card {
   @apply relative flex flex-col items-start justify-between;
-  @apply p-4 bg-white rounded-xl border-l-4;
+  @apply p-3 md:p-4 bg-white rounded-xl border-l-4;
   @apply shadow-sm hover:shadow-md;
   @apply transition-all duration-200 ease-in-out;
   @apply text-left cursor-pointer;
-  @apply min-h-[100px];
+  @apply min-h-[80px] md:min-h-[100px];
 }
 
 .service-card:hover {
@@ -80,15 +81,15 @@ const handleAddToCart = (): void => {
 }
 
 .service-card.active {
-  @apply ring-2 ring-gray-900 ring-offset-2;
+  @apply ring-2 ring-gray-900 ring-offset-1 md:ring-offset-2;
 }
 
 .quantity-badge {
-  @apply absolute -top-2 -right-2;
-  @apply w-7 h-7 rounded-full;
+  @apply absolute -top-1.5 -right-1.5 md:-top-2 md:-right-2;
+  @apply w-6 h-6 md:w-7 md:h-7 rounded-full;
   @apply bg-gray-900 text-white;
   @apply flex items-center justify-center;
-  @apply text-xs font-bold;
+  @apply text-[10px] md:text-xs font-bold;
   @apply shadow-lg;
   animation: pulse 0.5s ease-in-out;
 }
@@ -99,18 +100,18 @@ const handleAddToCart = (): void => {
 }
 
 .service-name {
-  @apply text-sm font-semibold text-gray-900 mb-2 leading-snug line-clamp-2;
+  @apply text-xs md:text-sm font-semibold text-gray-900 mb-1.5 md:mb-2 leading-snug line-clamp-2;
 }
 
 .service-info {
-  @apply flex items-center justify-between w-full gap-3 text-xs text-gray-600;
+  @apply flex items-center justify-between w-full gap-2 md:gap-3 text-[10px] md:text-xs text-gray-600;
 }
 
 .service-price {
-  @apply font-bold text-gray-900 text-base tabular-nums;
+  @apply font-bold text-gray-900 text-sm md:text-base tabular-nums;
 }
 
 .service-duration {
-  @apply flex items-center gap-1 text-gray-500;
+  @apply flex items-center gap-0.5 md:gap-1 text-gray-500;
 }
 </style>
