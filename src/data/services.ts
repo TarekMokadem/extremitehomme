@@ -18,34 +18,14 @@ export const services: Service[] = [
   { id: 12, name: 'Rasage traditionnel', price: 30, duration: 30, category: 'barbe' },
   { id: 13, name: 'Taille + contour bi-mensuel', price: 120, duration: 20, category: 'barbe' },
 
-  // Soins
+  // Soins (uniquement ceux visibles sur l'écran d'origine)
+  { id: 14, name: 'Décoloration', price: 0, duration: 45, category: 'soins' },
   { id: 15, name: 'Cover', price: 21, duration: 30, category: 'soins' },
   { id: 16, name: 'Permanente dessus de tête et coupe', price: 50, duration: 60, category: 'soins' },
   { id: 17, name: 'Permanente tête complète + coupe', price: 70, duration: 90, category: 'soins' },
-  { id: 18, name: 'Soin visage 30 min', price: 30, duration: 30, category: 'soins' },
-  { id: 19, name: 'Soin visage 45 min', price: 45, duration: 45, category: 'soins' },
-  { id: 20, name: 'Soin entretien des ongles', price: 15, duration: 20, category: 'soins' },
-
-  // Épilation
-  { id: 21, name: 'Épilation torse complet 30min', price: 25, duration: 30, category: 'epilation' },
-  { id: 22, name: 'Épilation dos complet 30min', price: 25, duration: 30, category: 'epilation' },
-  { id: 23, name: 'Épilation épaule 15min', price: 15, duration: 15, category: 'epilation' },
-  { id: 24, name: 'Épilation bras complet 30min', price: 25, duration: 30, category: 'epilation' },
-  { id: 25, name: 'Épilation ventre 20min', price: 17, duration: 20, category: 'epilation' },
-  { id: 26, name: 'Épilation demi bras 20min', price: 17, duration: 20, category: 'epilation' },
-  { id: 27, name: 'Épilation aisselles 15min', price: 15, duration: 15, category: 'epilation' },
-  { id: 28, name: 'Épilation inter-sourcilier 10min', price: 10, duration: 10, category: 'epilation' },
-  { id: 29, name: 'Épilation jambe complètes 40min', price: 35, duration: 40, category: 'epilation' },
-  { id: 30, name: 'Épilation demi jambe 30min', price: 25, duration: 30, category: 'epilation' },
-  { id: 31, name: 'Épilation sourcil complet 20min', price: 20, duration: 20, category: 'epilation' },
-
-  // Massage
-  { id: 32, name: 'Massage 30min', price: 30, duration: 30, category: 'massage' },
-  { id: 33, name: 'Massage 60min', price: 60, duration: 60, category: 'massage' },
-  { id: 34, name: 'Massage des mains', price: 20, duration: 15, category: 'massage' },
 
   // Autres
-  // (services non utilisés dans la nouvelle caisse volontairement retirés)
+  { id: 35, name: 'Bon cadeau', price: 0, category: 'autres' },
 ];
 
 /**
