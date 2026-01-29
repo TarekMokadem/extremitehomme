@@ -1,72 +1,50 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { Search, Save, Trash2, History, MapPin, UserPlus, UserPen } from 'lucide-vue-next';
 import { useClient } from '../composables/useClient';
+import { useClients } from '../composables/useClients';
 import { useAddressAutocomplete } from '../composables/useAddressAutocomplete';
 import type { AddressSuggestion } from '../composables/useAddressAutocomplete';
 import type { Client } from '../types';
+import type { Client as DBClient } from '../types/database';
 
 // Composables
 const { currentClient, isEditMode, clearClient, loadClient, hasClientInfo, saveClient } = useClient();
+const { searchClients } = useClients();
 const { suggestions: addressSuggestions, searchAddress, searchCity, clearSuggestions } = useAddressAutocomplete();
 
 // State local
 const searchQuery = ref<string>('');
 const showAddressSuggestions = ref(false);
 const showCitySuggestions = ref(false);
+const clientSearchResults = ref<DBClient[]>([]);
+const isSearching = ref(false);
 
-// Clients mockés pour la recherche (données complètes)
-const mockClients: Client[] = [
-  { 
-    id: '1', 
-    firstName: 'Jean', 
-    lastName: 'Dupont', 
-    phone: '06 12 34 56 78',
-    phone2: '',
-    email: 'jean.dupont@email.com',
-    address: '15 Rue de la Paix',
-    city: 'Paris',
-    postalCode: '75002',
-    birthDate: '1985-03-15',
-    notes: 'Client fidèle, préfère les coupes courtes'
-  },
-  { 
-    id: '2', 
-    firstName: 'Marie', 
-    lastName: 'Martin', 
-    phone: '06 98 76 54 32',
-    phone2: '01 42 33 44 55',
-    email: 'marie.martin@gmail.com',
-    address: '8 Avenue des Champs-Élysées',
-    city: 'Paris',
-    postalCode: '75008',
-    birthDate: '1990-07-22',
-    notes: ''
-  },
-  { 
-    id: '3', 
-    firstName: 'Pierre', 
-    lastName: 'Bernard', 
-    phone: '07 11 22 33 44',
-    phone2: '',
-    email: '',
-    address: '25 Boulevard Haussmann',
-    city: 'Paris',
-    postalCode: '75009',
-    birthDate: '',
-    notes: 'Allergie aux produits parfumés'
-  },
-];
+// Recherche de clients avec debounce
+let searchDebounceTimer: number | null = null;
 
-const clientSearchResults = computed(() => {
-  const query = searchQuery.value.toLowerCase().trim();
-  if (query.length < 2) return [];
+watch(searchQuery, (newQuery) => {
+  if (searchDebounceTimer) {
+    clearTimeout(searchDebounceTimer);
+  }
   
-  return mockClients.filter(client => 
-    client.lastName.toLowerCase().includes(query) ||
-    client.firstName.toLowerCase().includes(query) ||
-    client.phone.includes(query)
-  );
+  if (newQuery.trim().length < 2) {
+    clientSearchResults.value = [];
+    return;
+  }
+  
+  searchDebounceTimer = window.setTimeout(async () => {
+    isSearching.value = true;
+    try {
+      const results = await searchClients(newQuery);
+      clientSearchResults.value = results;
+    } catch (error) {
+      console.error('Erreur recherche clients:', error);
+      clientSearchResults.value = [];
+    } finally {
+      isSearching.value = false;
+    }
+  }, 300);
 });
 
 const showClientSearch = computed(() => searchQuery.value.trim().length >= 2 && clientSearchResults.value.length > 0);
@@ -90,10 +68,26 @@ const handleShowHistory = (): void => {
   alert('Historique client à implémenter');
 };
 
-const selectClient = (client: Client): void => {
+const selectClient = (dbClient: DBClient): void => {
+  // Convertir du format BDD (snake_case) vers le format formulaire (camelCase)
+  const client: Client = {
+    id: dbClient.id,
+    firstName: dbClient.first_name,
+    lastName: dbClient.last_name,
+    phone: dbClient.phone,
+    phone2: dbClient.phone2 || '',
+    email: dbClient.email || '',
+    address: dbClient.address || '',
+    city: dbClient.city || '',
+    postalCode: dbClient.postal_code || '',
+    birthDate: dbClient.birth_date || '',
+    notes: dbClient.notes || '',
+  };
   // Charger toutes les données du client dans le formulaire
   loadClient(client);
   searchQuery.value = `${client.firstName} ${client.lastName}`;
+  // Fermer la liste de recherche
+  clientSearchResults.value = [];
 };
 
 // Sélectionner le premier client avec Entrée
@@ -251,7 +245,7 @@ const handleCityBlur = (): void => {
               @click="selectClient(client)"
               class="w-full px-4 md:px-5 py-2.5 md:py-3 text-left hover:bg-gray-50 transition-colors"
             >
-              <p class="text-xs md:text-sm font-medium text-gray-900">{{ client.firstName }} {{ client.lastName }}</p>
+              <p class="text-xs md:text-sm font-medium text-gray-900">{{ client.first_name }} {{ client.last_name }}</p>
               <p class="text-[10px] md:text-xs text-gray-500 mt-0.5">{{ client.phone }}</p>
             </button>
           </div>

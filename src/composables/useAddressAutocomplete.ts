@@ -28,6 +28,19 @@ interface ApiResponse {
 const isLoading = ref(false);
 const suggestions = ref<AddressSuggestion[]>([]);
 
+// Fetch avec timeout
+const fetchWithTimeout = async (url: string, timeoutMs = 5000): Promise<Response> => {
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
+  
+  try {
+    const response = await fetch(url, { signal: controller.signal });
+    return response;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+};
+
 export function useAddressAutocomplete() {
   /**
    * Recherche d'adresses via l'API gratuite du gouvernement français
@@ -42,12 +55,16 @@ export function useAddressAutocomplete() {
     isLoading.value = true;
 
     try {
-      const response = await fetch(
-        `https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(query)}&limit=5`
+      // Utiliser l'API avec un timeout de 5 secondes
+      const response = await fetchWithTimeout(
+        `https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(query)}&limit=5`,
+        5000
       );
 
       if (!response.ok) {
-        throw new Error('Erreur lors de la recherche d\'adresse');
+        console.warn('API adresse non disponible, code:', response.status);
+        suggestions.value = [];
+        return [];
       }
 
       const data: ApiResponse = await response.json();
@@ -61,8 +78,13 @@ export function useAddressAutocomplete() {
       }));
 
       return suggestions.value;
-    } catch (error) {
-      console.error('Erreur autocomplétion adresse:', error);
+    } catch (error: any) {
+      // Ne pas afficher d'erreur pour les timeouts (API souvent lente)
+      if (error.name === 'AbortError') {
+        console.warn('Timeout API adresse - API française temporairement indisponible');
+      } else {
+        console.warn('Autocomplétion adresse indisponible:', error.message);
+      }
       suggestions.value = [];
       return [];
     } finally {
@@ -82,27 +104,34 @@ export function useAddressAutocomplete() {
     isLoading.value = true;
 
     try {
-      const response = await fetch(
-        `https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(query)}&type=municipality&limit=5`
+      const response = await fetchWithTimeout(
+        `https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(query)}&type=municipality&limit=5`,
+        5000
       );
 
       if (!response.ok) {
-        throw new Error('Erreur lors de la recherche de ville');
+        console.warn('API ville non disponible, code:', response.status);
+        suggestions.value = [];
+        return [];
       }
 
       const data: ApiResponse = await response.json();
 
       suggestions.value = data.features.map((feature: ApiFeature) => ({
         label: feature.properties.label,
-        city: feature.properties.city,
+        city: feature.properties.city || feature.properties.name,
         postcode: feature.properties.postcode,
         street: '',
         context: feature.properties.context,
       }));
 
       return suggestions.value;
-    } catch (error) {
-      console.error('Erreur autocomplétion ville:', error);
+    } catch (error: any) {
+      if (error.name === 'AbortError') {
+        console.warn('Timeout API ville');
+      } else {
+        console.warn('Autocomplétion ville indisponible:', error.message);
+      }
       suggestions.value = [];
       return [];
     } finally {
