@@ -51,6 +51,27 @@ export function useAuth() {
           vendor.value = vendorData;
           user.value.vendor = vendorData;
         }
+      } else {
+        // Pas de session auth - charger un vendeur par défaut pour la caisse
+        const { data: defaultVendor } = await supabase
+          .from('vendors')
+          .select('*')
+          .eq('is_active', true)
+          .order('created_at')
+          .limit(1)
+          .single();
+        
+        if (defaultVendor) {
+          vendor.value = defaultVendor;
+          user.value = {
+            id: defaultVendor.id,
+            email: defaultVendor.email,
+            vendor: defaultVendor,
+          };
+          console.log('Vendeur par défaut chargé:', defaultVendor.first_name, defaultVendor.last_name);
+        } else {
+          console.warn('Aucun vendeur trouvé dans la BDD - créez-en un dans Supabase');
+        }
       }
     } catch (err: any) {
       console.error('Erreur vérification session:', err);

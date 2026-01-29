@@ -214,8 +214,18 @@ export function useSales() {
       return null;
     }
 
+    // Vérifier que le vendorId est un UUID valide (pas "demo")
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(vendorId)) {
+      error.value = 'Aucun vendeur sélectionné. Veuillez sélectionner un vendeur.';
+      console.error('vendorId invalide:', vendorId);
+      return null;
+    }
+
     isProcessing.value = true;
     error.value = null;
+    
+    console.log('Validation vente - vendorId:', vendorId, 'clientId:', clientId);
 
     try {
       // Générer le numéro de ticket
