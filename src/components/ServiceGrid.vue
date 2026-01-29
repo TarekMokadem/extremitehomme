@@ -1,47 +1,48 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
 import { Search } from 'lucide-vue-next';
-import { services } from '../data/services';
-import type { Service } from '../types';
 import ServiceCard from './ServiceCard.vue';
-import { useCart } from '../composables/useCart';
+import { useProducts } from '../composables/useProducts';
+import { useSales } from '../composables/useSales';
+import type { Product } from '../types/database';
 
 // Composables
-const { addToCart } = useCart();
+const { products, isLoading, searchProducts } = useProducts();
+const { addToCart } = useSales();
 
 // State
 const searchQuery = ref<string>('');
 const showAutocomplete = ref<boolean>(false);
-
-// Services pour l'autocomplétion
-const autocompleteResults = computed((): Service[] => {
-  const query = searchQuery.value.toLowerCase().trim();
-  if (query.length < 2) return [];
-  
-  return services
-    .filter(service => service.name.toLowerCase().includes(query))
-    .slice(0, 8);
-});
+const autocompleteResults = ref<Product[]>([]);
 
 // Services affichés dans la grille
 const displayedServices = computed(() => {
   const query = searchQuery.value.toLowerCase().trim();
-  if (!query) return services;
+  if (!query) return products.value;
 
-  return services.filter(service =>
-    service.name.toLowerCase().includes(query)
+  return products.value.filter(product =>
+    product.name.toLowerCase().includes(query) ||
+    product.code?.toLowerCase().includes(query)
   );
 });
 
 // Handlers
-const handleSearchInput = (event: Event): void => {
+const handleSearchInput = async (event: Event): Promise<void> => {
   const target = event.target as HTMLInputElement;
   searchQuery.value = target.value;
-  showAutocomplete.value = target.value.trim().length >= 2;
+  
+  if (target.value.trim().length >= 2) {
+    // Rechercher les produits
+    autocompleteResults.value = await searchProducts(target.value);
+    showAutocomplete.value = autocompleteResults.value.length > 0;
+  } else {
+    autocompleteResults.value = [];
+    showAutocomplete.value = false;
+  }
 };
 
 const handleSearchFocus = (): void => {
-  if (searchQuery.value.trim().length >= 2) {
+  if (searchQuery.value.trim().length >= 2 && autocompleteResults.value.length > 0) {
     showAutocomplete.value = true;
   }
 };
@@ -52,8 +53,8 @@ const handleSearchBlur = (): void => {
   }, 200);
 };
 
-const selectService = (service: Service): void => {
-  searchQuery.value = service.name;
+const selectService = (product: Product): void => {
+  searchQuery.value = product.name;
   showAutocomplete.value = false;
 };
 
@@ -64,12 +65,14 @@ const handleSearchKeydown = (event: KeyboardEvent): void => {
     const firstResult = autocompleteResults.value[0];
     addToCart(firstResult);
     searchQuery.value = '';
+    autocompleteResults.value = [];
     showAutocomplete.value = false;
   }
 };
 
 watch(searchQuery, (newVal) => {
   if (newVal.trim().length < 2) {
+    autocompleteResults.value = [];
     showAutocomplete.value = false;
   }
 });
@@ -109,18 +112,18 @@ watch(searchQuery, (newVal) => {
             class="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-xl border border-gray-200 py-2 z-50 max-h-60 md:max-h-80 overflow-y-auto"
           >
             <button
-              v-for="service in autocompleteResults"
-              :key="service.id"
-              @click="selectService(service)"
+              v-for="product in autocompleteResults"
+              :key="product.id"
+              @click="selectService(product)"
               class="w-full px-4 md:px-5 py-2.5 md:py-3 text-left hover:bg-gray-50 transition-colors flex items-center justify-between"
             >
               <div class="flex-1 min-w-0">
-                <p class="text-sm font-medium text-gray-900 truncate">{{ service.name }}</p>
-                <p class="text-xs text-gray-500 mt-0.5">{{ service.category }}</p>
+                <p class="text-sm font-medium text-gray-900 truncate">{{ product.name }}</p>
+                <p class="text-xs text-gray-500 mt-0.5">{{ product.code }}</p>
               </div>
               <div class="flex items-center gap-2 md:gap-3 ml-2 md:ml-3">
-                <span class="text-sm font-bold text-gray-900 tabular-nums">{{ service.price }}€</span>
-                <span v-if="service.duration" class="text-xs text-gray-400 hidden sm:inline">{{ service.duration }}min</span>
+                <span class="text-sm font-bold text-gray-900 tabular-nums">{{ product.price_ttc?.toFixed(2) }}€</span>
+                <span v-if="product.duration" class="text-xs text-gray-400 hidden sm:inline">{{ product.duration }}min</span>
               </div>
             </button>
           </div>

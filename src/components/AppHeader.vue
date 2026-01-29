@@ -1,15 +1,17 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue';
 import { Scissors, ChevronDown } from 'lucide-vue-next';
-import { useVendor } from '../composables/useVendor';
+import { useAuth } from '../composables/useAuth';
+import type { Vendor } from '../types/database';
 
 // Composables
-const { currentVendor, vendors, setVendor } = useVendor();
+const { vendor: currentVendor, loadVendors, setActiveVendor } = useAuth();
 
 // State
 const currentDate = ref('');
 const currentTime = ref('');
 const showVendorMenu = ref(false);
+const vendors = ref<Vendor[]>([]);
 let intervalId: number;
 
 // Formatage de la date
@@ -38,15 +40,18 @@ const updateClock = (): void => {
 };
 
 // Sélection vendeur
-const selectVendor = (vendor: typeof currentVendor.value): void => {
-  setVendor(vendor);
+const selectVendor = (vendor: Vendor): void => {
+  setActiveVendor(vendor);
   showVendorMenu.value = false;
 };
 
 // Lifecycle hooks
-onMounted(() => {
+onMounted(async () => {
   updateClock();
   intervalId = window.setInterval(updateClock, 1000);
+  
+  // Charger les vendeurs
+  vendors.value = await loadVendors();
 });
 
 onUnmounted(() => {
@@ -87,11 +92,14 @@ onUnmounted(() => {
           @click="showVendorMenu = !showVendorMenu"
           class="flex items-center gap-2 md:gap-3 px-2 py-1.5 md:px-4 md:py-2 rounded-xl bg-gray-800 hover:bg-gray-700 transition-colors"
         >
-          <div :class="['w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center ring-2 ring-gray-600 font-semibold text-sm md:text-base', currentVendor.color || 'bg-gray-600']">
-            {{ currentVendor.initials }}
+          <div 
+            :style="{ backgroundColor: currentVendor?.color || '#6B7280' }"
+            class="w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center ring-2 ring-gray-600 font-semibold text-sm md:text-base text-white"
+          >
+            {{ currentVendor?.initials || '?' }}
           </div>
           <div class="text-left hidden md:block">
-            <p class="text-sm font-medium leading-tight">{{ currentVendor.name }}</p>
+            <p class="text-sm font-medium leading-tight">{{ currentVendor?.first_name }} {{ currentVendor?.last_name }}</p>
             <p class="text-xs text-emerald-400 mt-0.5">● En service</p>
           </div>
           <ChevronDown class="w-4 h-4 text-gray-400" />
@@ -116,13 +124,16 @@ onUnmounted(() => {
               @click="selectVendor(vendor)"
               :class="[
                 'w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors',
-                currentVendor.id === vendor.id && 'bg-gray-50'
+                currentVendor?.id === vendor.id && 'bg-gray-50'
               ]"
             >
-              <div :class="['w-9 h-9 rounded-full flex items-center justify-center font-semibold text-white', vendor.color || 'bg-gray-600']">
+              <div 
+                :style="{ backgroundColor: vendor.color || '#6B7280' }"
+                class="w-9 h-9 rounded-full flex items-center justify-center font-semibold text-white"
+              >
                 {{ vendor.initials }}
               </div>
-              <span class="text-sm font-medium text-gray-900">{{ vendor.name }}</span>
+              <span class="text-sm font-medium text-gray-900">{{ vendor.first_name }} {{ vendor.last_name }}</span>
             </button>
           </div>
         </Transition>

@@ -1,20 +1,52 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
 import { LayoutGrid, ShoppingCart, User } from 'lucide-vue-next';
 import AppHeader from './components/AppHeader.vue';
 import TicketPanel from './components/TicketPanel.vue';
 import ServiceGrid from './components/ServiceGrid.vue';
 import ClientPanel from './components/ClientPanel.vue';
+import { useProducts } from './composables/useProducts';
+import { useAuth } from './composables/useAuth';
+import { isSupabaseConfigured } from './lib/supabase';
+
+// Composables
+const { loadProducts, loadCategories } = useProducts();
+const { checkSession } = useAuth();
 
 // Navigation mobile
 type MobileTab = 'services' | 'ticket' | 'client';
 const activeTab = ref<MobileTab>('services');
+const isLoading = ref(true);
 
 const tabs = [
   { id: 'services' as const, label: 'Services', icon: LayoutGrid },
   { id: 'ticket' as const, label: 'Ticket', icon: ShoppingCart },
   { id: 'client' as const, label: 'Client', icon: User },
 ];
+
+// Initialisation au démarrage
+onMounted(async () => {
+  try {
+    // Vérifier la session utilisateur
+    await checkSession();
+    
+    // Charger les données
+    await Promise.all([
+      loadCategories(),
+      loadProducts(),
+    ]);
+    
+    if (isSupabaseConfigured()) {
+      console.log('✅ Connecté à Supabase');
+    } else {
+      console.log('⚠️ Mode démo (Supabase non configuré)');
+    }
+  } catch (error) {
+    console.error('Erreur initialisation:', error);
+  } finally {
+    isLoading.value = false;
+  }
+});
 </script>
 
 <template>

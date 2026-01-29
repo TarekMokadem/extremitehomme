@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { 
   Banknote, 
   CreditCard, 
@@ -16,24 +16,39 @@ import {
   Percent,
   Euro
 } from 'lucide-vue-next';
-import { useCart } from '../composables/useCart';
-import type { PaymentMethod } from '../types';
+import { useSales } from '../composables/useSales';
+import { useAuth } from '../composables/useAuth';
+import { useClients } from '../composables/useClients';
+import type { PaymentMethod } from '../types/database';
 
 const { 
   cartItems, 
-  subtotal, 
+  subtotalHT,
+  totalTVA,
+  subtotalTTC,
   total, 
-  discount,
+  discountValue,
   discountType,
   discountAmount,
-  selectedPaymentMethod,
+  selectedPaymentMethods,
   updateQuantity,
   removeFromCart,
   clearCart,
   setDiscount,
-  setDiscountType,
-  setPaymentMethod
-} = useCart();
+  setPayment,
+  validateSale,
+  isProcessing,
+} = useSales();
+
+const { vendor } = useAuth();
+const { selectedClient } = useClients();
+
+// Pour le mode de réduction
+const localDiscountType = ref<'euro' | 'percent'>('euro');
+const localDiscount = ref(0);
+
+// Méthode de paiement sélectionnée
+const selectedPaymentMethod = ref<PaymentMethod>('card');
 
 // Configuration des moyens de paiement
 const paymentMethods: { id: PaymentMethod; label: string; icon: typeof Banknote }[] = [
@@ -49,23 +64,53 @@ const formatPrice = (price: number): string => {
   return price.toFixed(2);
 };
 
+// Gestion du type de réduction
+const setDiscountType = (type: 'euro' | 'percent') => {
+  localDiscountType.value = type;
+  // Recalculer la réduction
+  if (type === 'percent') {
+    localDiscount.value = Math.min(localDiscount.value, 100);
+  }
+  setDiscount(localDiscountType.value, localDiscount.value);
+};
+
 // Gestion de la réduction
 const handleDiscountChange = (event: Event): void => {
   const target = event.target as HTMLInputElement;
   const value = Number(target.value);
   
-  if (discountType.value === 'percent') {
-    setDiscount(Math.min(value, 100));
+  if (localDiscountType.value === 'percent') {
+    localDiscount.value = Math.min(value, 100);
   } else {
-    setDiscount(Math.min(value, subtotal.value));
+    localDiscount.value = Math.min(value, subtotalTTC.value);
   }
+  setDiscount(localDiscountType.value, localDiscount.value);
+};
+
+// Sélection du moyen de paiement
+const selectPaymentMethod = (method: PaymentMethod) => {
+  selectedPaymentMethod.value = method;
+  // Définir le paiement pour le total
+  setPayment(method, total.value);
 };
 
 // Validation du ticket
-const handleValidate = (): void => {
+const handleValidate = async (): Promise<void> => {
   if (cartItems.value.length === 0) return;
-  alert(`Transaction de ${formatPrice(total.value)}€ validée !`);
-  clearCart();
+  
+  // S'assurer qu'un paiement est défini
+  if (selectedPaymentMethods.value.length === 0) {
+    setPayment(selectedPaymentMethod.value, total.value);
+  }
+  
+  const sale = await validateSale(
+    vendor.value?.id || 'demo',
+    selectedClient.value?.id
+  );
+  
+  if (sale) {
+    alert(`✅ Vente validée !\nTicket: ${sale.ticket_number}\nTotal: ${formatPrice(sale.total)}€`);
+  }
 };
 
 // Date du ticket
@@ -75,8 +120,11 @@ const ticketDate = computed(() => {
 
 // Max pour le champ réduction
 const maxDiscount = computed(() => {
-  return discountType.value === 'percent' ? 100 : subtotal.value;
+  return localDiscountType.value === 'percent' ? 100 : subtotalTTC.value;
 });
+
+// Sous-total pour compatibilité
+const subtotal = computed(() => subtotalTTC.value);
 </script>
 
 <template>
@@ -100,21 +148,21 @@ const maxDiscount = computed(() => {
       <template v-if="cartItems.length > 0">
         <div
           v-for="item in cartItems"
-          :key="item.service.id"
+          :key="item.product.id"
           class="cart-item"
         >
           <div class="flex items-start justify-between gap-2 md:gap-3 mb-2 md:mb-3">
             <p class="font-medium text-gray-900 flex-1 line-clamp-2 text-xs md:text-sm leading-snug">
-              {{ item.service.name }}
+              {{ item.product.name }}
             </p>
             <p class="font-bold text-gray-900 whitespace-nowrap text-sm md:text-base tabular-nums">
-              {{ formatPrice(item.service.price * item.quantity) }}€
+              {{ formatPrice(item.subtotal_ttc) }}€
             </p>
           </div>
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-2">
               <button
-                @click="updateQuantity(item.service.id, item.quantity - 1)"
+                @click="updateQuantity(item.product.id, item.quantity - 1)"
                 class="w-8 h-8 md:w-9 md:h-9 rounded-lg bg-white border border-gray-300 flex items-center justify-center hover:bg-gray-100 hover:border-gray-400 transition-colors"
                 aria-label="Diminuer la quantité"
               >
@@ -122,7 +170,7 @@ const maxDiscount = computed(() => {
               </button>
               <span class="w-7 md:w-9 text-center text-xs md:text-sm font-semibold tabular-nums">{{ item.quantity }}</span>
               <button
-                @click="updateQuantity(item.service.id, item.quantity + 1)"
+                @click="updateQuantity(item.product.id, item.quantity + 1)"
                 class="w-8 h-8 md:w-9 md:h-9 rounded-lg bg-white border border-gray-300 flex items-center justify-center hover:bg-gray-100 hover:border-gray-400 transition-colors"
                 aria-label="Augmenter la quantité"
               >
@@ -130,7 +178,7 @@ const maxDiscount = computed(() => {
               </button>
             </div>
             <button
-              @click="removeFromCart(item.service.id)"
+              @click="removeFromCart(item.product.id)"
               class="p-1.5 md:p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
               aria-label="Supprimer l'article"
             >
@@ -157,7 +205,7 @@ const maxDiscount = computed(() => {
               @click="setDiscountType('euro')"
               :class="[
                 'inline-flex items-center gap-0.5 md:gap-1 px-2 md:px-3 py-1 md:py-1.5 text-[10px] md:text-xs font-semibold rounded-full transition-all duration-150',
-                discountType === 'euro'
+                localDiscountType === 'euro'
                   ? 'bg-white text-gray-900 shadow-sm'
                   : 'text-gray-500 hover:text-gray-800'
               ]"
@@ -170,7 +218,7 @@ const maxDiscount = computed(() => {
               @click="setDiscountType('percent')"
               :class="[
                 'inline-flex items-center gap-0.5 md:gap-1 px-2 md:px-3 py-1 md:py-1.5 text-[10px] md:text-xs font-semibold rounded-full transition-all duration-150',
-                discountType === 'percent'
+                localDiscountType === 'percent'
                   ? 'bg-white text-gray-900 shadow-sm'
                   : 'text-gray-500 hover:text-gray-800'
               ]"
@@ -185,7 +233,7 @@ const maxDiscount = computed(() => {
         <div class="flex items-center gap-2">
           <input
             type="number"
-            :value="discount"
+            :value="localDiscount"
             @input="handleDiscountChange"
             min="0"
             :max="maxDiscount"
@@ -193,7 +241,7 @@ const maxDiscount = computed(() => {
             class="flex-1 px-3 md:px-4 py-2 md:py-2.5 bg-gray-50 border border-gray-300 rounded-lg text-xs md:text-sm text-right focus:outline-none focus:border-gray-900 focus:ring-2 focus:ring-gray-900/10 hover:border-gray-400 transition-all tabular-nums"
           />
           <span class="text-xs md:text-sm font-medium text-gray-500 min-w-[24px] md:min-w-[32px] text-center">
-            {{ discountType === 'percent' ? '%' : '€' }}
+            {{ localDiscountType === 'percent' ? '%' : '€' }}
           </span>
         </div>
       </div>
@@ -206,7 +254,7 @@ const maxDiscount = computed(() => {
         <button
           v-for="method in paymentMethods"
           :key="method.id"
-          @click="setPaymentMethod(method.id)"
+          @click="selectPaymentMethod(method.id)"
           :class="[
             'payment-btn text-[10px] md:text-xs',
             selectedPaymentMethod === method.id && 'active'
@@ -221,17 +269,30 @@ const maxDiscount = computed(() => {
     <!-- Total -->
     <div class="p-4 md:p-5 border-t-2 border-gray-200 bg-white">
       <div class="space-y-2 md:space-y-2.5 mb-3 md:mb-4">
+        <!-- Sous-total HT -->
         <div class="flex justify-between text-xs md:text-sm">
-          <span class="text-gray-600">Sous-total</span>
-          <span class="text-gray-900 font-medium tabular-nums">{{ formatPrice(subtotal) }}€</span>
+          <span class="text-gray-500">Sous-total HT</span>
+          <span class="text-gray-700 tabular-nums">{{ formatPrice(subtotalHT) }}€</span>
         </div>
-        <div v-if="discount > 0" class="flex justify-between text-xs md:text-sm">
+        <!-- TVA -->
+        <div class="flex justify-between text-xs md:text-sm">
+          <span class="text-gray-500">TVA (20%)</span>
+          <span class="text-gray-700 tabular-nums">{{ formatPrice(totalTVA) }}€</span>
+        </div>
+        <!-- Sous-total TTC -->
+        <div class="flex justify-between text-xs md:text-sm font-medium">
+          <span class="text-gray-600">Sous-total TTC</span>
+          <span class="text-gray-900 tabular-nums">{{ formatPrice(subtotalTTC) }}€</span>
+        </div>
+        <!-- Réduction -->
+        <div v-if="localDiscount > 0" class="flex justify-between text-xs md:text-sm">
           <span class="text-gray-600">
             Réduction 
-            <span class="text-[10px] md:text-xs">({{ discountType === 'percent' ? `${discount}%` : `${formatPrice(discount)}€` }})</span>
+            <span class="text-[10px] md:text-xs">({{ localDiscountType === 'percent' ? `${localDiscount}%` : `${formatPrice(localDiscount)}€` }})</span>
           </span>
           <span class="text-red-600 font-medium tabular-nums">-{{ formatPrice(discountAmount) }}€</span>
         </div>
+        <!-- Total -->
         <div class="flex justify-between text-xl md:text-2xl font-bold pt-2 md:pt-3 border-t border-gray-200">
           <span class="text-gray-900">Total</span>
           <span class="text-gray-900 tabular-nums">{{ formatPrice(total) }}€</span>
@@ -256,17 +317,18 @@ const maxDiscount = computed(() => {
         </button>
         <button
           @click="handleValidate"
-          :disabled="cartItems.length === 0"
+          :disabled="cartItems.length === 0 || isProcessing"
           :class="[
             'btn-icon-sm p-2 md:p-3',
-            cartItems.length > 0
+            cartItems.length > 0 && !isProcessing
               ? 'bg-emerald-600 text-white hover:bg-emerald-700 border-emerald-600'
               : 'bg-gray-100 text-gray-400 cursor-not-allowed border-gray-200'
           ]"
           title="Valider"
           aria-label="Valider la transaction"
         >
-          <Check class="w-4 h-4 md:w-5 md:h-5" />
+          <span v-if="isProcessing" class="animate-spin">⏳</span>
+          <Check v-else class="w-4 h-4 md:w-5 md:h-5" />
         </button>
       </div>
     </div>

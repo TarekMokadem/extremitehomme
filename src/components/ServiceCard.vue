@@ -1,32 +1,28 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { Clock } from 'lucide-vue-next';
-import type { Service } from '../types';
-import { useCart } from '../composables/useCart';
+import type { Product } from '../types/database';
+import { useSales } from '../composables/useSales';
+import { useProducts } from '../composables/useProducts';
 
 // Props
 interface Props {
-  service: Service;
+  service: Product;
 }
 
 const props = defineProps<Props>();
 
-// Composable
-const { addToCart, getItemQuantity } = useCart();
+// Composables
+const { addToCart, cartItems } = useSales();
+const { getCategoryBorderColor } = useProducts();
 
 // Computed
-const quantity = computed(() => getItemQuantity(props.service.id));
+const quantity = computed(() => {
+  const item = cartItems.value.find(i => i.product.id === props.service.id);
+  return item ? item.quantity : 0;
+});
 
-const categoryBorderColors: Record<string, string> = {
-  coupes: 'border-l-blue-500',
-  barbe: 'border-l-amber-500',
-  soins: 'border-l-emerald-500',
-  epilation: 'border-l-rose-500',
-  massage: 'border-l-purple-500',
-  autres: 'border-l-gray-400',
-};
-
-const borderColor = computed(() => categoryBorderColors[props.service.category] || 'border-l-gray-400');
+const borderColor = computed(() => getCategoryBorderColor(props.service));
 
 // Handlers
 const handleAddToCart = (): void => {
@@ -54,7 +50,7 @@ const handleAddToCart = (): void => {
 
     <!-- Prix et durée -->
     <div class="service-info">
-      <span class="service-price">{{ service.price }}€</span>
+      <span class="service-price">{{ service.price_ttc?.toFixed(2) || service.price_ht?.toFixed(2) }}€</span>
       <span v-if="service.duration" class="service-duration">
         <Clock class="w-3 h-3 md:w-3.5 md:h-3.5" />
         <span class="hidden sm:inline">{{ service.duration }}min</span>
