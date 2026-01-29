@@ -1,6 +1,20 @@
 import { ref } from 'vue';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
-import type { Client, ClientInsert } from '../types/database';
+import type { Client } from '../types/database';
+
+// Type pour l'insertion (sans les champs auto-générés)
+type ClientInsert = {
+  first_name: string;
+  last_name: string;
+  phone: string;
+  phone2?: string | null;
+  email?: string | null;
+  address?: string | null;
+  city?: string | null;
+  postal_code?: string | null;
+  birth_date?: string | null;
+  notes?: string | null;
+};
 
 // Clients mockés pour le mode démo
 const mockClients: Client[] = [
@@ -148,10 +162,15 @@ export function useClients() {
 
   // Créer un nouveau client
   const createClient = async (clientData: ClientInsert): Promise<Client | null> => {
+    console.log('createClient appelé avec:', clientData);
+    
     if (!isSupabaseConfigured()) {
+      console.log('Mode démo - création client en mémoire');
       const newClient: Client = {
-        id: String(mockClients.length + 1),
-        ...clientData,
+        id: `mock_${Date.now()}`,
+        first_name: clientData.first_name,
+        last_name: clientData.last_name,
+        phone: clientData.phone,
         phone2: clientData.phone2 || null,
         email: clientData.email || null,
         address: clientData.address || null,
@@ -171,14 +190,31 @@ export function useClients() {
     }
 
     try {
+      console.log('Insertion dans Supabase...');
       const { data, error: insertError } = await supabase
         .from('clients')
-        .insert(clientData)
+        .insert({
+          first_name: clientData.first_name,
+          last_name: clientData.last_name,
+          phone: clientData.phone,
+          phone2: clientData.phone2 || null,
+          email: clientData.email || null,
+          address: clientData.address || null,
+          city: clientData.city || null,
+          postal_code: clientData.postal_code || null,
+          birth_date: clientData.birth_date || null,
+          notes: clientData.notes || null,
+        } as any)
         .select()
         .single();
 
-      if (insertError) throw insertError;
-      return data;
+      if (insertError) {
+        console.error('Erreur Supabase:', insertError);
+        throw insertError;
+      }
+      
+      console.log('Client créé avec succès:', data);
+      return data as Client;
     } catch (err: any) {
       console.error('Erreur création client:', err);
       error.value = err.message;
@@ -187,11 +223,13 @@ export function useClients() {
   };
 
   // Mettre à jour un client
-  const updateClient = async (id: string, updates: Partial<Client>): Promise<Client | null> => {
+  const updateClient = async (id: string, updates: Partial<ClientInsert>): Promise<Client | null> => {
+    console.log('updateClient appelé avec:', id, updates);
+    
     if (!isSupabaseConfigured()) {
       const index = mockClients.findIndex(c => c.id === id);
       if (index !== -1) {
-        mockClients[index] = { ...mockClients[index], ...updates };
+        mockClients[index] = { ...mockClients[index], ...updates } as Client;
         return mockClients[index];
       }
       return null;
@@ -200,13 +238,14 @@ export function useClients() {
     try {
       const { data, error: updateError } = await supabase
         .from('clients')
-        .update(updates)
+        .update(updates as any)
         .eq('id', id)
         .select()
         .single();
 
       if (updateError) throw updateError;
-      return data;
+      console.log('Client mis à jour:', data);
+      return data as Client;
     } catch (err: any) {
       console.error('Erreur mise à jour client:', err);
       error.value = err.message;

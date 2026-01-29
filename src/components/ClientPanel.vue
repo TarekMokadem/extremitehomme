@@ -186,6 +186,19 @@ const formFields = [
   { key: 'email', label: 'Email', type: 'email', placeholder: 'jean@email.com', span: 2 },
   { key: 'birthDate', label: 'Anniversaire', type: 'date', placeholder: '', span: 2 },
 ] as const;
+
+// Handlers pour le blur (pour éviter l'erreur setTimeout)
+const handleAddressBlur = (): void => {
+  window.setTimeout(() => {
+    showAddressSuggestions.value = false;
+  }, 200);
+};
+
+const handleCityBlur = (): void => {
+  window.setTimeout(() => {
+    showCitySuggestions.value = false;
+  }, 200);
+};
 </script>
 
 <template>
@@ -292,7 +305,7 @@ const formFields = [
           <input
             v-model="currentClient.address"
             @input="handleAddressInput"
-            @blur="() => setTimeout(() => showAddressSuggestions = false, 200)"
+            @blur="handleAddressBlur"
             @keydown="handleAddressKeydown"
             type="text"
             placeholder="123 Rue de la Paix"
@@ -337,7 +350,7 @@ const formFields = [
             <input
               v-model="currentClient.city"
               @input="handleCityInput"
-              @blur="() => setTimeout(() => showCitySuggestions = false, 200)"
+              @blur="handleCityBlur"
               @keydown="handleCityKeydown"
               type="text"
               placeholder="Paris"

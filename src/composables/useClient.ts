@@ -1,7 +1,8 @@
 import { ref, computed } from 'vue';
 import type { Client } from '../types';
+import { useClients } from './useClients';
 
-// État global partagé
+// État global partagé (format camelCase pour le formulaire)
 const currentClient = ref<Client>({
   id: '',
   firstName: '',
@@ -20,6 +21,8 @@ const currentClient = ref<Client>({
 const isEditMode = ref(false);
 
 export function useClient() {
+  const { createClient, updateClient, selectClient } = useClients();
+
   /**
    * Vérifier si le client a des informations renseignées
    */
@@ -49,6 +52,7 @@ export function useClient() {
       notes: '',
     };
     isEditMode.value = false;
+    selectClient(null);
   };
 
   /**
@@ -80,25 +84,54 @@ export function useClient() {
     }
 
     try {
-      if (isEditMode.value) {
+      // Convertir du format camelCase (formulaire) vers snake_case (BDD)
+      const clientDataForDB = {
+        first_name: currentClient.value.firstName,
+        last_name: currentClient.value.lastName,
+        phone: currentClient.value.phone,
+        phone2: currentClient.value.phone2 || null,
+        email: currentClient.value.email || null,
+        address: currentClient.value.address || null,
+        city: currentClient.value.city || null,
+        postal_code: currentClient.value.postalCode || null,
+        birth_date: currentClient.value.birthDate || null,
+        notes: currentClient.value.notes || null,
+      };
+
+      if (isEditMode.value && currentClient.value.id) {
         // Mode édition : mise à jour du client existant
-        console.log('Mise à jour du client:', currentClient.value);
-        return { 
-          success: true, 
-          isNew: false, 
-          message: `Client ${currentClient.value.firstName} ${currentClient.value.lastName} mis à jour` 
-        };
+        console.log('Mise à jour du client:', clientDataForDB);
+        const result = await updateClient(currentClient.value.id, clientDataForDB);
+        
+        if (result) {
+          // Mettre à jour le client sélectionné
+          selectClient(result);
+          return { 
+            success: true, 
+            isNew: false, 
+            message: `Client ${currentClient.value.firstName} ${currentClient.value.lastName} mis à jour` 
+          };
+        } else {
+          return { success: false, isNew: false, message: 'Erreur lors de la mise à jour' };
+        }
       } else {
         // Mode création : nouveau client
-        // Générer un ID unique
-        currentClient.value.id = `client_${Date.now()}`;
-        console.log('Création du client:', currentClient.value);
-        isEditMode.value = true; // Passe en mode édition après création
-        return { 
-          success: true, 
-          isNew: true, 
-          message: `Client ${currentClient.value.firstName} ${currentClient.value.lastName} créé` 
-        };
+        console.log('Création du client:', clientDataForDB);
+        const newClientData = await createClient(clientDataForDB);
+        
+        if (newClientData) {
+          // Mettre à jour l'ID local avec celui de la BDD
+          currentClient.value.id = newClientData.id;
+          isEditMode.value = true; // Passe en mode édition après création
+          selectClient(newClientData);
+          return { 
+            success: true, 
+            isNew: true, 
+            message: `Client ${currentClient.value.firstName} ${currentClient.value.lastName} créé` 
+          };
+        } else {
+          return { success: false, isNew: false, message: 'Erreur lors de la création' };
+        }
       }
     } catch (error) {
       console.error('Erreur lors de l\'enregistrement du client:', error);
