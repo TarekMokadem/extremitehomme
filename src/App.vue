@@ -5,6 +5,7 @@ import AppHeader from './components/AppHeader.vue';
 import TicketPanel from './components/TicketPanel.vue';
 import ServiceGrid from './components/ServiceGrid.vue';
 import ClientPanel from './components/ClientPanel.vue';
+import SalesHistory from './components/SalesHistory.vue';
 import { useProducts } from './composables/useProducts';
 import { useAuth } from './composables/useAuth';
 import { isSupabaseConfigured } from './lib/supabase';
@@ -17,6 +18,9 @@ const { checkSession } = useAuth();
 type MobileTab = 'services' | 'ticket' | 'client';
 const activeTab = ref<MobileTab>('services');
 const isLoading = ref(true);
+
+// Modal historique
+const showHistoryModal = ref(false);
 
 const tabs = [
   { id: 'services' as const, label: 'Services', icon: LayoutGrid },
@@ -52,7 +56,13 @@ onMounted(async () => {
 <template>
   <div class="min-h-screen flex flex-col bg-gray-50">
     <!-- Header -->
-    <AppHeader />
+    <AppHeader @open-history="showHistoryModal = true" />
+    
+    <!-- Modal Historique -->
+    <SalesHistory 
+      v-if="showHistoryModal" 
+      @close="showHistoryModal = false" 
+    />
 
     <!-- Main content -->
     <!-- Desktop: 3 colonnes | Tablette: 2 colonnes | Mobile: 1 colonne avec onglets -->

@@ -1,8 +1,13 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue';
-import { Scissors, ChevronDown } from 'lucide-vue-next';
+import { Scissors, ChevronDown, Receipt } from 'lucide-vue-next';
 import { useAuth } from '../composables/useAuth';
 import type { Vendor } from '../types/database';
+
+// Emits
+const emit = defineEmits<{
+  (e: 'open-history'): void;
+}>();
 
 // Composables
 const { vendor: currentVendor, loadVendors, setActiveVendor } = useAuth();
@@ -78,6 +83,18 @@ onUnmounted(() => {
 
     <!-- Date & Heure & Vendeur -->
     <div class="flex items-center gap-3 md:gap-6 lg:gap-8">
+      <!-- Bouton Historique -->
+      <button
+        @click="emit('open-history')"
+        class="flex items-center gap-2 px-3 py-2 md:px-4 md:py-2.5 rounded-xl bg-gray-800 hover:bg-gray-700 transition-colors"
+        title="Historique des ventes"
+      >
+        <Receipt class="w-4 h-4 md:w-5 md:h-5" />
+        <span class="hidden md:inline text-sm font-medium">Historique</span>
+      </button>
+      
+      <div class="w-px h-8 md:h-10 bg-gray-700 hidden md:block"></div>
+      
       <!-- Date/Heure - masqué sur très petit écran -->
       <div class="text-right hidden sm:block">
         <p class="text-[10px] md:text-xs text-gray-400 mb-0.5 md:mb-1">{{ currentDate }}</p>
