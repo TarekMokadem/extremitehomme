@@ -1,16 +1,23 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue';
-import { Scissors, ChevronDown, Receipt } from 'lucide-vue-next';
+import { useRouter, useRoute } from 'vue-router';
+import { Scissors, ChevronDown, LayoutGrid, History, Users } from 'lucide-vue-next';
 import { useAuth } from '../composables/useAuth';
 import type { Vendor } from '../types/database';
 
-// Emits
-const emit = defineEmits<{
-  (e: 'open-history'): void;
-}>();
+// Router
+const router = useRouter();
+const route = useRoute();
 
 // Composables
 const { vendor: currentVendor, loadVendors, setActiveVendor } = useAuth();
+
+// Navigation
+const navItems = [
+  { path: '/', name: 'caisse', label: 'Caisse', icon: LayoutGrid },
+  { path: '/historique', name: 'historique', label: 'Historique', icon: History },
+  { path: '/clients', name: 'clients', label: 'Clients', icon: Users },
+];
 
 // State
 const currentDate = ref('');
@@ -70,31 +77,39 @@ onUnmounted(() => {
   <header class="bg-gray-900 text-white px-4 py-3 md:px-6 md:py-4 lg:px-8 flex items-center justify-between flex-shrink-0 shadow-xl">
     <!-- Logo & Nom -->
     <div class="flex items-center gap-2 md:gap-4">
-      <div class="w-8 h-8 md:w-10 md:h-10 rounded-xl bg-white/10 flex items-center justify-center backdrop-blur-sm">
-        <Scissors class="w-4 h-4 md:w-5 md:h-5" />
-      </div>
-      <div>
-        <h1 class="text-sm md:text-lg font-semibold tracking-tight leading-tight">
-          EXTRÉMITÉS <span class="font-normal text-gray-300 hidden sm:inline">HOMME</span>
-        </h1>
-        <p class="text-[10px] md:text-[11px] text-gray-400 uppercase tracking-widest mt-0.5 hidden sm:block">Coiffeur · Barbier</p>
-      </div>
+      <router-link to="/" class="flex items-center gap-2 md:gap-4 hover:opacity-80 transition-opacity">
+        <div class="w-8 h-8 md:w-10 md:h-10 rounded-xl bg-white/10 flex items-center justify-center backdrop-blur-sm">
+          <Scissors class="w-4 h-4 md:w-5 md:h-5" />
+        </div>
+        <div>
+          <h1 class="text-sm md:text-lg font-semibold tracking-tight leading-tight">
+            EXTRÉMITÉS <span class="font-normal text-gray-300 hidden sm:inline">HOMME</span>
+          </h1>
+          <p class="text-[10px] md:text-[11px] text-gray-400 uppercase tracking-widest mt-0.5 hidden sm:block">Coiffeur · Barbier</p>
+        </div>
+      </router-link>
     </div>
+
+    <!-- Navigation centrale -->
+    <nav class="hidden md:flex items-center gap-1">
+      <router-link
+        v-for="item in navItems"
+        :key="item.name"
+        :to="item.path"
+        :class="[
+          'flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-colors',
+          route.path === item.path
+            ? 'bg-white/10 text-white'
+            : 'text-gray-400 hover:text-white hover:bg-white/5'
+        ]"
+      >
+        <component :is="item.icon" class="w-4 h-4" />
+        <span>{{ item.label }}</span>
+      </router-link>
+    </nav>
 
     <!-- Date & Heure & Vendeur -->
     <div class="flex items-center gap-3 md:gap-6 lg:gap-8">
-      <!-- Bouton Historique -->
-      <button
-        @click="emit('open-history')"
-        class="flex items-center gap-2 px-3 py-2 md:px-4 md:py-2.5 rounded-xl bg-gray-800 hover:bg-gray-700 transition-colors"
-        title="Historique des ventes"
-      >
-        <Receipt class="w-4 h-4 md:w-5 md:h-5" />
-        <span class="hidden md:inline text-sm font-medium">Historique</span>
-      </button>
-      
-      <div class="w-px h-8 md:h-10 bg-gray-700 hidden md:block"></div>
-      
       <!-- Date/Heure - masqué sur très petit écran -->
       <div class="text-right hidden sm:block">
         <p class="text-[10px] md:text-xs text-gray-400 mb-0.5 md:mb-1">{{ currentDate }}</p>
