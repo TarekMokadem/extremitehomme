@@ -3,20 +3,15 @@ import { ref, computed, watch } from 'vue';
 import { Search, Save, Trash2, History, MapPin, UserPlus, UserPen } from 'lucide-vue-next';
 import { useClient } from '../composables/useClient';
 import { useClients } from '../composables/useClients';
-import { useAddressAutocomplete } from '../composables/useAddressAutocomplete';
-import type { AddressSuggestion } from '../composables/useAddressAutocomplete';
 import type { Client } from '../types';
 import type { Client as DBClient } from '../types/database';
 
 // Composables
 const { currentClient, isEditMode, clearClient, loadClient, hasClientInfo, saveClient } = useClient();
 const { searchClients } = useClients();
-const { suggestions: addressSuggestions, searchAddress, searchCity, clearSuggestions } = useAddressAutocomplete();
 
 // State local
 const searchQuery = ref<string>('');
-const showAddressSuggestions = ref(false);
-const showCitySuggestions = ref(false);
 const clientSearchResults = ref<DBClient[]>([]);
 const isSearching = ref(false);
 
@@ -98,79 +93,6 @@ const handleClientSearchKeydown = (event: KeyboardEvent): void => {
   }
 };
 
-// Autocomplétion adresse
-let addressDebounceTimer: number | null = null;
-const handleAddressInput = (event: Event): void => {
-  const target = event.target as HTMLInputElement;
-  const value = target.value;
-  
-  if (addressDebounceTimer) {
-    clearTimeout(addressDebounceTimer);
-  }
-  
-  if (value.trim().length >= 3) {
-    addressDebounceTimer = window.setTimeout(() => {
-      searchAddress(value);
-      showAddressSuggestions.value = true;
-    }, 300);
-  } else {
-    clearSuggestions();
-    showAddressSuggestions.value = false;
-  }
-};
-
-const selectAddress = (suggestion: AddressSuggestion): void => {
-  currentClient.address = suggestion.street;
-  currentClient.city = suggestion.city;
-  currentClient.postalCode = suggestion.postcode;
-  showAddressSuggestions.value = false;
-  clearSuggestions();
-};
-
-// Sélectionner la première adresse avec Entrée
-const handleAddressKeydown = (event: KeyboardEvent): void => {
-  if (event.key === 'Enter' && showAddressSuggestions.value && addressSuggestions.value.length > 0) {
-    event.preventDefault();
-    selectAddress(addressSuggestions.value[0]);
-  }
-};
-
-// Autocomplétion ville
-let cityDebounceTimer: number | null = null;
-const handleCityInput = (event: Event): void => {
-  const target = event.target as HTMLInputElement;
-  const value = target.value;
-  
-  if (cityDebounceTimer) {
-    clearTimeout(cityDebounceTimer);
-  }
-  
-  if (value.trim().length >= 2) {
-    cityDebounceTimer = window.setTimeout(() => {
-      searchCity(value);
-      showCitySuggestions.value = true;
-    }, 300);
-  } else {
-    clearSuggestions();
-    showCitySuggestions.value = false;
-  }
-};
-
-const selectCity = (suggestion: AddressSuggestion): void => {
-  currentClient.city = suggestion.city;
-  currentClient.postalCode = suggestion.postcode;
-  showCitySuggestions.value = false;
-  clearSuggestions();
-};
-
-// Sélectionner la première ville avec Entrée
-const handleCityKeydown = (event: KeyboardEvent): void => {
-  if (event.key === 'Enter' && showCitySuggestions.value && addressSuggestions.value.length > 0) {
-    event.preventDefault();
-    selectCity(addressSuggestions.value[0]);
-  }
-};
-
 // Labels des champs
 const formFields = [
   { key: 'lastName', label: 'Nom', type: 'text', placeholder: 'Dupont', span: 1 },
@@ -181,18 +103,6 @@ const formFields = [
   { key: 'birthDate', label: 'Anniversaire', type: 'date', placeholder: '', span: 2 },
 ] as const;
 
-// Handlers pour le blur (pour éviter l'erreur setTimeout)
-const handleAddressBlur = (): void => {
-  window.setTimeout(() => {
-    showAddressSuggestions.value = false;
-  }, 200);
-};
-
-const handleCityBlur = (): void => {
-  window.setTimeout(() => {
-    showCitySuggestions.value = false;
-  }, 200);
-};
 </script>
 
 <template>
@@ -289,94 +199,32 @@ const handleCityBlur = (): void => {
         </template>
       </div>
 
-      <!-- Adresse avec autocomplétion -->
-      <div class="col-span-2 space-y-1.5 md:space-y-2 relative">
+      <!-- Adresse -->
+      <div class="col-span-2 space-y-1.5 md:space-y-2">
         <label class="block text-[10px] md:text-xs text-gray-600 font-semibold uppercase tracking-wider flex items-center gap-1.5 md:gap-2">
           <MapPin class="w-3 h-3 md:w-3.5 md:h-3.5" />
           <span>Adresse</span>
         </label>
-        <div class="relative">
-          <input
-            v-model="currentClient.address"
-            @input="handleAddressInput"
-            @blur="handleAddressBlur"
-            @keydown="handleAddressKeydown"
-            type="text"
-            placeholder="123 Rue de la Paix"
-            class="w-full px-3 md:px-4 py-2.5 md:py-3 bg-white border border-gray-300 rounded-xl text-xs md:text-sm font-medium focus:outline-none focus:border-gray-900 focus:ring-2 focus:ring-gray-900/10 hover:border-gray-400 transition-all"
-            autocomplete="off"
-          />
-
-          <!-- Suggestions adresse -->
-          <Transition
-            enter-active-class="transition ease-out duration-100"
-            enter-from-class="opacity-0 translate-y-1"
-            enter-to-class="opacity-100 translate-y-0"
-            leave-active-class="transition ease-in duration-75"
-            leave-from-class="opacity-100 translate-y-0"
-            leave-to-class="opacity-0 translate-y-1"
-          >
-            <div
-              v-if="showAddressSuggestions && addressSuggestions.length > 0"
-              class="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-xl border border-gray-200 py-2 z-50 max-h-48 md:max-h-60 overflow-y-auto"
-            >
-              <button
-                v-for="(suggestion, index) in addressSuggestions"
-                :key="index"
-                @click="selectAddress(suggestion)"
-                class="w-full px-3 md:px-4 py-2.5 md:py-3 text-left hover:bg-gray-50 transition-colors"
-              >
-                <p class="text-xs md:text-sm font-medium text-gray-900">{{ suggestion.label }}</p>
-                <p class="text-[10px] md:text-xs text-gray-500 mt-0.5">{{ suggestion.context }}</p>
-              </button>
-            </div>
-          </Transition>
-        </div>
+        <input
+          v-model="currentClient.address"
+          type="text"
+          placeholder="123 Rue de la Paix"
+          class="w-full px-3 md:px-4 py-2.5 md:py-3 bg-white border border-gray-300 rounded-xl text-xs md:text-sm font-medium focus:outline-none focus:border-gray-900 focus:ring-2 focus:ring-gray-900/10 hover:border-gray-400 transition-all"
+        />
       </div>
 
       <!-- Ville et Code postal -->
       <div class="grid grid-cols-2 gap-3 md:gap-4">
-        <div class="space-y-1.5 md:space-y-2 relative">
+        <div class="space-y-1.5 md:space-y-2">
           <label class="block text-[10px] md:text-xs text-gray-600 font-semibold uppercase tracking-wider">
             Ville
           </label>
-          <div class="relative">
-            <input
-              v-model="currentClient.city"
-              @input="handleCityInput"
-              @blur="handleCityBlur"
-              @keydown="handleCityKeydown"
-              type="text"
-              placeholder="Paris"
-              class="w-full px-3 md:px-4 py-2.5 md:py-3 bg-white border border-gray-300 rounded-xl text-xs md:text-sm font-medium focus:outline-none focus:border-gray-900 focus:ring-2 focus:ring-gray-900/10 hover:border-gray-400 transition-all"
-              autocomplete="off"
-            />
-
-            <!-- Suggestions ville -->
-            <Transition
-              enter-active-class="transition ease-out duration-100"
-              enter-from-class="opacity-0 translate-y-1"
-              enter-to-class="opacity-100 translate-y-0"
-              leave-active-class="transition ease-in duration-75"
-              leave-from-class="opacity-100 translate-y-0"
-              leave-to-class="opacity-0 translate-y-1"
-            >
-              <div
-                v-if="showCitySuggestions && addressSuggestions.length > 0"
-                class="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-xl border border-gray-200 py-2 z-50 max-h-48 md:max-h-60 overflow-y-auto"
-              >
-                <button
-                  v-for="(suggestion, index) in addressSuggestions"
-                  :key="index"
-                  @click="selectCity(suggestion)"
-                  class="w-full px-3 md:px-4 py-2.5 md:py-3 text-left hover:bg-gray-50 transition-colors"
-                >
-                  <p class="text-xs md:text-sm font-medium text-gray-900">{{ suggestion.city }}</p>
-                  <p class="text-[10px] md:text-xs text-gray-500">{{ suggestion.postcode }}</p>
-                </button>
-              </div>
-            </Transition>
-          </div>
+          <input
+            v-model="currentClient.city"
+            type="text"
+            placeholder="Paris"
+            class="w-full px-3 md:px-4 py-2.5 md:py-3 bg-white border border-gray-300 rounded-xl text-xs md:text-sm font-medium focus:outline-none focus:border-gray-900 focus:ring-2 focus:ring-gray-900/10 hover:border-gray-400 transition-all"
+          />
         </div>
         <div class="space-y-1.5 md:space-y-2">
           <label class="block text-[10px] md:text-xs text-gray-600 font-semibold uppercase tracking-wider">
