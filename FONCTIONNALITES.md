@@ -346,7 +346,87 @@ Large: 2rem (8)
 
 ---
 
-**Date de finalisation :** 2 décembre 2025
-**Version :** 1.0.0
-**Status :** ✅ Production Ready
+## 💼 Informations Commerciales
+
+### Vente Réalisée
+
+**Montant total :** 6 000€
+
+**Structure de paiement :**
+- ✅ **Acompte initial :** 1 000€ (versé le 29 janvier 2026)
+- 📅 **Reste à payer :** 5 000€
+  - 50% étalé sur 1 an (2 500€)
+  - 50% étalé sur 2 ans (2 500€)
+
+**Calendrier de paiement proposé :**
+- Acompte : 1 000€ ✅ (versé)
+- À la livraison Phase 1 : 800€
+- À la livraison Phase 2 : 850€
+- À la livraison Phase 3 : 850€
+- Année 2 : 2 500€ (échéancier trimestriel ou semestriel)
+
+---
+
+## 📊 État du Projet
+
+### Phase 0 : Audit Technique ✅ TERMINÉ
+**Date :** 29 janvier 2026
+
+✅ Audit technique complet réalisé  
+✅ Roadmap détaillée créée  
+✅ Architecture définie  
+✅ Estimation budgétaire et temporelle  
+
+**Documents créés :**
+- `AUDIT-TECHNIQUE.md` - Analyse approfondie de l'existant
+- `ROADMAP.md` - Plan de développement sur 3 phases
+- `NEXT-STEPS.md` - Guide de démarrage Phase 1
+
+### Phase 1 : Backend + Caisse Finalisée 🔄 EN ATTENTE
+**Durée estimée :** 4-6 semaines  
+**Objectif :** Page de caisse 100% fonctionnelle avec backend
+
+**Tâches principales :**
+- [ ] Setup backend (Express + TypeScript + PostgreSQL + Prisma)
+- [ ] API REST avec authentification JWT
+- [ ] Calculs HT/TVA/TTC
+- [ ] Système de codes produits (1V, 2B, etc.)
+- [ ] Gestion stock automatique
+- [ ] Tests complets
+
+### Phase 2 : Modules Complémentaires ⏳ PLANIFIÉ
+**Durée estimée :** 4-6 semaines
+
+Modules : Stock, Clients, Historique, Commandes, Inventaire
+
+### Phase 3 : Avancé + NF525 ⏳ PLANIFIÉ
+**Durée estimée :** 4-6 semaines
+
+Modules : Fidélité, Statistiques, Tiroir de caisse, Paramètres, NF525
+
+---
+
+## 📁 Documentation Projet
+
+### Documents Techniques
+- `README.md` - Présentation générale
+- `FONCTIONNALITES.md` - Ce fichier (fonctionnalités et état)
+- `AUDIT-TECHNIQUE.md` - Audit complet de l'existant
+- `ROADMAP.md` - Plan de développement détaillé
+- `NEXT-STEPS.md` - Guide de démarrage Phase 1
+
+### À Créer (Phase 1+)
+- `DATABASE.md` - Schéma de base de données
+- `API.md` - Documentation API REST
+- `DEPLOYMENT.md` - Guide de déploiement
+- `NF525.md` - Conformité fiscale
+- `USER-GUIDE.md` - Guide utilisateur
+
+---
+
+**Date de création maquette :** 2 décembre 2025  
+**Date audit technique :** 29 janvier 2026  
+**Version actuelle :** 1.0.0-alpha (Maquette fonctionnelle)  
+**Prochaine version :** 1.1.0-beta (Phase 1 complète)  
+**Status :** 🔄 En développement actif
 
