@@ -27,6 +27,12 @@ const router = createRouter({
       component: () => import('../pages/TiroirCaissePage.vue'),
       meta: { title: 'Tiroir de caisse' }
     },
+    {
+      path: '/stats',
+      name: 'stats',
+      component: () => import('../pages/StatistiquesPage.vue'),
+      meta: { title: 'Statistiques' }
+    },
   ],
 });
 
