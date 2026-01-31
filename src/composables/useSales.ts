@@ -53,9 +53,18 @@ export function useSales() {
 
   // Recalculer les totaux d'un item
   const recalculateItem = (item: CartItem) => {
-    item.subtotal_ht = item.price_ht * item.quantity;
-    item.tva = item.subtotal_ht * item.tva_rate;
-    item.subtotal_ttc = item.subtotal_ht + item.tva;
+    // IMPORTANT : On part du prix TTC (ce que le client paie)
+    // et on calcule le HT pour éviter les arrondis
+    const priceTTC = item.product.price_ttc;
+    item.subtotal_ttc = priceTTC * item.quantity;
+    
+    // Calculer le HT à partir du TTC
+    const tvaMultiplier = 1 + item.tva_rate;
+    item.subtotal_ht = item.subtotal_ttc / tvaMultiplier;
+    item.tva = item.subtotal_ttc - item.subtotal_ht;
+    
+    // Mettre à jour le price_ht calculé (pour cohérence)
+    item.price_ht = item.subtotal_ht / item.quantity;
   };
 
   // Modifier la quantité d'un item
