@@ -1,19 +1,29 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
-import { Search } from 'lucide-vue-next';
+import { Search, Zap } from 'lucide-vue-next';
 import ServiceCard from './ServiceCard.vue';
 import LoyaltyCard from './LoyaltyCard.vue';
 import { useProducts } from '../composables/useProducts';
 import { useSales } from '../composables/useSales';
 import { useClients } from '../composables/useClients';
 import { useLoyalty } from '../composables/useLoyalty';
-import type { Product } from '../types/database';
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import type { Product, Vendor } from '../types/database';
 
 // Composables
 const { products, isLoading, searchProducts } = useProducts();
 const { addToCart } = useSales();
 const { selectedClient } = useClients();
 const { loadClientStamps, clearStamps } = useLoyalty();
+
+// Liste des vendeurs (chargée au démarrage)
+const vendors = ref<Vendor[]>([]);
+const loadVendors = async () => {
+  if (!isSupabaseConfigured()) return;
+  const { data } = await supabase.from('vendors').select('*').eq('is_active', true);
+  vendors.value = data || [];
+};
+loadVendors();
 
 // Charger la carte de fidélité quand un client est sélectionné
 watch(selectedClient, (newClient) => {
@@ -28,6 +38,8 @@ watch(selectedClient, (newClient) => {
 const searchQuery = ref<string>('');
 const showAutocomplete = ref<boolean>(false);
 const autocompleteResults = ref<Product[]>([]);
+const shortcutCode = ref<string>('');
+const shortcutError = ref<string>('');
 
 // Services affichés dans la grille
 const displayedServices = computed(() => {
@@ -90,12 +102,108 @@ watch(searchQuery, (newVal) => {
     showAutocomplete.value = false;
   }
 });
+
+// =====================================================
+// RACCOURCI (ex: VL1 = Valentin Laine + Coupe Homme)
+// =====================================================
+
+// Parser le code raccourci : "VL1" → { vendorInitials: "VL", productCode: "1" }
+const parseShortcutCode = (code: string): { vendorInitials: string; productCode: string } | null => {
+  const trimmed = code.trim().toUpperCase();
+  if (trimmed.length < 2) return null;
+  
+  // Chercher où se termine les lettres et où commence le code produit
+  // Ex: VL1, TN2, VL10, TN123
+  const match = trimmed.match(/^([A-Z]+)(\d+.*)$/);
+  if (!match) return null;
+  
+  return {
+    vendorInitials: match[1],
+    productCode: match[2],
+  };
+};
+
+// Trouver le vendeur par ses initiales
+const findVendorByInitials = (initials: string): Vendor | undefined => {
+  return vendors.value.find(v => 
+    v.initials?.toUpperCase() === initials.toUpperCase()
+  );
+};
+
+// Trouver le produit par son code
+const findProductByCode = (code: string): Product | undefined => {
+  return products.value.find(p => 
+    p.code?.toUpperCase() === code.toUpperCase()
+  );
+};
+
+// Valider le raccourci avec Entrée
+const handleShortcutKeydown = (event: KeyboardEvent): void => {
+  if (event.key === 'Enter') {
+    event.preventDefault();
+    processShortcut();
+  }
+};
+
+const processShortcut = (): void => {
+  shortcutError.value = '';
+  
+  const parsed = parseShortcutCode(shortcutCode.value);
+  if (!parsed) {
+    shortcutError.value = 'Format invalide (ex: VL1)';
+    return;
+  }
+  
+  const vendor = findVendorByInitials(parsed.vendorInitials);
+  if (!vendor) {
+    shortcutError.value = `Vendeur "${parsed.vendorInitials}" non trouvé`;
+    return;
+  }
+  
+  const product = findProductByCode(parsed.productCode);
+  if (!product) {
+    shortcutError.value = `Service "${parsed.productCode}" non trouvé`;
+    return;
+  }
+  
+  // Ajouter au panier avec le bon vendeur
+  addToCart(product, 1, vendor);
+  
+  // Réinitialiser le champ
+  shortcutCode.value = '';
+  shortcutError.value = '';
+};
 </script>
 
 <template>
   <div class="card flex flex-col bg-white h-full">
-    <!-- Barre de recherche -->
-    <div class="p-4 md:p-6 border-b border-gray-200 bg-white">
+    <!-- Barre de recherche + Raccourci -->
+    <div class="p-4 md:p-6 border-b border-gray-200 bg-white space-y-3">
+      <!-- Champ Raccourci -->
+      <div class="relative">
+        <div class="flex items-center gap-3">
+          <div class="relative flex-1">
+            <Zap class="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-amber-500 pointer-events-none z-10" />
+            <input
+              v-model="shortcutCode"
+              @keydown="handleShortcutKeydown"
+              type="text"
+              placeholder="Raccourci (ex: VL1)"
+              class="w-full pl-11 pr-4 py-2.5 bg-amber-50 border border-amber-300 rounded-xl text-sm font-mono font-semibold uppercase focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 hover:border-amber-400 transition-all placeholder:normal-case placeholder:font-normal"
+              autocomplete="off"
+            />
+          </div>
+          <button
+            @click="processShortcut"
+            class="px-4 py-2.5 bg-amber-500 text-white rounded-xl font-medium hover:bg-amber-600 transition-colors text-sm"
+          >
+            OK
+          </button>
+        </div>
+        <p v-if="shortcutError" class="text-xs text-red-500 mt-1.5">{{ shortcutError }}</p>
+      </div>
+
+      <!-- Barre de recherche -->
       <div class="relative">
         <div class="relative">
           <Search class="absolute left-4 md:left-5 top-1/2 -translate-y-1/2 w-4 h-4 md:w-5 md:h-5 text-gray-400 pointer-events-none z-10" />
@@ -147,9 +255,6 @@ watch(searchQuery, (newVal) => {
 
     <!-- Grille de services -->
     <div class="flex-1 overflow-y-auto p-4 md:p-6 bg-gray-50 space-y-4">
-      <!-- Carte de fidélité (si client sélectionné) -->
-      <LoyaltyCard v-if="selectedClient" />
-
       <!-- Grille de services -->
       <div 
         v-if="displayedServices.length > 0"
@@ -171,6 +276,9 @@ watch(searchQuery, (newVal) => {
         <p class="text-sm md:text-base font-medium text-gray-500">Aucun service trouvé</p>
         <p class="text-xs md:text-sm text-gray-400 mt-1.5">Modifiez votre recherche</p>
       </div>
+
+      <!-- Carte de fidélité (si client sélectionné) — sous la liste des services -->
+      <LoyaltyCard v-if="selectedClient" />
     </div>
   </div>
 </template>

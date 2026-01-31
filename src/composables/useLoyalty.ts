@@ -57,7 +57,9 @@ const loadClientStamps = async (clientId: string) => {
     });
   } catch (err) {
     console.error('Erreur chargement points:', err);
-    initializeCard();
+    if (stamps.value.length === 0) {
+      initializeCard();
+    }
   } finally {
     isLoading.value = false;
   }
@@ -68,8 +70,10 @@ const toggleStamp = (position: number) => {
   const stamp = stamps.value.find(s => s.position === position);
   if (stamp) {
     stamp.isStamped = !stamp.isStamped;
-    // Si on coche, on met la date actuelle (temporaire jusqu'à validation)
-    stamp.date = stamp.isStamped ? new Date().toISOString() : null;
+    // La date n'est définie qu'après validation de la vente
+    if (!stamp.isStamped) {
+      stamp.date = null;
+    }
   }
 };
 
@@ -85,7 +89,7 @@ const isCardComplete = computed(() => checkedCount.value === 10);
 const saveStamps = async (clientId: string, vendorId: string, saleId: string) => {
   if (!isSupabaseConfigured()) return;
 
-  const newStamps = stamps.value.filter(s => s.isStamped);
+  const newStamps = stamps.value.filter(s => s.isStamped && !s.date);
   if (newStamps.length === 0) return;
 
   try {
@@ -99,11 +103,25 @@ const saveStamps = async (clientId: string, vendorId: string, saleId: string) =>
       notes: `Point ${stamp.position}/10`,
     }));
 
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('loyalty_transactions')
-      .insert(transactions as any);
+      .insert(transactions as any)
+      .select('created_at');
 
     if (error) throw error;
+
+    // Mettre à jour les dates localement (retour Supabase dans le même ordre)
+    if (data && data.length > 0) {
+      let idx = 0;
+      stamps.value = stamps.value.map(stamp => {
+        if (stamp.isStamped && !stamp.date && data[idx]) {
+          const createdAt = data[idx].created_at;
+          idx += 1;
+          return { ...stamp, date: createdAt };
+        }
+        return stamp;
+      });
+    }
 
     // Mettre à jour le total de points du client
     const { data: currentClient } = await supabase

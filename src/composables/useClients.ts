@@ -270,7 +270,6 @@ export function useClients() {
       if (client) {
         client.visit_count += 1;
         client.total_spent += saleTotal;
-        client.loyalty_points += Math.floor(saleTotal);
         client.last_visit_at = new Date().toISOString();
       }
       return;
@@ -280,7 +279,7 @@ export function useClients() {
       // Récupérer le client actuel
       const { data: currentClient } = await supabase
         .from('clients')
-        .select('visit_count, total_spent, loyalty_points')
+        .select('visit_count, total_spent')
         .eq('id', clientId)
         .single();
 
@@ -290,7 +289,6 @@ export function useClients() {
           .update({
             visit_count: currentClient.visit_count + 1,
             total_spent: currentClient.total_spent + saleTotal,
-            loyalty_points: currentClient.loyalty_points + Math.floor(saleTotal),
             last_visit_at: new Date().toISOString(),
           })
           .eq('id', clientId);

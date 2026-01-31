@@ -8,7 +8,7 @@ import type { Client as DBClient } from '../types/database';
 
 // Composables
 const { currentClient, isEditMode, clearClient, loadClient, hasClientInfo, saveClient } = useClient();
-const { searchClients } = useClients();
+const { searchClients, selectClient: setSelectedClient, clearSelection } = useClients();
 
 // State local
 const searchQuery = ref<string>('');
@@ -57,6 +57,7 @@ const handleSave = async (): Promise<void> => {
 const handleClear = (): void => {
   clearClient();
   searchQuery.value = '';
+  clearSelection();
 };
 
 const handleShowHistory = (): void => {
@@ -64,6 +65,8 @@ const handleShowHistory = (): void => {
 };
 
 const selectClient = (dbClient: DBClient): void => {
+  // Mettre à jour la sélection globale (carte fidélité, ticket, etc.)
+  setSelectedClient(dbClient);
   // Convertir du format BDD (snake_case) vers le format formulaire (camelCase)
   const client: Client = {
     id: dbClient.id,

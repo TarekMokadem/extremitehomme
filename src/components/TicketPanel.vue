@@ -43,7 +43,7 @@ const {
 
 const { vendor } = useAuth();
 const { selectedClient } = useClients();
-const { saveStamps, clearStamps } = useLoyalty();
+const { saveStamps, loadClientStamps } = useLoyalty();
 
 // Pour le mode de réduction
 const localDiscountType = ref<'euro' | 'percent'>('euro');
@@ -99,6 +99,10 @@ const selectPaymentMethod = (method: PaymentMethod) => {
 // Validation du ticket
 const handleValidate = async (): Promise<void> => {
   if (cartItems.value.length === 0) return;
+  if (!selectedClient.value) {
+    alert('Veuillez sélectionner ou créer un client avant de valider la vente.');
+    return;
+  }
   
   // S'assurer qu'un paiement est défini
   if (selectedPaymentMethods.value.length === 0) {
@@ -114,10 +118,8 @@ const handleValidate = async (): Promise<void> => {
     // Sauvegarder les points de fidélité si un client est sélectionné
     if (selectedClient.value && vendor.value) {
       await saveStamps(selectedClient.value.id, vendor.value.id, sale.id);
+      await loadClientStamps(selectedClient.value.id);
     }
-    
-    // Réinitialiser la carte de fidélité
-    clearStamps();
     
     alert(`✅ Vente validée !\nTicket: ${sale.ticket_number}\nTotal: ${formatPrice(sale.total)}€`);
   }
@@ -158,13 +160,18 @@ const subtotal = computed(() => subtotalTTC.value);
       <template v-if="cartItems.length > 0">
         <div
           v-for="item in cartItems"
-          :key="item.product.id"
+          :key="`${item.product.id}-${item.vendor_id || 'default'}`"
           class="cart-item"
         >
           <div class="flex items-start justify-between gap-2 md:gap-3 mb-2 md:mb-3">
-            <p class="font-medium text-gray-900 flex-1 line-clamp-2 text-xs md:text-sm leading-snug">
-              {{ item.product.name }}
-            </p>
+            <div class="flex-1 min-w-0">
+              <p class="font-medium text-gray-900 line-clamp-2 text-xs md:text-sm leading-snug">
+                {{ item.product.name }}
+              </p>
+              <p v-if="item.vendor" class="text-[10px] text-gray-500 mt-0.5">
+                par {{ item.vendor.initials || `${item.vendor.first_name} ${item.vendor.last_name}` }}
+              </p>
+            </div>
             <p class="font-bold text-gray-900 whitespace-nowrap text-sm md:text-base tabular-nums">
               {{ formatPrice(item.subtotal_ttc) }}€
             </p>
@@ -172,7 +179,7 @@ const subtotal = computed(() => subtotalTTC.value);
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-2">
               <button
-                @click="updateQuantity(item.product.id, item.quantity - 1)"
+                @click="updateQuantity(item.product.id, item.quantity - 1, item.vendor_id)"
                 class="w-8 h-8 md:w-9 md:h-9 rounded-lg bg-white border border-gray-300 flex items-center justify-center hover:bg-gray-100 hover:border-gray-400 transition-colors"
                 aria-label="Diminuer la quantité"
               >
@@ -180,7 +187,7 @@ const subtotal = computed(() => subtotalTTC.value);
               </button>
               <span class="w-7 md:w-9 text-center text-xs md:text-sm font-semibold tabular-nums">{{ item.quantity }}</span>
               <button
-                @click="updateQuantity(item.product.id, item.quantity + 1)"
+                @click="updateQuantity(item.product.id, item.quantity + 1, item.vendor_id)"
                 class="w-8 h-8 md:w-9 md:h-9 rounded-lg bg-white border border-gray-300 flex items-center justify-center hover:bg-gray-100 hover:border-gray-400 transition-colors"
                 aria-label="Augmenter la quantité"
               >
@@ -188,7 +195,7 @@ const subtotal = computed(() => subtotalTTC.value);
               </button>
             </div>
             <button
-              @click="removeFromCart(item.product.id)"
+              @click="removeFromCart(item.product.id, item.vendor_id)"
               class="p-1.5 md:p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
               aria-label="Supprimer l'article"
             >

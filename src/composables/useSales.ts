@@ -8,6 +8,7 @@ import type {
   Payment,
   PaymentMethod,
   DiscountType,
+  Vendor,
 } from '../types/database';
 
 // State global du panier
@@ -29,9 +30,14 @@ export function useSales() {
   // GESTION DU PANIER
   // =====================================================
 
-  // Ajouter un produit au panier
-  const addToCart = (product: Product, quantity: number = 1) => {
-    const existingItem = cartItems.value.find(item => item.product.id === product.id);
+  // Ajouter un produit au panier (avec vendeur optionnel par article)
+  const addToCart = (product: Product, quantity: number = 1, vendor?: Vendor) => {
+    // Si un vendeur est spécifié, on cherche un article existant avec le même produit ET le même vendeur
+    // Sinon on cherche un article existant avec le même produit (sans vendeur spécifique)
+    const existingItem = cartItems.value.find(item => 
+      item.product.id === product.id && 
+      (vendor ? item.vendor_id === vendor.id : !item.vendor_id)
+    );
     
     if (existingItem) {
       existingItem.quantity += quantity;
@@ -40,6 +46,8 @@ export function useSales() {
       const newItem: CartItem = {
         product,
         quantity,
+        vendor_id: vendor?.id,
+        vendor: vendor,
         price_ht: product.price_ht,
         tva_rate: product.tva_rate || DEFAULT_TVA_RATE,
         subtotal_ht: 0,
@@ -67,12 +75,26 @@ export function useSales() {
     item.price_ht = item.subtotal_ht / item.quantity;
   };
 
+  // Générer une clé unique pour un article (produit + vendeur)
+  const getItemKey = (productId: string, vendorId?: string) => {
+    return vendorId ? `${productId}:${vendorId}` : productId;
+  };
+
+  // Trouver un article par produit et vendeur (optionnel)
+  const findCartItem = (productId: string, vendorId?: string) => {
+    if (vendorId) {
+      return cartItems.value.find(i => i.product.id === productId && i.vendor_id === vendorId);
+    }
+    // Si pas de vendorId fourni, on cherche le premier article avec ce produit
+    return cartItems.value.find(i => i.product.id === productId);
+  };
+
   // Modifier la quantité d'un item
-  const updateQuantity = (productId: string, quantity: number) => {
-    const item = cartItems.value.find(i => i.product.id === productId);
+  const updateQuantity = (productId: string, quantity: number, vendorId?: string) => {
+    const item = findCartItem(productId, vendorId);
     if (item) {
       if (quantity <= 0) {
-        removeFromCart(productId);
+        removeFromCart(productId, item.vendor_id);
       } else {
         item.quantity = quantity;
         recalculateItem(item);
@@ -81,8 +103,18 @@ export function useSales() {
   };
 
   // Retirer un produit du panier
-  const removeFromCart = (productId: string) => {
-    cartItems.value = cartItems.value.filter(item => item.product.id !== productId);
+  const removeFromCart = (productId: string, vendorId?: string) => {
+    if (vendorId) {
+      cartItems.value = cartItems.value.filter(
+        item => !(item.product.id === productId && item.vendor_id === vendorId)
+      );
+    } else {
+      // Si pas de vendorId, supprimer le premier article trouvé avec ce produit
+      const idx = cartItems.value.findIndex(item => item.product.id === productId);
+      if (idx !== -1) {
+        cartItems.value.splice(idx, 1);
+      }
+    }
   };
 
   // Vider le panier
@@ -218,6 +250,11 @@ export function useSales() {
       return null;
     }
 
+    if (!clientId) {
+      error.value = 'Veuillez sélectionner ou créer un client avant de valider';
+      return null;
+    }
+
     if (!isPaymentComplete.value) {
       error.value = 'Le paiement n\'est pas complet';
       return null;
@@ -263,10 +300,11 @@ export function useSales() {
         status: 'completed' as const,
       };
 
-      // Créer les lignes de vente
+      // Créer les lignes de vente (avec vendeur par article si spécifié)
       const saleItems = cartItems.value.map(item => ({
         product_id: item.product.id,
         variant_id: item.variant?.id || null,
+        vendor_id: item.vendor_id || vendorId, // Utiliser le vendeur de l'article ou le vendeur principal
         product_name: item.product.name,
         price_ht: item.price_ht,
         tva_rate: item.tva_rate,
@@ -366,13 +404,12 @@ export function useSales() {
           .eq('id', clientId)
           .single();
 
-        if (client) {
+      if (client) {
           await supabase
             .from('clients')
             .update({
               visit_count: client.visit_count + 1,
               total_spent: client.total_spent + total.value,
-              loyalty_points: client.loyalty_points + Math.floor(total.value),
               last_visit_at: new Date().toISOString(),
             })
             .eq('id', clientId);

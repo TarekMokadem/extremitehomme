@@ -127,6 +127,7 @@ export interface SaleItem {
   sale_id: string;
   product_id: string;
   variant_id: string | null;
+  vendor_id: string | null; // Vendeur qui a réalisé ce service
   product_name: string;
   price_ht: number;
   tva_rate: number;
@@ -138,6 +139,7 @@ export interface SaleItem {
   // Relations
   product?: Product;
   variant?: ProductVariant;
+  vendor?: Vendor;
 }
 
 export interface Payment {
@@ -313,6 +315,9 @@ export interface CartItem {
   product: Product;
   variant?: ProductVariant;
   quantity: number;
+  // Vendeur associé à cet article (peut être différent par ligne)
+  vendor_id?: string;
+  vendor?: Vendor;
   // Calculés
   price_ht: number;
   tva_rate: number;

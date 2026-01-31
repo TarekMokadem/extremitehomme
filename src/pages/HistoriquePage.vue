@@ -12,7 +12,12 @@ import {
   CreditCard,
   Banknote,
   Filter,
-  RefreshCw
+  RefreshCw,
+  Smartphone,
+  FileText,
+  Gift,
+  Edit,
+  X
 } from 'lucide-vue-next';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import type { Sale, PaymentMethod } from '../types/database';
@@ -46,6 +51,18 @@ const isLoading = ref(true);
 const searchQuery = ref('');
 const dateFilter = ref('today'); // today, week, month, all
 const expandedSaleId = ref<string | null>(null);
+const saleToEditPayment = ref<SaleWithDetails | null>(null);
+const editPaymentMethod = ref<PaymentMethod>('card');
+const isSavingPayment = ref(false);
+
+// Moyens de paiement (aligné avec la caisse)
+const paymentMethodsList: { id: PaymentMethod; label: string; icon: typeof Banknote }[] = [
+  { id: 'cash', label: 'Espèces', icon: Banknote },
+  { id: 'card', label: 'CB', icon: CreditCard },
+  { id: 'contactless', label: 'Sans contact', icon: Smartphone },
+  { id: 'check', label: 'Chèque', icon: FileText },
+  { id: 'gift_card', label: 'Cadeau', icon: Gift },
+];
 
 // Filtres de date
 const dateFilters = [
@@ -177,6 +194,42 @@ const paymentLabel = (method: PaymentMethod) => {
   return labels[method] || method;
 };
 
+// Modifier le mode de paiement d'une vente
+const openEditPayment = (sale: SaleWithDetails) => {
+  saleToEditPayment.value = sale;
+  const current = sale.payments?.[0];
+  editPaymentMethod.value = current?.method ?? 'card';
+};
+
+const closeEditPayment = () => {
+  saleToEditPayment.value = null;
+};
+
+const saveEditPayment = async () => {
+  const sale = saleToEditPayment.value;
+  if (!sale || !isSupabaseConfigured()) return;
+
+  isSavingPayment.value = true;
+  try {
+    await supabase.from('payments').delete().eq('sale_id', sale.id);
+    const { error } = await supabase.from('payments').insert({
+      sale_id: sale.id,
+      method: editPaymentMethod.value,
+      amount: sale.total,
+    } as any);
+
+    if (error) throw error;
+
+    sale.payments = [{ method: editPaymentMethod.value, amount: sale.total }];
+    closeEditPayment();
+  } catch (err) {
+    console.error('Erreur modification paiement:', err);
+    alert('Impossible de modifier le paiement.');
+  } finally {
+    isSavingPayment.value = false;
+  }
+};
+
 // Lifecycle
 onMounted(loadSales);
 
@@ -296,10 +349,10 @@ watch(dateFilter, loadSales);
               <!-- Vendeur -->
               <div class="flex-1 min-w-0">
                 <p class="text-sm font-medium text-gray-900 truncate">
-                  {{ sale.vendor?.first_name }} {{ sale.vendor?.last_name }}
+                  {{ sale.client?.first_name }} {{ sale.client?.last_name }}
                 </p>
-                <p v-if="sale.client" class="text-xs text-gray-500 truncate">
-                  Client: {{ sale.client.first_name }} {{ sale.client.last_name }}
+                <p v-if="sale.vendor" class="text-xs text-gray-500 truncate">
+                  Vendeur: {{ sale.vendor.first_name }} {{ sale.vendor.last_name }}
                 </p>
               </div>
 
@@ -373,6 +426,26 @@ watch(dateFilter, loadSales);
                       <span class="text-gray-900">{{ sale.total.toFixed(2) }}€</span>
                     </div>
                   </div>
+
+                  <!-- Paiement + bouton modifier -->
+                  <div class="border-t border-gray-200 pt-3 flex items-center justify-between gap-4 flex-wrap">
+                    <div class="flex items-center gap-2 flex-wrap">
+                      <span class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Paiement</span>
+                      <template v-for="payment in sale.payments" :key="payment.method">
+                        <span class="inline-flex items-center gap-1 px-2 py-1 bg-white rounded-lg text-sm text-gray-700 border border-gray-200">
+                          <component :is="paymentIcon(payment.method)" class="w-4 h-4" />
+                          {{ paymentLabel(payment.method) }} — {{ payment.amount.toFixed(2) }}€
+                        </span>
+                        </template>
+                    </div>
+                    <button
+                      @click.stop="openEditPayment(sale)"
+                      class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                    >
+                      <Edit class="w-4 h-4" />
+                      Modifier le paiement
+                    </button>
+                  </div>
                 </div>
               </div>
             </Transition>
@@ -380,5 +453,66 @@ watch(dateFilter, loadSales);
         </div>
       </div>
     </div>
+
+    <!-- Modal Modifier le paiement -->
+    <Transition
+      enter-active-class="transition-opacity duration-200"
+      enter-from-class="opacity-0"
+      enter-to-class="opacity-100"
+      leave-active-class="transition-opacity duration-150"
+      leave-from-class="opacity-100"
+      leave-to-class="opacity-0"
+    >
+      <div v-if="saleToEditPayment" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
+          <div class="p-4 border-b border-gray-200 flex items-center justify-between">
+            <h3 class="text-lg font-bold text-gray-900">Modifier le mode de paiement</h3>
+            <button @click="closeEditPayment" class="p-2 text-gray-500 hover:bg-gray-100 rounded-lg">
+              <X class="w-5 h-5" />
+            </button>
+          </div>
+          <div class="p-4 space-y-4">
+            <p class="text-sm text-gray-600">
+              Ticket <span class="font-mono font-semibold">{{ saleToEditPayment.ticket_number }}</span>
+              — Total <span class="font-bold">{{ saleToEditPayment.total.toFixed(2) }}€</span>
+            </p>
+            <div>
+              <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-2">Nouveau mode de paiement</label>
+              <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                <button
+                  v-for="pm in paymentMethodsList"
+                  :key="pm.id"
+                  @click="editPaymentMethod = pm.id"
+                  :class="[
+                    'flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 transition-colors',
+                    editPaymentMethod === pm.id
+                      ? 'border-gray-900 bg-gray-50 text-gray-900'
+                      : 'border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50'
+                  ]"
+                >
+                  <component :is="pm.icon" class="w-5 h-5" />
+                  <span class="text-xs font-medium">{{ pm.label }}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+          <div class="p-4 border-t border-gray-200 flex gap-3">
+            <button
+              @click="closeEditPayment"
+              class="flex-1 px-4 py-2.5 border border-gray-300 rounded-xl hover:bg-gray-50 font-medium"
+            >
+              Annuler
+            </button>
+            <button
+              @click="saveEditPayment"
+              :disabled="isSavingPayment"
+              class="flex-1 px-4 py-2.5 bg-gray-900 text-white rounded-xl hover:bg-gray-800 font-medium disabled:opacity-50"
+            >
+              {{ isSavingPayment ? 'Enregistrement...' : 'Enregistrer' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </Transition>
   </main>
 </template>
