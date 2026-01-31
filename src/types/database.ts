@@ -223,6 +223,36 @@ export interface LoyaltyTransaction {
   created_at: string;
 }
 
+export interface CashRegister {
+  id: string;
+  date: string;
+  vendor_id: string | null;
+  opening_amount: number;
+  closing_amount: number | null;
+  expected_amount: number | null;
+  difference: number | null;
+  status: 'open' | 'closed';
+  notes: string | null;
+  opened_at: string;
+  closed_at: string | null;
+  created_at: string;
+  // Relations
+  vendor?: Vendor;
+  movements?: CashMovement[];
+}
+
+export interface CashMovement {
+  id: string;
+  cash_register_id: string;
+  type: 'in' | 'out';
+  amount: number;
+  label: string;
+  vendor_id: string | null;
+  created_at: string;
+  // Relations
+  vendor?: Vendor;
+}
+
 // Type Database pour Supabase - Simplifié pour éviter les erreurs de types
 export type Database = {
   public: {

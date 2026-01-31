@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
-import { Scissors, ChevronDown, LayoutGrid, History, Users } from 'lucide-vue-next';
+import { Scissors, ChevronDown, LayoutGrid, History, Users, Wallet } from 'lucide-vue-next';
 import { useAuth } from '../composables/useAuth';
 import type { Vendor } from '../types/database';
 
@@ -17,6 +17,7 @@ const navItems = [
   { path: '/', name: 'caisse', label: 'Caisse', icon: LayoutGrid },
   { path: '/historique', name: 'historique', label: 'Historique', icon: History },
   { path: '/clients', name: 'clients', label: 'Clients', icon: Users },
+  { path: '/tiroir', name: 'tiroir', label: 'Tiroir', icon: Wallet },
 ];
 
 // State
