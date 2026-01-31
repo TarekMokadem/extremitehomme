@@ -19,6 +19,7 @@ import {
 import { useSales } from '../composables/useSales';
 import { useAuth } from '../composables/useAuth';
 import { useClients } from '../composables/useClients';
+import { useLoyalty } from '../composables/useLoyalty';
 import type { PaymentMethod } from '../types/database';
 
 const { 
@@ -42,6 +43,7 @@ const {
 
 const { vendor } = useAuth();
 const { selectedClient } = useClients();
+const { saveStamps, clearStamps } = useLoyalty();
 
 // Pour le mode de réduction
 const localDiscountType = ref<'euro' | 'percent'>('euro');
@@ -109,6 +111,14 @@ const handleValidate = async (): Promise<void> => {
   );
   
   if (sale) {
+    // Sauvegarder les points de fidélité si un client est sélectionné
+    if (selectedClient.value && vendor.value) {
+      await saveStamps(selectedClient.value.id, vendor.value.id, sale.id);
+    }
+    
+    // Réinitialiser la carte de fidélité
+    clearStamps();
+    
     alert(`✅ Vente validée !\nTicket: ${sale.ticket_number}\nTotal: ${formatPrice(sale.total)}€`);
   }
 };

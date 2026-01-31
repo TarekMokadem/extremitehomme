@@ -210,6 +210,17 @@ export interface Setting {
   updated_at: string;
 }
 
+export interface LoyaltyTransaction {
+  id: string;
+  client_id: string;
+  vendor_id: string;
+  sale_id: string | null;
+  points: number;
+  type: 'earned' | 'spent' | 'expired' | 'adjusted';
+  notes: string | null;
+  created_at: string;
+}
+
 // Type Database pour Supabase - Simplifié pour éviter les erreurs de types
 export type Database = {
   public: {
@@ -273,6 +284,11 @@ export type Database = {
         Row: Setting;
         Insert: Partial<Setting>;
         Update: Partial<Setting>;
+      };
+      loyalty_transactions: {
+        Row: LoyaltyTransaction;
+        Insert: Partial<LoyaltyTransaction>;
+        Update: Partial<LoyaltyTransaction>;
       };
     };
     Functions: {

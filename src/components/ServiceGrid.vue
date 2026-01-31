@@ -2,13 +2,27 @@
 import { ref, computed, watch } from 'vue';
 import { Search } from 'lucide-vue-next';
 import ServiceCard from './ServiceCard.vue';
+import LoyaltyCard from './LoyaltyCard.vue';
 import { useProducts } from '../composables/useProducts';
 import { useSales } from '../composables/useSales';
+import { useClients } from '../composables/useClients';
+import { useLoyalty } from '../composables/useLoyalty';
 import type { Product } from '../types/database';
 
 // Composables
 const { products, isLoading, searchProducts } = useProducts();
 const { addToCart } = useSales();
+const { selectedClient } = useClients();
+const { loadClientStamps, clearStamps } = useLoyalty();
+
+// Charger la carte de fidélité quand un client est sélectionné
+watch(selectedClient, (newClient) => {
+  if (newClient) {
+    loadClientStamps(newClient.id);
+  } else {
+    clearStamps();
+  }
+});
 
 // State
 const searchQuery = ref<string>('');
@@ -132,7 +146,11 @@ watch(searchQuery, (newVal) => {
     </div>
 
     <!-- Grille de services -->
-    <div class="flex-1 overflow-y-auto p-4 md:p-6 bg-gray-50">
+    <div class="flex-1 overflow-y-auto p-4 md:p-6 bg-gray-50 space-y-4">
+      <!-- Carte de fidélité (si client sélectionné) -->
+      <LoyaltyCard v-if="selectedClient" />
+
+      <!-- Grille de services -->
       <div 
         v-if="displayedServices.length > 0"
         class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-2.5 md:gap-3.5"
