@@ -3,6 +3,7 @@ import { ref, computed, watch } from 'vue';
 import { Search, Save, Trash2, History, MapPin, UserPlus, UserPen } from 'lucide-vue-next';
 import { useClient } from '../composables/useClient';
 import { useClients } from '../composables/useClients';
+import { formatPhoneFR, formatPostalCode, INPUT_LENGTHS } from '../utils/formatInputs';
 import type { Client } from '../types';
 import type { Client as DBClient } from '../types/database';
 
@@ -72,12 +73,12 @@ const selectClient = (dbClient: DBClient): void => {
     id: dbClient.id,
     firstName: dbClient.first_name,
     lastName: dbClient.last_name,
-    phone: dbClient.phone,
-    phone2: dbClient.phone2 || '',
+    phone: formatPhoneFR(dbClient.phone || ''),
+    phone2: formatPhoneFR(dbClient.phone2 || ''),
     email: dbClient.email || '',
     address: dbClient.address || '',
     city: dbClient.city || '',
-    postalCode: dbClient.postal_code || '',
+    postalCode: formatPostalCode(dbClient.postal_code || ''),
     birthDate: dbClient.birth_date || '',
     notes: dbClient.notes || '',
   };
@@ -98,13 +99,18 @@ const handleClientSearchKeydown = (event: KeyboardEvent): void => {
 
 // Labels des champs
 const formFields = [
-  { key: 'lastName', label: 'Nom', type: 'text', placeholder: 'Dupont', span: 1 },
-  { key: 'firstName', label: 'Prénom', type: 'text', placeholder: 'Jean', span: 1 },
-  { key: 'phone', label: 'Tél. 1', type: 'tel', placeholder: '06 12 34 56 78', span: 1 },
-  { key: 'phone2', label: 'Tél. 2', type: 'tel', placeholder: '01 23 45 67 89', span: 1 },
-  { key: 'email', label: 'Email', type: 'email', placeholder: 'jean@email.com', span: 2 },
-  { key: 'birthDate', label: 'Anniversaire', type: 'date', placeholder: '', span: 2 },
+  { key: 'lastName', label: 'Nom', type: 'text', placeholder: 'Dupont', span: 1, format: null as 'phone' | null },
+  { key: 'firstName', label: 'Prénom', type: 'text', placeholder: 'Jean', span: 1, format: null as 'phone' | null },
+  { key: 'phone', label: 'Tél. 1', type: 'tel', placeholder: '06 12 34 56 78', span: 1, format: 'phone' as const },
+  { key: 'phone2', label: 'Tél. 2', type: 'tel', placeholder: '01 23 45 67 89', span: 1, format: 'phone' as const },
+  { key: 'email', label: 'Email', type: 'email', placeholder: 'jean@email.com', span: 2, format: null as 'phone' | null },
+  { key: 'birthDate', label: 'Anniversaire', type: 'date', placeholder: '', span: 2, format: null as 'phone' | null },
 ] as const;
+
+function onFieldInput(key: keyof Client, value: string, format: 'phone' | null): void {
+  const formatted = format === 'phone' ? formatPhoneFR(value) : value;
+  (currentClient as Record<string, string>)[key] = formatted;
+}
 
 </script>
 
@@ -179,10 +185,14 @@ const formFields = [
             {{ field.label }}
           </label>
           <input
-            v-model="(currentClient as any)[field.key]"
+            :value="(currentClient as any)[field.key]"
             :type="field.type"
             :placeholder="field.placeholder"
+            :maxlength="field.format === 'phone' ? INPUT_LENGTHS.phone : undefined"
+            :inputmode="field.format === 'phone' ? 'numeric' : undefined"
+            :autocomplete="field.format === 'phone' ? 'tel' : undefined"
             class="w-full px-3 md:px-4 py-2.5 md:py-3 bg-white border border-gray-300 rounded-xl text-xs md:text-sm font-medium focus:outline-none focus:border-gray-900 focus:ring-2 focus:ring-gray-900/10 hover:border-gray-400 transition-all"
+            @input="onFieldInput(field.key, ($event.target as HTMLInputElement).value, field.format)"
           />
         </div>
         
@@ -193,10 +203,11 @@ const formFields = [
               {{ field.label }}
             </label>
             <input
-              v-model="(currentClient as any)[field.key]"
+              :value="(currentClient as any)[field.key]"
               :type="field.type"
               :placeholder="field.placeholder"
               class="w-full px-3 md:px-4 py-2.5 md:py-3 bg-white border border-gray-300 rounded-xl text-xs md:text-sm font-medium focus:outline-none focus:border-gray-900 focus:ring-2 focus:ring-gray-900/10 hover:border-gray-400 transition-all"
+              @input="field.format ? onFieldInput(field.key, ($event.target as HTMLInputElement).value, field.format) : ((currentClient as any)[field.key] = ($event.target as HTMLInputElement).value)"
             />
           </div>
         </template>
@@ -234,10 +245,13 @@ const formFields = [
             CP
           </label>
           <input
-            v-model="currentClient.postalCode"
+            :value="currentClient.postalCode"
             type="text"
+            inputmode="numeric"
+            :maxlength="INPUT_LENGTHS.postalCode"
             placeholder="75001"
             class="w-full px-3 md:px-4 py-2.5 md:py-3 bg-white border border-gray-300 rounded-xl text-xs md:text-sm font-medium focus:outline-none focus:border-gray-900 focus:ring-2 focus:ring-gray-900/10 hover:border-gray-400 transition-all"
+            @input="currentClient.postalCode = formatPostalCode(($event.target as HTMLInputElement).value)"
           />
         </div>
       </div>

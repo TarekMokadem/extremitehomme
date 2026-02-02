@@ -213,10 +213,13 @@ onMounted(loadClients);
 </script>
 
 <template>
-  <main class="flex-1 flex overflow-hidden">
-    <!-- Liste des clients -->
-    <div class="flex-1 flex flex-col min-w-0 border-r border-gray-200">
-      <!-- Header -->
+  <main class="flex-1 flex overflow-hidden bg-gray-50">
+    <!-- Liste des clients (scrollable) - réduite quand panneau ouvert -->
+    <div :class="[
+      'flex-1 flex flex-col min-w-0 bg-white overflow-hidden transition-all duration-200',
+      selectedClient ? 'lg:mr-[450px]' : ''
+    ]">
+      <!-- Header (sticky dans la liste) -->
       <div class="p-4 lg:p-6 border-b border-gray-200 bg-white">
         <div class="flex items-center justify-between mb-4">
           <div>
@@ -295,7 +298,7 @@ onMounted(loadClients);
       </div>
     </div>
 
-    <!-- Panneau détails client -->
+    <!-- Panneau détails client (fixe à droite, sous le header) -->
     <Transition
       enter-active-class="transition-all duration-200 ease-out"
       enter-from-class="translate-x-full opacity-0"
@@ -306,7 +309,7 @@ onMounted(loadClients);
     >
       <div
         v-if="selectedClient"
-        class="w-full lg:w-[450px] flex-shrink-0 bg-white border-l border-gray-200 flex flex-col overflow-hidden absolute lg:relative inset-0 lg:inset-auto z-10"
+        class="w-full lg:w-[450px] lg:max-h-[65vh] flex-shrink-0 bg-white border-l border-gray-200 flex flex-col fixed inset-0 lg:top-[10%] lg:right-4 lg:bottom-auto lg:left-auto z-20 shadow-xl rounded-xl overflow-hidden"
       >
         <!-- Header -->
         <div class="p-4 lg:p-6 border-b border-gray-200 flex items-start justify-between">

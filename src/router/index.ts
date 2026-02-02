@@ -33,6 +33,18 @@ const router = createRouter({
       component: () => import('../pages/StatistiquesPage.vue'),
       meta: { title: 'Statistiques' }
     },
+    {
+      path: '/parametres',
+      name: 'parametres',
+      component: () => import('../pages/ParametresPage.vue'),
+      meta: { title: 'Paramètres' }
+    },
+    {
+      path: '/stock',
+      name: 'stock',
+      component: () => import('../pages/StockPage.vue'),
+      meta: { title: 'Stock' }
+    },
   ],
 });
 

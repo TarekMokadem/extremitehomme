@@ -77,6 +77,8 @@ export interface Product {
   alert_threshold: number;
   is_active: boolean;
   display_order: number;
+  brand?: string | null;
+  model?: string | null;
   created_at: string;
   updated_at: string;
   // Relations
