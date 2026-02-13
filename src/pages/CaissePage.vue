@@ -53,7 +53,7 @@ const tabs = [
   </main>
 
   <!-- Navigation mobile (visible uniquement sur mobile/tablette) -->
-  <nav class="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg z-50">
+  <nav class="lg:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 shadow-lg z-50">
     <div class="flex">
       <button
         v-for="tab in tabs"
@@ -62,8 +62,8 @@ const tabs = [
         :class="[
           'flex-1 flex flex-col items-center justify-center py-3 transition-colors',
           activeTab === tab.id 
-            ? 'text-gray-900 bg-gray-100' 
-            : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+            ? 'text-gray-900 bg-gray-100 dark:text-gray-100 dark:bg-gray-700' 
+            : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-700/70'
         ]"
       >
         <component :is="tab.icon" class="w-5 h-5 mb-1" />

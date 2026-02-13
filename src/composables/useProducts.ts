@@ -82,7 +82,7 @@ export function useProducts() {
           category:categories(*)
         `)
         .eq('is_active', true)
-        .order('display_order');
+        .order('code');
 
       if (fetchError) throw fetchError;
       products.value = data || [];
@@ -101,9 +101,10 @@ export function useProducts() {
 
     if (!isSupabaseConfigured()) {
       const q = query.toLowerCase();
-      return mockProducts.filter(p => 
-        p.name.toLowerCase().includes(q) || 
-        p.code?.toLowerCase().includes(q)
+      return mockProducts.filter(p =>
+        p.name.toLowerCase().includes(q) ||
+        p.code?.toLowerCase().includes(q) ||
+        (p as Product).barcode?.toLowerCase().includes(q)
       );
     }
 
@@ -112,7 +113,7 @@ export function useProducts() {
         .from('products')
         .select('*, category:categories(*)')
         .eq('is_active', true)
-        .or(`name.ilike.%${query}%,code.ilike.%${query}%`)
+        .or(`name.ilike.%${query}%,code.ilike.%${query}%,barcode.ilike.%${query}%`)
         .limit(10);
 
       if (searchError) throw searchError;
@@ -134,6 +135,30 @@ export function useProducts() {
         .from('products')
         .select('*, category:categories(*)')
         .eq('code', code)
+        .single();
+
+      if (fetchError) return null;
+      return data;
+    } catch {
+      return null;
+    }
+  };
+
+  // Trouver un produit par code-barres (pour le scan à la caisse)
+  const findByBarcode = async (barcode: string): Promise<Product | null> => {
+    const trimmed = barcode?.trim();
+    if (!trimmed) return null;
+
+    if (!isSupabaseConfigured()) {
+      return (mockProducts as Product[]).find(p => p.barcode === trimmed) || null;
+    }
+
+    try {
+      const { data, error: fetchError } = await supabase
+        .from('products')
+        .select('*, category:categories(*)')
+        .eq('barcode', trimmed)
+        .eq('is_active', true)
         .single();
 
       if (fetchError) return null;
@@ -193,6 +218,7 @@ export function useProducts() {
     loadProducts,
     searchProducts,
     findByCode,
+    findByBarcode,
     getProductsByCategory,
     getCategoryBorderColor,
   };

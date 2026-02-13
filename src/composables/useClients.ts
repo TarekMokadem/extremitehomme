@@ -14,6 +14,7 @@ type ClientInsert = {
   postal_code?: string | null;
   birth_date?: string | null;
   notes?: string | null;
+  company?: string | null;
 };
 
 // Clients mockés pour le mode démo
@@ -30,6 +31,7 @@ const mockClients: Client[] = [
     postal_code: '75001', 
     birth_date: '1985-03-15', 
     notes: 'Client fidèle', 
+    company: null, 
     loyalty_points: 150, 
     total_spent: 450.00, 
     visit_count: 15, 
@@ -49,6 +51,7 @@ const mockClients: Client[] = [
     postal_code: '69001', 
     birth_date: '1990-07-22', 
     notes: null, 
+    company: null, 
     loyalty_points: 75, 
     total_spent: 225.00, 
     visit_count: 8, 
@@ -68,6 +71,7 @@ const mockClients: Client[] = [
     postal_code: null, 
     birth_date: null, 
     notes: 'Préfère les rendez-vous le samedi', 
+    company: null, 
     loyalty_points: 30, 
     total_spent: 90.00, 
     visit_count: 3, 
@@ -80,6 +84,8 @@ const mockClients: Client[] = [
 // State global
 const clients = ref<Client[]>([]);
 const selectedClient = ref<Client | null>(null);
+/** Si true, la facture sera au nom de l'entreprise du client (sinon au nom du client) */
+const invoiceInCompanyName = ref(false);
 const isLoading = ref(false);
 const error = ref<string | null>(null);
 
@@ -178,6 +184,7 @@ export function useClients() {
         postal_code: clientData.postal_code || null,
         birth_date: clientData.birth_date || null,
         notes: clientData.notes || null,
+        company: clientData.company ?? null,
         loyalty_points: 0,
         total_spent: 0,
         visit_count: 0,
@@ -204,6 +211,7 @@ export function useClients() {
           postal_code: clientData.postal_code || null,
           birth_date: clientData.birth_date || null,
           notes: clientData.notes || null,
+          company: clientData.company ?? null,
         } as any)
         .select()
         .single();
@@ -258,9 +266,14 @@ export function useClients() {
     selectedClient.value = client;
   };
 
+  const setInvoiceInCompanyName = (value: boolean) => {
+    invoiceInCompanyName.value = value;
+  };
+
   // Effacer la sélection
   const clearSelection = () => {
     selectedClient.value = null;
+    invoiceInCompanyName.value = false;
   };
 
   // Mettre à jour les stats après une vente
@@ -302,6 +315,7 @@ export function useClients() {
     // State
     clients,
     selectedClient,
+    invoiceInCompanyName,
     isLoading,
     error,
     // Methods
@@ -311,6 +325,7 @@ export function useClients() {
     createClient,
     updateClient,
     selectClient,
+    setInvoiceInCompanyName,
     clearSelection,
     updateClientAfterSale,
   };

@@ -35,6 +35,7 @@ const paymentMethods: { id: PaymentMethod; label: string; icon: any }[] = [
   { id: 'cash', label: 'Espèces', icon: Banknote },
   { id: 'card', label: 'Carte', icon: CreditCard },
   { id: 'contactless', label: 'Sans contact', icon: Smartphone },
+  { id: 'amex', label: 'American Express', icon: CreditCard },
   { id: 'check', label: 'Chèque', icon: FileText },
   { id: 'gift_card', label: 'Cadeau', icon: Gift },
 ];

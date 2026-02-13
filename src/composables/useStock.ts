@@ -157,6 +157,7 @@ export function useStock() {
     category_id?: string | null;
     brand?: string | null;
     model?: string | null;
+    barcode?: string | null;
     price_ht: number;
     tva_rate?: number;
     stock?: number;
@@ -172,6 +173,7 @@ export function useStock() {
         category_id: params.category_id || null,
         brand: params.brand ?? null,
         model: params.model ?? null,
+        barcode: params.barcode?.trim() || null,
         type: 'product',
         price_ht: params.price_ht,
         tva_rate: params.tva_rate ?? 0.2,
@@ -208,6 +210,27 @@ export function useStock() {
     }
   };
 
+  const updateBarcode = async (productId: string, barcode: string | null) => {
+    if (!isSupabaseConfigured()) throw new Error('Supabase non configuré');
+
+    isSaving.value = true;
+    try {
+      const value = barcode?.trim() || null;
+      const { error } = await supabase
+        .from('products')
+        .update({
+          barcode: value,
+          updated_at: new Date().toISOString(),
+        } as Record<string, unknown>)
+        .eq('id', productId);
+
+      if (error) throw error;
+      await loadProducts();
+    } finally {
+      isSaving.value = false;
+    }
+  };
+
   const productsOnly = computed(() => productsWithStock.value);
   const lowStockList = computed(() =>
     productsWithStock.value.filter((p) => p.stock <= p.alert_threshold)
@@ -225,6 +248,7 @@ export function useStock() {
     addMovement,
     createProduct,
     updateAlertThreshold,
+    updateBarcode,
     isLoading,
     isSaving,
   };

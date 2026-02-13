@@ -236,6 +236,95 @@ def extract_articles(content):
     
     return articles
 
+def _parse_value_row(values_str):
+    """Parse une ligne de valeurs SQL (virgules, chaînes avec apostrophes)."""
+    values = []
+    current = ""
+    in_string = False
+    escape_next = False
+    for char in values_str + ',':
+        if escape_next:
+            current += char
+            escape_next = False
+            continue
+        if char == '\\':
+            escape_next = True
+            current += char
+            continue
+        if char == "'":
+            in_string = not in_string
+            current += char
+        elif char == ',' and not in_string:
+            values.append(current.strip())
+            current = ""
+        else:
+            current += char
+    return values
+
+def extract_produits(content):
+    """Extrait les produits physiques (chaussures, etc.) depuis la table produits"""
+    print("Extraction des produits physiques (produits)...")
+
+    all_inserts = re.findall(
+        r"INSERT INTO `produits`[^;]+;",
+        content,
+        re.DOTALL
+    )
+
+    if not all_inserts:
+        print("  Section produits non trouvée!")
+        return []
+
+    print(f"  -> {len(all_inserts)} blocs INSERT trouvés")
+
+    produits_list = []
+    for insert_block in all_inserts:
+        lines = insert_block.split('\n')
+        for line in lines:
+            if not line.strip().startswith('(') or ',' not in line:
+                continue
+            tuple_match = re.search(r'\(([^;]+)\)', line)
+            if not tuple_match:
+                continue
+            try:
+                values = _parse_value_row(tuple_match.group(1))
+                if len(values) < 16:
+                    continue
+                old_id = int(values[0])
+                code_raw = values[1].strip().strip("'")
+                code = code_raw if code_raw and code_raw != 'NULL' else str(old_id)
+                libelle = values[2].strip("'").replace("''", "'")
+                prix_vente_raw = values[7].strip()
+                try:
+                    prix_vente = float(prix_vente_raw) if prix_vente_raw and prix_vente_raw != 'NULL' else 0
+                except ValueError:
+                    prix_vente = 0
+                stock_raw = values[9].strip()
+                try:
+                    stock = int(float(stock_raw)) if stock_raw and stock_raw != 'NULL' else 0
+                except (ValueError, TypeError):
+                    stock = 0
+                actif = 1
+                if len(values) > 15:
+                    try:
+                        actif = int(values[15]) if values[15].strip() not in ('NULL', '') else 1
+                    except (ValueError, TypeError):
+                        actif = 1
+
+                produits_list.append({
+                    'old_id': old_id,
+                    'code': escape_sql(str(code)),
+                    'name': escape_sql(libelle),
+                    'price_vente': prix_vente,
+                    'stock': max(0, stock),
+                    'is_active': actif == 1,
+                })
+            except Exception:
+                continue
+
+    print(f"  -> {len(produits_list)} produits physiques extraits")
+    return produits_list
+
 def extract_tickets(content):
     """Extrait les tickets (ventes)"""
     print("Extraction des tickets (ventes)...")
@@ -354,12 +443,12 @@ def extract_paiements(content):
     payment_methods = {
         '1': 'cash',       # Espèces
         '2': 'card',       # CB
-        '3': 'other',      # Gratuit
+        '3': 'cash',       # Gratuit (traité comme espèces à 0€)
         '4': 'check',      # Chèque
         '5': 'card',       # Amex
         '6': 'contactless', # Sans contact
         '7': 'gift_card',  # Chèques cadeau
-        '8': 'other'       # Bons ArtiCom
+        '8': 'gift_card'   # Bons ArtiCom (carte cadeau)
     }
     
     paiements = []
@@ -376,7 +465,7 @@ def extract_paiements(content):
                 paiements.append({
                     'old_id': old_id,
                     'ticket_id': ticket_id,
-                    'method': payment_methods.get(mode_id, 'other'),
+                    'method': payment_methods.get(mode_id, 'cash'),  # Par défaut: cash
                     'amount': montant
                 })
             except:
@@ -468,22 +557,62 @@ VALUES
     sql += "\nON CONFLICT DO NOTHING;\n"
     
     sql += """
--- Créer la table de mapping
-CREATE TABLE IF NOT EXISTS migration_product_mapping (
-    old_id BIGINT PRIMARY KEY,
+-- Table de mapping (old_id + is_article pour distinguer articles vs produits physiques)
+DROP TABLE IF EXISTS migration_product_mapping;
+CREATE TABLE migration_product_mapping (
+    old_id BIGINT NOT NULL,
+    is_article BOOLEAN NOT NULL DEFAULT true,
     new_id UUID NOT NULL,
-    is_article BOOLEAN DEFAULT true
+    PRIMARY KEY (old_id, is_article)
 );
 
 TRUNCATE TABLE migration_product_mapping;
 
 INSERT INTO migration_product_mapping (old_id, new_id, is_article)
-SELECT old_mysql_id, id, true FROM products WHERE old_mysql_id IS NOT NULL;
+SELECT old_mysql_id, id, true FROM products WHERE old_mysql_id IS NOT NULL AND type = 'service';
 
--- Vérification
-SELECT 'Produits/Services migrés:' as info, COUNT(*) as total FROM products;
+-- Vérification (services)
+SELECT 'Services (articles) migrés:' as info, COUNT(*) as total FROM products WHERE type = 'service';
 """
     
+    return sql
+
+def generate_physical_products_sql(produits):
+    """Génère le SQL pour les produits physiques (chaussures, etc.)"""
+    if not produits:
+        return "-- Aucun produit physique à migrer.\n"
+
+    print("Génération du SQL produits physiques...")
+
+    sql = """
+-- Migration des produits physiques (chaussures, accessoires, etc.)
+-- Généré automatiquement
+
+-- Insertion des produits (type product, catégorie Produits)
+INSERT INTO products (id, code, name, type, category_id, price_ht, tva_rate, stock, alert_threshold, is_active, old_mysql_id)
+VALUES
+"""
+    lines = []
+    for p in produits:
+        price_ht = round(p['price_vente'] / 1.20, 2)
+        stock = p['stock']
+        alert = 5 if stock is not None else 0
+        is_active = 'true' if p['is_active'] else 'false'
+        # Code unique pour éviter conflit avec les services (ex: P1, P1023 pour chaussures)
+        code_unique = f"P{p['old_id']}"
+        line = f"(gen_random_uuid(), '{code_unique}', '{p['name']}', 'product', (SELECT id FROM categories WHERE slug = 'produits' LIMIT 1), {price_ht}, 0.20, {stock}, {alert}, {is_active}, {p['old_id']})"
+        lines.append(line)
+
+    sql += ",\n".join(lines)
+    sql += """
+ON CONFLICT DO NOTHING;
+
+INSERT INTO migration_product_mapping (old_id, new_id, is_article)
+SELECT old_mysql_id, id, false FROM products WHERE old_mysql_id IS NOT NULL AND type = 'product'
+ON CONFLICT (old_id, is_article) DO NOTHING;
+
+SELECT 'Produits physiques migrés:' as info, COUNT(*) as total FROM products WHERE type = 'product';
+"""
     return sql
 
 def generate_sales_sql(tickets, paiements, lignes, output_dir):
@@ -550,9 +679,9 @@ VALUES
             date_part = t['date'].replace('-', '').split(' ')[0] if t['date'] else '20180101'
             ticket_num = f"T-{date_part}-{t['numero']:04d}"
             
-            # Client - use COALESCE to handle missing mappings
+            # Client - only use if the mapped client exists in clients (évite FK violation)
             if t['client_id']:
-                client_id = f"(SELECT new_id FROM migration_client_mapping WHERE old_id = {t['client_id']})"
+                client_id = f"(SELECT m.new_id FROM migration_client_mapping m INNER JOIN clients c ON c.id = m.new_id WHERE m.old_id = {t['client_id']} LIMIT 1)"
             else:
                 client_id = "NULL"
             
@@ -566,13 +695,13 @@ VALUES
             lines.append(line)
         
         sql += ",\n".join(lines)
-        sql += "\nON CONFLICT DO NOTHING;\n"
+        sql += "\n;\n"
         
         sql += """
--- Mettre à jour le mapping
+-- Mettre à jour le mapping (ignorer les ventes déjà mappées)
 INSERT INTO migration_sale_mapping (old_id, new_id)
 SELECT old_mysql_id, id FROM sales WHERE old_mysql_id IS NOT NULL
-ON CONFLICT DO NOTHING;
+ON CONFLICT (old_id) DO NOTHING;
 """
         
         if batch_num == num_batches - 1:
@@ -625,13 +754,13 @@ VALUES
             # Sale ID
             sale_id = f"(SELECT new_id FROM migration_sale_mapping WHERE old_id = {l['ticket_id']})"
             
-            # Product - priorité au produit physique, sinon article
+            # Product - priorité au produit physique (produits_id), sinon article (article_id)
             if l['produit_id']:
                 product_id = f"COALESCE((SELECT new_id FROM migration_product_mapping WHERE old_id = {l['produit_id']} AND is_article = false), (SELECT id FROM products LIMIT 1))"
-                product_name = "'Produit'"
+                product_name = f"COALESCE((SELECT name FROM products WHERE id = (SELECT new_id FROM migration_product_mapping WHERE old_id = {l['produit_id']} AND is_article = false)), 'Produit')"
             else:
-                product_id = f"COALESCE((SELECT new_id FROM migration_product_mapping WHERE old_id = {abs(l['article_id'])}), (SELECT id FROM products LIMIT 1))"
-                product_name = f"COALESCE((SELECT name FROM products WHERE id = (SELECT new_id FROM migration_product_mapping WHERE old_id = {abs(l['article_id'])})), 'Service')"
+                product_id = f"COALESCE((SELECT new_id FROM migration_product_mapping WHERE old_id = {abs(l['article_id'])} AND is_article = true), (SELECT id FROM products LIMIT 1))"
+                product_name = f"COALESCE((SELECT name FROM products WHERE id = (SELECT new_id FROM migration_product_mapping WHERE old_id = {abs(l['article_id'])} AND is_article = true)), 'Service')"
             
             # Vendor
             vendor_id = f"(SELECT new_id FROM migration_vendor_mapping WHERE old_id = {l['employe_id']})"
@@ -728,6 +857,7 @@ def main():
     # Extraire les données
     clients = extract_clients(content)
     articles = extract_articles(content)
+    produits = extract_produits(content)
     tickets = extract_tickets(content)
     lignes = extract_ligne_tickets(content)
     paiements = extract_paiements(content)
@@ -743,11 +873,45 @@ def main():
         f.write(clients_sql)
     print(f"  -> {OUTPUT_DIR}/01_clients.sql")
     
-    # Products (articles)
-    products_sql = generate_products_sql(articles)
+    # Products: services (articles) + produits physiques (chaussures, etc.)
+    products_sql = generate_products_sql(articles) + "\n\n" + generate_physical_products_sql(produits)
     with open(os.path.join(OUTPUT_DIR, "02_products.sql"), 'w', encoding='utf-8') as f:
         f.write(products_sql)
     print(f"  -> {OUTPUT_DIR}/02_products.sql")
+    # Fichier séparé pour n'ajouter que les produits physiques (si services déjà migrés)
+    if produits:
+        physical_only = """-- Produits physiques uniquement (exécuter si 02_products déjà fait sans les produits)
+ALTER TABLE products ADD COLUMN IF NOT EXISTS old_mysql_id BIGINT;
+
+-- Si migration_product_mapping a encore une PK sur (old_id) seul, la migrer vers (old_id, is_article)
+DO $$
+DECLARE
+  pk_cols text;
+BEGIN
+  SELECT string_agg(a.attname, ',' ORDER BY array_position(c.conkey, a.attnum))
+    INTO pk_cols
+  FROM pg_constraint c
+  JOIN pg_class t ON t.oid = c.conrelid
+  JOIN pg_attribute a ON a.attrelid = t.oid AND a.attnum = ANY(c.conkey) AND NOT a.attisdropped
+  WHERE t.relname = 'migration_product_mapping' AND c.contype = 'p';
+  IF pk_cols IS NOT NULL AND pk_cols <> 'old_id,is_article' THEN
+    CREATE TABLE migration_product_mapping_new (
+      old_id BIGINT NOT NULL,
+      is_article BOOLEAN NOT NULL DEFAULT true,
+      new_id UUID NOT NULL,
+      PRIMARY KEY (old_id, is_article)
+    );
+    INSERT INTO migration_product_mapping_new (old_id, new_id, is_article)
+    SELECT old_id, new_id, COALESCE(is_article, true) FROM migration_product_mapping;
+    DROP TABLE migration_product_mapping;
+    ALTER TABLE migration_product_mapping_new RENAME TO migration_product_mapping;
+  END IF;
+END $$;
+
+""" + generate_physical_products_sql(produits)
+        with open(os.path.join(OUTPUT_DIR, "02b_physical_products.sql"), 'w', encoding='utf-8') as f:
+            f.write(physical_only)
+        print(f"  -> {OUTPUT_DIR}/02b_physical_products.sql (optionnel, si services déjà migrés)")
     
     # Sales (par batch)
     num_sales_batches = generate_sales_sql(tickets, paiements, lignes, OUTPUT_DIR)
@@ -764,9 +928,10 @@ def main():
     print("\n" + "=" * 60)
     print("RÉSUMÉ")
     print("=" * 60)
-    print(f"  Clients:  {len(clients):,}")
-    print(f"  Articles: {len(articles):,}")
-    print(f"  Tickets:  {len(tickets):,}")
+    print(f"  Clients:   {len(clients):,}")
+    print(f"  Articles:  {len(articles):,}")
+    print(f"  Produits:  {len(produits):,}")
+    print(f"  Tickets:   {len(tickets):,}")
     print(f"  Lignes:   {len(lignes):,}")
     print(f"  Paiements: {len(paiements):,}")
     

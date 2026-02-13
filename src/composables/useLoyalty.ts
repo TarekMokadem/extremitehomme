@@ -3,19 +3,21 @@ import { supabase, isSupabaseConfigured } from '../lib/supabase';
 
 // Types
 export interface LoyaltyStamp {
-  position: number; // 1-10
+  position: number; // 1-12
   isStamped: boolean;
   date: string | null;
 }
+
+const STAMPS_COUNT = 12;
 
 // State
 const selectedClientId = ref<string | null>(null);
 const stamps = ref<LoyaltyStamp[]>([]);
 const isLoading = ref(false);
 
-// Initialiser une nouvelle carte de fidélité (10 cases vides)
+// Initialiser une nouvelle carte de fidélité (12 cases vides)
 const initializeCard = () => {
-  stamps.value = Array.from({ length: 10 }, (_, i) => ({
+  stamps.value = Array.from({ length: STAMPS_COUNT }, (_, i) => ({
     position: i + 1,
     isStamped: false,
     date: null,
@@ -34,20 +36,20 @@ const loadClientStamps = async (clientId: string) => {
   }
 
   try {
-    // Charger les 10 dernières transactions de points
+    // Charger les 12 dernières transactions de points
     const { data, error } = await supabase
       .from('loyalty_transactions')
       .select('*')
       .eq('client_id', clientId)
       .eq('type', 'earned')
       .order('created_at', { ascending: false })
-      .limit(10);
+      .limit(STAMPS_COUNT);
 
     if (error) throw error;
 
-    // Créer la carte avec les 10 derniers points
+    // Créer la carte avec les 12 derniers points
     const transactions = data || [];
-    stamps.value = Array.from({ length: 10 }, (_, i) => {
+    stamps.value = Array.from({ length: STAMPS_COUNT }, (_, i) => {
       const transaction = transactions[i];
       return {
         position: i + 1,
@@ -83,7 +85,7 @@ const checkedCount = computed(() =>
 );
 
 // Vérifier si la carte est complète
-const isCardComplete = computed(() => checkedCount.value === 10);
+const isCardComplete = computed(() => checkedCount.value === STAMPS_COUNT);
 
 // Sauvegarder les points lors de la validation de vente
 const saveStamps = async (clientId: string, vendorId: string, saleId: string) => {
@@ -100,7 +102,7 @@ const saveStamps = async (clientId: string, vendorId: string, saleId: string) =>
       sale_id: saleId,
       points: 1,
       type: 'earned' as const,
-      notes: `Point ${stamp.position}/10`,
+      notes: `Point ${stamp.position}/${STAMPS_COUNT}`,
     }));
 
     const { data, error } = await supabase
@@ -149,10 +151,29 @@ const saveStamps = async (clientId: string, vendorId: string, saleId: string) =>
   }
 };
 
-// Réinitialiser
+// Réinitialiser l'affichage local
 const clearStamps = () => {
   selectedClientId.value = null;
   initializeCard();
+};
+
+// Réinitialiser les points du client à 0 en BDD (et rafraîchir l'affichage)
+const resetPointsToZero = async (clientId: string) => {
+  if (!isSupabaseConfigured()) {
+    initializeCard();
+    return;
+  }
+  try {
+    const { error } = await supabase
+      .from('clients')
+      .update({ loyalty_points: 0 })
+      .eq('id', clientId);
+    if (error) throw error;
+    await loadClientStamps(clientId);
+  } catch (err) {
+    console.error('Erreur réinitialisation points:', err);
+    throw err;
+  }
 };
 
 export function useLoyalty() {
@@ -164,11 +185,13 @@ export function useLoyalty() {
     // Computed
     checkedCount,
     isCardComplete,
+    stampsCount: STAMPS_COUNT,
     // Methods
     initializeCard,
     loadClientStamps,
     toggleStamp,
     saveStamps,
     clearStamps,
+    resetPointsToZero,
   };
 }

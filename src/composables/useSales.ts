@@ -15,6 +15,8 @@ import type {
 const cartItems = ref<CartItem[]>([]);
 const discountType = ref<DiscountType>('euro');
 const discountValue = ref(0);
+/** Prix total fixé manuellement (prioritaire sur le calcul). Null = utiliser le calcul. */
+const fixedTotal = ref<number | null>(null);
 const selectedPaymentMethods = ref<{ method: PaymentMethod; amount: number }[]>([]);
 
 // Historique des ventes récentes (pour affichage)
@@ -121,6 +123,7 @@ export function useSales() {
   const clearCart = () => {
     cartItems.value = [];
     discountValue.value = 0;
+    fixedTotal.value = null;
     selectedPaymentMethods.value = [];
   };
 
@@ -154,10 +157,11 @@ export function useSales() {
     }
   });
 
-  // Total final
-  const total = computed(() => 
-    Math.max(0, subtotalTTC.value - discountAmount.value)
-  );
+  // Total final (ou prix fixé si défini)
+  const total = computed(() => {
+    if (fixedTotal.value != null && fixedTotal.value >= 0) return fixedTotal.value;
+    return Math.max(0, subtotalTTC.value - discountAmount.value);
+  });
 
   // Nombre d'articles
   const itemCount = computed(() => 
@@ -179,6 +183,10 @@ export function useSales() {
   const clearDiscount = () => {
     discountType.value = 'euro';
     discountValue.value = 0;
+  };
+
+  const setFixedTotal = (value: number | null) => {
+    fixedTotal.value = value;
   };
 
   // =====================================================
@@ -554,6 +562,8 @@ export function useSales() {
     // Methods - Réduction
     setDiscount,
     clearDiscount,
+    setFixedTotal,
+    fixedTotal,
     // Methods - Paiement
     addPayment,
     setPayment,

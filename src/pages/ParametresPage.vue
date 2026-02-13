@@ -110,21 +110,21 @@ onMounted(async () => {
 </script>
 
 <template>
-  <main class="flex-1 p-4 lg:p-6 overflow-auto bg-gray-50">
+  <main class="flex-1 p-4 lg:p-6 overflow-auto bg-gray-50 dark:bg-gray-900">
     <div class="max-w-2xl mx-auto space-y-6">
       <!-- En-tête -->
       <div class="flex items-center justify-between">
         <div>
-          <h1 class="text-xl lg:text-2xl font-bold text-gray-900 flex items-center gap-2">
-            <Settings class="w-7 h-7 text-gray-600" />
+          <h1 class="text-xl lg:text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+            <Settings class="w-7 h-7 text-gray-600 dark:text-gray-400" />
             Paramètres
           </h1>
-          <p class="text-sm text-gray-500 mt-1">Informations du commerce et des tickets</p>
+          <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Informations du commerce et des tickets</p>
         </div>
         <button
           @click="loadSettings(); syncFromStore()"
           :disabled="isLoading"
-          class="inline-flex items-center gap-2 px-4 py-2 bg-gray-200 text-gray-700 rounded-xl hover:bg-gray-300 transition-colors disabled:opacity-50"
+          class="inline-flex items-center gap-2 px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-xl hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors disabled:opacity-50"
         >
           <RefreshCw :class="['w-4 h-4', isLoading && 'animate-spin']" />
           Actualiser
@@ -132,44 +132,44 @@ onMounted(async () => {
       </div>
 
       <div v-if="isLoading" class="flex justify-center py-12">
-        <RefreshCw class="w-8 h-8 text-gray-400 animate-spin" />
+        <RefreshCw class="w-8 h-8 text-gray-400 dark:text-gray-500 animate-spin" />
       </div>
 
       <template v-else>
-        <p v-if="saveError" class="text-sm text-red-600 bg-red-50 px-4 py-2 rounded-xl">
+        <p v-if="saveError" class="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/30 px-4 py-2 rounded-xl">
           {{ saveError }}
         </p>
-        <p v-if="saveSuccess" class="text-sm text-emerald-600 bg-emerald-50 px-4 py-2 rounded-xl">
+        <p v-if="saveSuccess" class="text-sm text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 px-4 py-2 rounded-xl">
           Paramètres enregistrés.
         </p>
 
         <!-- Informations du salon -->
-        <section class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-          <div class="px-5 py-4 border-b border-gray-200 flex items-center gap-2">
-            <Building2 class="w-5 h-5 text-gray-600" />
-            <h2 class="font-semibold text-gray-900">Informations du salon</h2>
+        <section class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+          <div class="px-5 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center gap-2">
+            <Building2 class="w-5 h-5 text-gray-600 dark:text-gray-400" />
+            <h2 class="font-semibold text-gray-900 dark:text-white">Informations du salon</h2>
           </div>
           <div class="p-5 space-y-4">
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Nom du commerce</label>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nom du commerce</label>
               <input
                 v-model="salon.name"
                 type="text"
-                class="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+                class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:placeholder-gray-400 rounded-xl focus:ring-2 focus:ring-gray-900 dark:focus:ring-emerald-500 focus:border-transparent"
                 placeholder="Extrémités Homme"
               />
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Adresse</label>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Adresse</label>
               <input
                 v-model="salon.address"
                 type="text"
-                class="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+                class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:placeholder-gray-400 rounded-xl focus:ring-2 focus:ring-gray-900 dark:focus:ring-emerald-500 focus:border-transparent"
                 placeholder="123 rue Example"
               />
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Téléphone</label>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Téléphone</label>
               <input
                 :value="salon.phone"
                 type="tel"
@@ -177,26 +177,26 @@ onMounted(async () => {
                 autocomplete="tel"
                 :maxlength="INPUT_LENGTHS.phone"
                 placeholder="01 23 45 67 89"
-                class="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+                class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:placeholder-gray-400 rounded-xl focus:ring-2 focus:ring-gray-900 dark:focus:ring-emerald-500 focus:border-transparent"
                 @input="salon.phone = formatPhoneFR(($event.target as HTMLInputElement).value)"
               />
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">SIRET</label>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">SIRET</label>
               <input
                 :value="salon.siret"
                 type="text"
                 inputmode="numeric"
                 :maxlength="INPUT_LENGTHS.siret"
                 placeholder="123 456 789 00012"
-                class="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+                class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:placeholder-gray-400 rounded-xl focus:ring-2 focus:ring-gray-900 dark:focus:ring-emerald-500 focus:border-transparent"
                 @input="salon.siret = formatSiret(($event.target as HTMLInputElement).value)"
               />
             </div>
             <button
               @click="saveSalon"
               :disabled="isSaving"
-              class="inline-flex items-center gap-2 px-4 py-2 bg-gray-900 text-white rounded-xl hover:bg-gray-800 disabled:opacity-50"
+              class="inline-flex items-center gap-2 px-4 py-2 bg-gray-900 dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white rounded-xl hover:bg-gray-800 disabled:opacity-50"
             >
               <Save class="w-4 h-4" />
               Enregistrer
@@ -205,55 +205,55 @@ onMounted(async () => {
         </section>
 
         <!-- Taux de TVA -->
-        <section class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-          <div class="px-5 py-4 border-b border-gray-200 flex items-center gap-2">
-            <Percent class="w-5 h-5 text-gray-600" />
-            <h2 class="font-semibold text-gray-900">Taux de TVA</h2>
+        <section class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+          <div class="px-5 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center gap-2">
+            <Percent class="w-5 h-5 text-gray-600 dark:text-gray-400" />
+            <h2 class="font-semibold text-gray-900 dark:text-white">Taux de TVA</h2>
           </div>
           <div class="p-5 space-y-4">
-            <p class="text-sm text-gray-500">
+            <p class="text-sm text-gray-500 dark:text-gray-400">
               Ces taux sont utilisés pour l’affichage et les calculs. Le taux normal s’applique par défaut aux services.
             </p>
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Taux normal (%)</label>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Taux normal (%)</label>
               <input
                 v-model.number="tva.normal"
                 type="number"
                 min="0"
                 max="1"
                 step="0.01"
-                class="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+                class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-xl focus:ring-2 focus:ring-gray-900 dark:focus:ring-emerald-500 focus:border-transparent"
               />
-              <p class="text-xs text-gray-500 mt-1">Ex. 0,20 pour 20 %</p>
+              <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Ex. 0,20 pour 20 %</p>
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Taux réduit (%)</label>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Taux réduit (%)</label>
               <input
                 v-model.number="tva.reduced"
                 type="number"
                 min="0"
                 max="1"
                 step="0.01"
-                class="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+                class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-xl focus:ring-2 focus:ring-gray-900 dark:focus:ring-emerald-500 focus:border-transparent"
               />
-              <p class="text-xs text-gray-500 mt-1">Ex. 0,10 pour 10 %</p>
+              <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Ex. 0,10 pour 10 %</p>
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Taux super réduit (%)</label>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Taux super réduit (%)</label>
               <input
                 v-model.number="tva.super_reduced"
                 type="number"
                 min="0"
                 max="1"
                 step="0.01"
-                class="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+                class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-xl focus:ring-2 focus:ring-gray-900 dark:focus:ring-emerald-500 focus:border-transparent"
               />
-              <p class="text-xs text-gray-500 mt-1">Ex. 0,055 pour 5,5 %</p>
+              <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Ex. 0,055 pour 5,5 %</p>
             </div>
             <button
               @click="saveTva"
               :disabled="isSaving"
-              class="inline-flex items-center gap-2 px-4 py-2 bg-gray-900 text-white rounded-xl hover:bg-gray-800 disabled:opacity-50"
+              class="inline-flex items-center gap-2 px-4 py-2 bg-gray-900 dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white rounded-xl hover:bg-gray-800 disabled:opacity-50"
             >
               <Save class="w-4 h-4" />
               Enregistrer
@@ -262,64 +262,64 @@ onMounted(async () => {
         </section>
 
         <!-- Ticket : en-tête et pied de page -->
-        <section class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-          <div class="px-5 py-4 border-b border-gray-200 flex items-center gap-2">
-            <FileText class="w-5 h-5 text-gray-600" />
-            <h2 class="font-semibold text-gray-900">Ticket — En-tête et pied de page</h2>
+        <section class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+          <div class="px-5 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center gap-2">
+            <FileText class="w-5 h-5 text-gray-600 dark:text-gray-400" />
+            <h2 class="font-semibold text-gray-900 dark:text-white">Ticket — En-tête et pied de page</h2>
           </div>
           <div class="p-5 space-y-4">
-            <p class="text-sm text-gray-500">
+            <p class="text-sm text-gray-500 dark:text-gray-400">
               Texte affiché en haut et en bas du ticket (impression ou aperçu).
             </p>
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">En-tête — Ligne 1</label>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">En-tête — Ligne 1</label>
               <input
                 v-model="header.line1"
                 type="text"
-                class="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+                class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:placeholder-gray-400 rounded-xl focus:ring-2 focus:ring-gray-900 dark:focus:ring-emerald-500 focus:border-transparent"
                 placeholder="Nom du salon"
               />
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">En-tête — Ligne 2</label>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">En-tête — Ligne 2</label>
               <input
                 v-model="header.line2"
                 type="text"
-                class="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+                class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:placeholder-gray-400 rounded-xl focus:ring-2 focus:ring-gray-900 dark:focus:ring-emerald-500 focus:border-transparent"
                 placeholder="Adresse ou téléphone"
               />
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">En-tête — Ligne 3</label>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">En-tête — Ligne 3</label>
               <input
                 v-model="header.line3"
                 type="text"
-                class="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+                class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:placeholder-gray-400 rounded-xl focus:ring-2 focus:ring-gray-900 dark:focus:ring-emerald-500 focus:border-transparent"
                 placeholder="SIRET ou autre"
               />
             </div>
-            <div class="pt-2 border-t border-gray-100">
-              <label class="block text-sm font-medium text-gray-700 mb-1">Pied de page — Ligne 1</label>
+            <div class="pt-2 border-t border-gray-100 dark:border-gray-700">
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Pied de page — Ligne 1</label>
               <input
                 v-model="footer.line1"
                 type="text"
-                class="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+                class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:placeholder-gray-400 rounded-xl focus:ring-2 focus:ring-gray-900 dark:focus:ring-emerald-500 focus:border-transparent"
                 placeholder="Merci de votre visite !"
               />
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Pied de page — Ligne 2</label>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Pied de page — Ligne 2</label>
               <input
                 v-model="footer.line2"
                 type="text"
-                class="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+                class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:placeholder-gray-400 rounded-xl focus:ring-2 focus:ring-gray-900 dark:focus:ring-emerald-500 focus:border-transparent"
                 placeholder=""
               />
             </div>
             <button
               @click="saveTicket"
               :disabled="isSaving"
-              class="inline-flex items-center gap-2 px-4 py-2 bg-gray-900 text-white rounded-xl hover:bg-gray-800 disabled:opacity-50"
+              class="inline-flex items-center gap-2 px-4 py-2 bg-gray-900 dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white rounded-xl hover:bg-gray-800 disabled:opacity-50"
             >
               <Save class="w-4 h-4" />
               Enregistrer

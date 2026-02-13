@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
-import { Scissors, ChevronDown, LayoutGrid, History, Users, Wallet, BarChart3, Settings, Package } from 'lucide-vue-next';
+import { Scissors, ChevronDown, LayoutGrid, History, Users, Wallet, BarChart3, Settings, Package, ClipboardList, Sun, Moon } from 'lucide-vue-next';
 import { useAuth } from '../composables/useAuth';
 import type { Vendor } from '../types/database';
+import { useTheme } from '../composables/useTheme';
 
 // Router
 const router = useRouter();
@@ -11,6 +12,7 @@ const route = useRoute();
 
 // Composables
 const { vendor: currentVendor, loadVendors, setActiveVendor } = useAuth();
+const { isDark, toggleTheme } = useTheme();
 
 // Navigation
 const navItems = [
@@ -18,6 +20,7 @@ const navItems = [
   { path: '/historique', name: 'historique', label: 'Historique', icon: History },
   { path: '/clients', name: 'clients', label: 'Clients', icon: Users },
   { path: '/stock', name: 'stock', label: 'Stock', icon: Package },
+  { path: '/commande', name: 'commande', label: 'Commande', icon: ClipboardList },
   { path: '/tiroir', name: 'tiroir', label: 'Tiroir', icon: Wallet },
   { path: '/stats', name: 'stats', label: 'Stats', icon: BarChart3 },
   { path: '/parametres', name: 'parametres', label: 'Paramètres', icon: Settings },
@@ -112,7 +115,7 @@ onUnmounted(() => {
       </router-link>
     </nav>
 
-    <!-- Date & Heure & Vendeur -->
+    <!-- Date & Heure, thème & Vendeur -->
     <div class="flex items-center gap-3 md:gap-6 lg:gap-8">
       <!-- Date/Heure - masqué sur très petit écran -->
       <div class="text-right hidden sm:block">
@@ -120,6 +123,17 @@ onUnmounted(() => {
         <p class="text-base md:text-xl font-mono font-medium tabular-nums">{{ currentTime }}</p>
       </div>
       
+      <!-- Switch thème -->
+      <button
+        @click="toggleTheme"
+        class="hidden sm:inline-flex items-center justify-center w-9 h-9 md:w-10 md:h-10 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-200 transition-colors"
+        :title="isDark ? 'Passer en thème clair' : 'Passer en thème sombre'"
+        aria-label="Basculer le thème"
+      >
+        <Sun v-if="isDark" class="w-4 h-4" />
+        <Moon v-else class="w-4 h-4" />
+      </button>
+
       <div class="w-px h-8 md:h-10 bg-gray-700 hidden sm:block"></div>
       
       <!-- Sélecteur de vendeur -->
@@ -152,15 +166,15 @@ onUnmounted(() => {
         >
           <div
             v-if="showVendorMenu"
-            class="absolute right-0 top-full mt-2 w-56 md:w-64 bg-white rounded-xl shadow-2xl border border-gray-200 py-2 z-50"
+            class="absolute right-0 top-full mt-2 w-56 md:w-64 bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 py-2 z-50"
           >
             <button
               v-for="vendor in vendors"
               :key="vendor.id"
               @click="selectVendor(vendor)"
               :class="[
-                'w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors',
-                currentVendor?.id === vendor.id && 'bg-gray-50'
+                'w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors',
+                currentVendor?.id === vendor.id && 'bg-gray-50 dark:bg-gray-700'
               ]"
             >
               <div 
@@ -169,7 +183,7 @@ onUnmounted(() => {
               >
                 {{ vendor.initials }}
               </div>
-              <span class="text-sm font-medium text-gray-900">{{ vendor.first_name }} {{ vendor.last_name }}</span>
+              <span class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ vendor.first_name }} {{ vendor.last_name }}</span>
             </button>
           </div>
         </Transition>

@@ -14,7 +14,7 @@ export type UserRole = 'admin' | 'manager' | 'vendor';
 export type ProductType = 'service' | 'product';
 export type DiscountType = 'euro' | 'percent';
 export type SaleStatus = 'pending' | 'completed' | 'cancelled' | 'refunded';
-export type PaymentMethod = 'cash' | 'card' | 'contactless' | 'check' | 'gift_card';
+export type PaymentMethod = 'cash' | 'card' | 'contactless' | 'check' | 'gift_card' | 'amex';
 export type StockMovementType = 'in' | 'out' | 'adjustment';
 
 // Tables
@@ -44,6 +44,8 @@ export interface Client {
   postal_code: string | null;
   birth_date: string | null;
   notes: string | null;
+  /** Nom de l'entreprise (optionnel) */
+  company: string | null;
   loyalty_points: number;
   total_spent: number;
   visit_count: number;
@@ -79,6 +81,8 @@ export interface Product {
   display_order: number;
   brand?: string | null;
   model?: string | null;
+  /** Code-barres pour scan à la caisse (produits physiques) */
+  barcode?: string | null;
   created_at: string;
   updated_at: string;
   // Relations

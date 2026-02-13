@@ -31,6 +31,8 @@ const {
   discountValue,
   discountType,
   discountAmount,
+  fixedTotal,
+  setFixedTotal,
   selectedPaymentMethods,
   updateQuantity,
   removeFromCart,
@@ -57,6 +59,7 @@ const paymentMethods: { id: PaymentMethod; label: string; icon: typeof Banknote 
   { id: 'cash', label: 'Espèces', icon: Banknote },
   { id: 'card', label: 'CB', icon: CreditCard },
   { id: 'contactless', label: 'Sans contact', icon: Smartphone },
+  { id: 'amex', label: 'American Express', icon: CreditCard },
   { id: 'check', label: 'Chèque', icon: FileText },
   { id: 'gift_card', label: 'Cadeau', icon: Gift },
 ];
@@ -142,15 +145,15 @@ const subtotal = computed(() => subtotalTTC.value);
 <template>
   <div class="card h-full flex flex-col overflow-hidden">
     <!-- En-tête avec date -->
-    <div class="p-4 md:p-5 border-b border-gray-200 bg-gray-50">
+    <div class="p-4 md:p-5 border-b border-gray-200 bg-gray-50 dark:bg-gray-800 dark:border-gray-700">
       <div class="flex items-center justify-between">
         <div>
-          <p class="text-[10px] md:text-[11px] text-gray-500 uppercase tracking-wider font-semibold mb-1">Date</p>
-          <p class="text-xs md:text-sm font-semibold text-gray-900">{{ ticketDate }}</p>
+          <p class="text-[10px] md:text-[11px] text-gray-500 uppercase tracking-wider font-semibold mb-1 dark:text-gray-400">Date</p>
+          <p class="text-xs md:text-sm font-semibold text-gray-900 dark:text-gray-100">{{ ticketDate }}</p>
         </div>
         <div class="text-right">
-          <p class="text-[10px] md:text-[11px] text-gray-500 uppercase tracking-wider font-semibold mb-1">Ticket</p>
-          <p class="text-xs md:text-sm font-semibold text-gray-900">#001</p>
+          <p class="text-[10px] md:text-[11px] text-gray-500 uppercase tracking-wider font-semibold mb-1 dark:text-gray-400">Ticket</p>
+          <p class="text-xs md:text-sm font-semibold text-gray-900 dark:text-gray-100">#001</p>
         </div>
       </div>
     </div>
@@ -165,14 +168,14 @@ const subtotal = computed(() => subtotalTTC.value);
         >
           <div class="flex items-start justify-between gap-2 md:gap-3 mb-2 md:mb-3">
             <div class="flex-1 min-w-0">
-              <p class="font-medium text-gray-900 line-clamp-2 text-xs md:text-sm leading-snug">
+              <p class="font-medium text-gray-900 dark:text-gray-100 line-clamp-2 text-xs md:text-sm leading-snug">
                 {{ item.product.name }}
               </p>
-              <p v-if="item.vendor" class="text-[10px] text-gray-500 mt-0.5">
+              <p v-if="item.vendor" class="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">
                 par {{ item.vendor.initials || `${item.vendor.first_name} ${item.vendor.last_name}` }}
               </p>
             </div>
-            <p class="font-bold text-gray-900 whitespace-nowrap text-sm md:text-base tabular-nums">
+            <p class="font-bold text-gray-900 dark:text-gray-100 whitespace-nowrap text-sm md:text-base tabular-nums">
               {{ formatPrice(item.subtotal_ttc) }}€
             </p>
           </div>
@@ -180,15 +183,15 @@ const subtotal = computed(() => subtotalTTC.value);
             <div class="flex items-center gap-2">
               <button
                 @click="updateQuantity(item.product.id, item.quantity - 1, item.vendor_id)"
-                class="w-8 h-8 md:w-9 md:h-9 rounded-lg bg-white border border-gray-300 flex items-center justify-center hover:bg-gray-100 hover:border-gray-400 transition-colors"
+                class="w-8 h-8 md:w-9 md:h-9 rounded-lg bg-white border border-gray-300 flex items-center justify-center hover:bg-gray-100 hover:border-gray-400 dark:bg-gray-600 dark:border-gray-500 dark:hover:bg-gray-500 dark:text-gray-100 transition-colors"
                 aria-label="Diminuer la quantité"
               >
                 <Minus class="w-3.5 h-3.5 md:w-4 md:h-4" />
               </button>
-              <span class="w-7 md:w-9 text-center text-xs md:text-sm font-semibold tabular-nums">{{ item.quantity }}</span>
+              <span class="w-7 md:w-9 text-center text-xs md:text-sm font-semibold tabular-nums text-gray-900 dark:text-gray-100">{{ item.quantity }}</span>
               <button
                 @click="updateQuantity(item.product.id, item.quantity + 1, item.vendor_id)"
-                class="w-8 h-8 md:w-9 md:h-9 rounded-lg bg-white border border-gray-300 flex items-center justify-center hover:bg-gray-100 hover:border-gray-400 transition-colors"
+                class="w-8 h-8 md:w-9 md:h-9 rounded-lg bg-white border border-gray-300 flex items-center justify-center hover:bg-gray-100 hover:border-gray-400 dark:bg-gray-600 dark:border-gray-500 dark:hover:bg-gray-500 dark:text-gray-100 transition-colors"
                 aria-label="Augmenter la quantité"
               >
                 <Plus class="w-3.5 h-3.5 md:w-4 md:h-4" />
@@ -196,7 +199,7 @@ const subtotal = computed(() => subtotalTTC.value);
             </div>
             <button
               @click="removeFromCart(item.product.id, item.vendor_id)"
-              class="p-1.5 md:p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+              class="p-1.5 md:p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:text-red-400 dark:hover:bg-red-900/30 rounded-lg transition-colors"
               aria-label="Supprimer l'article"
             >
               <Trash2 class="w-3.5 h-3.5 md:w-4 md:h-4" />
@@ -206,25 +209,25 @@ const subtotal = computed(() => subtotalTTC.value);
       </template>
       
       <div v-else class="h-full flex items-center justify-center py-8">
-        <p class="text-gray-400 text-xs md:text-sm">Aucun article</p>
+        <p class="text-gray-400 dark:text-gray-500 text-xs md:text-sm">Aucun article</p>
       </div>
     </div>
 
     <!-- Réduction avec sélecteur élégant € / % -->
-    <div class="px-4 py-3 md:px-5 md:py-4 border-t border-gray-100">
+    <div class="px-4 py-3 md:px-5 md:py-4 border-t border-gray-100 dark:border-gray-700">
       <div class="flex flex-col gap-2 md:gap-3">
         <div class="flex items-center justify-between gap-2">
-          <label class="text-xs md:text-sm text-gray-600 font-medium">Réduction</label>
+          <label class="text-xs md:text-sm text-gray-600 dark:text-gray-400 font-medium">Réduction</label>
 
           <!-- Segmented control moderne -->
-          <div class="inline-flex items-center bg-gray-100 rounded-full p-0.5 shadow-inner border border-gray-200">
+          <div class="inline-flex items-center bg-gray-100 dark:bg-gray-700 rounded-full p-0.5 shadow-inner border border-gray-200 dark:border-gray-600">
             <button
               @click="setDiscountType('euro')"
               :class="[
                 'inline-flex items-center gap-0.5 md:gap-1 px-2 md:px-3 py-1 md:py-1.5 text-[10px] md:text-xs font-semibold rounded-full transition-all duration-150',
                 localDiscountType === 'euro'
-                  ? 'bg-white text-gray-900 shadow-sm'
-                  : 'text-gray-500 hover:text-gray-800'
+                  ? 'bg-white text-gray-900 shadow-sm dark:bg-gray-600 dark:text-gray-100'
+                  : 'text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200'
               ]"
             >
               <Euro class="w-3 h-3 md:w-3.5 md:h-3.5" />
@@ -236,8 +239,8 @@ const subtotal = computed(() => subtotalTTC.value);
               :class="[
                 'inline-flex items-center gap-0.5 md:gap-1 px-2 md:px-3 py-1 md:py-1.5 text-[10px] md:text-xs font-semibold rounded-full transition-all duration-150',
                 localDiscountType === 'percent'
-                  ? 'bg-white text-gray-900 shadow-sm'
-                  : 'text-gray-500 hover:text-gray-800'
+                  ? 'bg-white text-gray-900 shadow-sm dark:bg-gray-600 dark:text-gray-100'
+                  : 'text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200'
               ]"
             >
               <Percent class="w-3 h-3 md:w-3.5 md:h-3.5" />
@@ -255,18 +258,45 @@ const subtotal = computed(() => subtotalTTC.value);
             min="0"
             :max="maxDiscount"
             step="0.01"
-            class="flex-1 px-3 md:px-4 py-2 md:py-2.5 bg-gray-50 border border-gray-300 rounded-lg text-xs md:text-sm text-right focus:outline-none focus:border-gray-900 focus:ring-2 focus:ring-gray-900/10 hover:border-gray-400 transition-all tabular-nums"
+            class="flex-1 px-3 md:px-4 py-2 md:py-2.5 bg-gray-50 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 border border-gray-300 rounded-lg text-xs md:text-sm text-right focus:outline-none focus:border-gray-900 focus:ring-2 focus:ring-gray-900/10 dark:focus:border-emerald-500 dark:focus:ring-emerald-500/30 hover:border-gray-400 transition-all tabular-nums"
           />
-          <span class="text-xs md:text-sm font-medium text-gray-500 min-w-[24px] md:min-w-[32px] text-center">
+          <span class="text-xs md:text-sm font-medium text-gray-500 dark:text-gray-400 min-w-[24px] md:min-w-[32px] text-center">
             {{ localDiscountType === 'percent' ? '%' : '€' }}
           </span>
         </div>
       </div>
     </div>
 
+    <!-- Fixer le prix -->
+    <div class="px-4 py-3 md:px-5 md:py-4 border-t border-gray-100 dark:border-gray-700">
+      <div class="flex flex-col gap-2">
+        <label class="text-xs md:text-sm text-gray-600 dark:text-gray-400 font-medium">Fixer le prix total (€)</label>
+        <div class="flex items-center gap-2">
+          <input
+            type="number"
+            :value="fixedTotal ?? ''"
+            @input="(e) => { const v = (e.target as HTMLInputElement).value; setFixedTotal(v === '' ? null : Math.max(0, Number(v))); }"
+            min="0"
+            step="0.01"
+            placeholder="Prix libre"
+            class="flex-1 px-3 md:px-4 py-2 md:py-2.5 bg-gray-50 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 dark:placeholder-gray-500 border border-gray-300 rounded-lg text-xs md:text-sm text-right focus:outline-none focus:border-gray-900 focus:ring-2 focus:ring-gray-900/10 dark:focus:border-emerald-500 dark:focus:ring-emerald-500/30 tabular-nums"
+          />
+          <button
+            v-if="fixedTotal != null"
+            type="button"
+            @click="setFixedTotal(null)"
+            class="px-2 py-2 text-gray-500 hover:text-red-600 hover:bg-red-50 dark:hover:text-red-400 dark:hover:bg-red-900/30 rounded-lg text-xs font-medium"
+            title="Annuler le prix fixé"
+          >
+            Réinit
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- Moyens de paiement -->
-    <div class="px-4 py-3 md:px-5 md:py-4 border-t border-gray-100 bg-gray-50">
-      <p class="text-[10px] md:text-[11px] text-gray-600 uppercase tracking-wider font-semibold mb-2 md:mb-3">Règlement</p>
+    <div class="px-4 py-3 md:px-5 md:py-4 border-t border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+      <p class="text-[10px] md:text-[11px] text-gray-600 dark:text-gray-400 uppercase tracking-wider font-semibold mb-2 md:mb-3">Règlement</p>
       <div class="grid grid-cols-3 md:grid-cols-2 gap-1.5 md:gap-2">
         <button
           v-for="method in paymentMethods"
@@ -284,35 +314,35 @@ const subtotal = computed(() => subtotalTTC.value);
     </div>
 
     <!-- Total -->
-    <div class="p-4 md:p-5 border-t-2 border-gray-200 bg-white">
+    <div class="p-4 md:p-5 border-t-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
       <div class="space-y-2 md:space-y-2.5 mb-3 md:mb-4">
         <!-- Sous-total HT -->
         <div class="flex justify-between text-xs md:text-sm">
-          <span class="text-gray-500">Sous-total HT</span>
-          <span class="text-gray-700 tabular-nums">{{ formatPrice(subtotalHT) }}€</span>
+          <span class="text-gray-500 dark:text-gray-400">Sous-total HT</span>
+          <span class="text-gray-700 dark:text-gray-300 tabular-nums">{{ formatPrice(subtotalHT) }}€</span>
         </div>
         <!-- TVA -->
         <div class="flex justify-between text-xs md:text-sm">
-          <span class="text-gray-500">TVA (20%)</span>
-          <span class="text-gray-700 tabular-nums">{{ formatPrice(totalTVA) }}€</span>
+          <span class="text-gray-500 dark:text-gray-400">TVA (20%)</span>
+          <span class="text-gray-700 dark:text-gray-300 tabular-nums">{{ formatPrice(totalTVA) }}€</span>
         </div>
         <!-- Sous-total TTC -->
         <div class="flex justify-between text-xs md:text-sm font-medium">
-          <span class="text-gray-600">Sous-total TTC</span>
-          <span class="text-gray-900 tabular-nums">{{ formatPrice(subtotalTTC) }}€</span>
+          <span class="text-gray-600 dark:text-gray-400">Sous-total TTC</span>
+          <span class="text-gray-900 dark:text-gray-100 tabular-nums">{{ formatPrice(subtotalTTC) }}€</span>
         </div>
         <!-- Réduction -->
         <div v-if="localDiscount > 0" class="flex justify-between text-xs md:text-sm">
-          <span class="text-gray-600">
+          <span class="text-gray-600 dark:text-gray-400">
             Réduction 
             <span class="text-[10px] md:text-xs">({{ localDiscountType === 'percent' ? `${localDiscount}%` : `${formatPrice(localDiscount)}€` }})</span>
           </span>
-          <span class="text-red-600 font-medium tabular-nums">-{{ formatPrice(discountAmount) }}€</span>
+          <span class="text-red-600 dark:text-red-400 font-medium tabular-nums">-{{ formatPrice(discountAmount) }}€</span>
         </div>
         <!-- Total -->
-        <div class="flex justify-between text-xl md:text-2xl font-bold pt-2 md:pt-3 border-t border-gray-200">
-          <span class="text-gray-900">Total</span>
-          <span class="text-gray-900 tabular-nums">{{ formatPrice(total) }}€</span>
+        <div class="flex justify-between text-xl md:text-2xl font-bold pt-2 md:pt-3 border-t border-gray-200 dark:border-gray-600">
+          <span class="text-gray-900 dark:text-gray-100">Total</span>
+          <span class="text-gray-900 dark:text-gray-100 tabular-nums">{{ formatPrice(total) }}€</span>
         </div>
       </div>
 
@@ -326,7 +356,7 @@ const subtotal = computed(() => subtotalTTC.value);
         </button>
         <button 
           @click="clearCart" 
-          class="btn-icon-sm p-2 md:p-3 text-orange-600 hover:bg-orange-50 hover:border-orange-200" 
+          class="btn-icon-sm p-2 md:p-3 text-orange-600 hover:bg-orange-50 hover:border-orange-200 dark:text-orange-400 dark:hover:bg-orange-900/30 dark:hover:border-orange-700" 
           title="Annuler"
           aria-label="Annuler la transaction"
         >
@@ -338,8 +368,8 @@ const subtotal = computed(() => subtotalTTC.value);
           :class="[
             'btn-icon-sm p-2 md:p-3',
             cartItems.length > 0 && !isProcessing
-              ? 'bg-emerald-600 text-white hover:bg-emerald-700 border-emerald-600'
-              : 'bg-gray-100 text-gray-400 cursor-not-allowed border-gray-200'
+              ? 'bg-emerald-600 text-white hover:bg-emerald-700 border-emerald-600 dark:bg-emerald-600 dark:border-emerald-600'
+              : 'bg-gray-100 text-gray-400 cursor-not-allowed border-gray-200 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-500'
           ]"
           title="Valider"
           aria-label="Valider la transaction"

@@ -45,6 +45,12 @@ const router = createRouter({
       component: () => import('../pages/StockPage.vue'),
       meta: { title: 'Stock' }
     },
+    {
+      path: '/commande',
+      name: 'commande',
+      component: () => import('../pages/CommandePage.vue'),
+      meta: { title: 'Commande' }
+    },
   ],
 });
 

@@ -342,20 +342,20 @@ onMounted(loadStats);
 </script>
 
 <template>
-  <main class="flex-1 p-4 lg:p-6 overflow-auto bg-gray-50">
+  <main class="flex-1 p-4 lg:p-6 overflow-auto bg-gray-50 dark:bg-gray-900">
     <div class="max-w-7xl mx-auto space-y-6">
       
       <!-- En-tête -->
       <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 class="text-xl lg:text-2xl font-bold text-gray-900">Statistiques</h1>
-          <p class="text-sm text-gray-500 mt-1">Vue d'ensemble de l'activité</p>
+          <h1 class="text-xl lg:text-2xl font-bold text-gray-900 dark:text-white">Statistiques</h1>
+          <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Vue d'ensemble de l'activité</p>
         </div>
         
         <button
           @click="loadStats"
           :disabled="isLoading"
-          class="inline-flex items-center gap-2 px-4 py-2 bg-gray-900 text-white rounded-xl hover:bg-gray-800 transition-colors disabled:opacity-50"
+          class="inline-flex items-center gap-2 px-4 py-2 bg-gray-900 dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white rounded-xl hover:bg-gray-800 transition-colors disabled:opacity-50"
         >
           <RefreshCw :class="['w-4 h-4', isLoading && 'animate-spin']" />
           <span>Actualiser</span>
@@ -371,10 +371,10 @@ onMounted(loadStats);
         <!-- Cards KPI principales -->
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <!-- CA Aujourd'hui -->
-          <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-200">
+          <div class="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm border border-gray-200 dark:border-gray-700">
             <div class="flex items-center justify-between mb-3">
-              <div class="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center">
-                <Euro class="w-5 h-5 text-emerald-600" />
+              <div class="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center">
+                <Euro class="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
               </div>
               <div 
                 v-if="todayGrowth !== 0"
@@ -387,59 +387,59 @@ onMounted(loadStats);
                 {{ Math.abs(todayGrowth).toFixed(0) }}%
               </div>
             </div>
-            <p class="text-2xl font-bold text-gray-900">{{ formatPrice(todayStats.total) }}€</p>
-            <p class="text-sm text-gray-500 mt-1">CA aujourd'hui</p>
+            <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ formatPrice(todayStats.total) }}€</p>
+            <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">CA aujourd'hui</p>
           </div>
 
           <!-- CA Semaine -->
-          <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-200">
+          <div class="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm border border-gray-200 dark:border-gray-700">
             <div class="flex items-center justify-between mb-3">
-              <div class="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center">
-                <BarChart3 class="w-5 h-5 text-blue-600" />
+              <div class="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center">
+                <BarChart3 class="w-5 h-5 text-blue-600 dark:text-blue-400" />
               </div>
               <div 
                 v-if="weekGrowth !== 0"
                 :class="[
                   'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium',
-                  weekGrowth > 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'
+                  weekGrowth > 0 ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300' : 'bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300'
                 ]"
               >
                 <component :is="weekGrowth > 0 ? TrendingUp : TrendingDown" class="w-3 h-3" />
                 {{ Math.abs(weekGrowth).toFixed(0) }}%
               </div>
             </div>
-            <p class="text-2xl font-bold text-gray-900">{{ formatPrice(weekStats.total) }}€</p>
-            <p class="text-sm text-gray-500 mt-1">CA cette semaine</p>
+            <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ formatPrice(weekStats.total) }}€</p>
+            <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">CA cette semaine</p>
           </div>
 
           <!-- Nombre de ventes -->
-          <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-200">
+          <div class="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm border border-gray-200 dark:border-gray-700">
             <div class="flex items-center justify-between mb-3">
-              <div class="w-10 h-10 rounded-xl bg-purple-100 flex items-center justify-center">
-                <ShoppingBag class="w-5 h-5 text-purple-600" />
+              <div class="w-10 h-10 rounded-xl bg-purple-100 dark:bg-purple-900/40 flex items-center justify-center">
+                <ShoppingBag class="w-5 h-5 text-purple-600 dark:text-purple-400" />
               </div>
             </div>
-            <p class="text-2xl font-bold text-gray-900">{{ todayStats.count }}</p>
-            <p class="text-sm text-gray-500 mt-1">Ventes aujourd'hui</p>
+            <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ todayStats.count }}</p>
+            <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Ventes aujourd'hui</p>
           </div>
 
           <!-- Panier moyen -->
-          <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-200">
+          <div class="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm border border-gray-200 dark:border-gray-700">
             <div class="flex items-center justify-between mb-3">
-              <div class="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center">
-                <Users class="w-5 h-5 text-amber-600" />
+              <div class="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center">
+                <Users class="w-5 h-5 text-amber-600 dark:text-amber-400" />
               </div>
             </div>
-            <p class="text-2xl font-bold text-gray-900">{{ formatPrice(todayStats.avgTicket) }}€</p>
-            <p class="text-sm text-gray-500 mt-1">Panier moyen</p>
+            <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ formatPrice(todayStats.avgTicket) }}€</p>
+            <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Panier moyen</p>
           </div>
         </div>
 
         <!-- Graphique CA 7 jours + Top Services -->
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <!-- Graphique CA -->
-          <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-200">
-            <h3 class="text-sm font-semibold text-gray-900 uppercase tracking-wider mb-4">
+          <div class="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm border border-gray-200 dark:border-gray-700">
+            <h3 class="text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wider mb-4">
               Chiffre d'affaires (7 derniers jours)
             </h3>
             
@@ -449,32 +449,32 @@ onMounted(loadStats);
                 :key="day.date"
                 class="flex items-center gap-3"
               >
-                <span class="w-16 text-xs text-gray-500 shrink-0">{{ formatDate(day.date) }}</span>
-                <div class="flex-1 h-8 bg-gray-100 rounded-lg overflow-hidden relative">
+                <span class="w-16 text-xs text-gray-500 dark:text-gray-400 shrink-0">{{ formatDate(day.date) }}</span>
+                <div class="flex-1 h-8 bg-gray-100 dark:bg-gray-700 rounded-lg overflow-hidden relative">
                   <div 
-                    class="h-full bg-gradient-to-r from-emerald-500 to-emerald-400 rounded-lg transition-all duration-500"
+                    class="h-full bg-gradient-to-r from-emerald-500 to-emerald-400 dark:from-emerald-600 dark:to-emerald-500 rounded-lg transition-all duration-500"
                     :style="{ width: `${(day.total / maxDailyTotal) * 100}%` }"
                   ></div>
                   <span 
                     v-if="day.total > 0"
-                    class="absolute right-2 top-1/2 -translate-y-1/2 text-xs font-semibold text-gray-700"
+                    class="absolute right-2 top-1/2 -translate-y-1/2 text-xs font-semibold text-gray-700 dark:text-gray-200"
                   >
                     {{ formatPrice(day.total) }}€
                   </span>
                 </div>
-                <span class="w-12 text-xs text-gray-400 text-right shrink-0">{{ day.count }} v.</span>
+                <span class="w-12 text-xs text-gray-400 dark:text-gray-500 text-right shrink-0">{{ day.count }} v.</span>
               </div>
             </div>
           </div>
 
           <!-- Top Services -->
-          <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-200">
-            <h3 class="text-sm font-semibold text-gray-900 uppercase tracking-wider mb-4 flex items-center gap-2">
-              <Award class="w-4 h-4 text-amber-500" />
+          <div class="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm border border-gray-200 dark:border-gray-700">
+            <h3 class="text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wider mb-4 flex items-center gap-2">
+              <Award class="w-4 h-4 text-amber-500 dark:text-amber-400" />
               Top 5 Services
             </h3>
             
-            <div v-if="topServices.length === 0" class="text-center py-8 text-gray-500">
+            <div v-if="topServices.length === 0" class="text-center py-8 text-gray-500 dark:text-gray-400">
               Aucune donnée
             </div>
 
@@ -487,23 +487,23 @@ onMounted(loadStats);
                 <span 
                   :class="[
                     'w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold',
-                    index === 0 ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-500'
+                    index === 0 ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300' : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400'
                   ]"
                 >
                   {{ index + 1 }}
                 </span>
                 <div class="flex-1 min-w-0">
-                  <p class="text-sm font-medium text-gray-900 truncate">{{ service.name }}</p>
-                  <div class="h-2 bg-gray-100 rounded-full mt-1 overflow-hidden">
+                  <p class="text-sm font-medium text-gray-900 dark:text-white truncate">{{ service.name }}</p>
+                  <div class="h-2 bg-gray-100 dark:bg-gray-700 rounded-full mt-1 overflow-hidden">
                     <div 
-                      class="h-full bg-gradient-to-r from-purple-500 to-purple-400 rounded-full"
+                      class="h-full bg-gradient-to-r from-purple-500 to-purple-400 dark:from-purple-600 dark:to-purple-500 rounded-full"
                       :style="{ width: `${(service.count / maxServiceCount) * 100}%` }"
                     ></div>
                   </div>
                 </div>
                 <div class="text-right shrink-0">
-                  <p class="text-sm font-bold text-gray-900">{{ service.count }}</p>
-                  <p class="text-xs text-gray-500">{{ formatPrice(service.revenue) }}€</p>
+                  <p class="text-sm font-bold text-gray-900 dark:text-white">{{ service.count }}</p>
+                  <p class="text-xs text-gray-500 dark:text-gray-400">{{ formatPrice(service.revenue) }}€</p>
                 </div>
               </div>
             </div>
@@ -511,12 +511,12 @@ onMounted(loadStats);
         </div>
 
         <!-- Stats par vendeur -->
-        <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-200">
-          <h3 class="text-sm font-semibold text-gray-900 uppercase tracking-wider mb-4">
+        <div class="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm border border-gray-200 dark:border-gray-700">
+          <h3 class="text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wider mb-4">
             Performance vendeurs (30 derniers jours)
           </h3>
           
-          <div v-if="vendorStats.length === 0" class="text-center py-8 text-gray-500">
+          <div v-if="vendorStats.length === 0" class="text-center py-8 text-gray-500 dark:text-gray-400">
             Aucune donnée
           </div>
 
@@ -524,7 +524,7 @@ onMounted(loadStats);
             <div
               v-for="vendor in vendorStats"
               :key="vendor.id"
-              class="flex items-center gap-4 p-4 bg-gray-50 rounded-xl"
+              class="flex items-center gap-4 p-4 bg-gray-50 dark:bg-gray-700 rounded-xl"
             >
               <div 
                 :style="{ backgroundColor: vendor.color }"
@@ -533,48 +533,48 @@ onMounted(loadStats);
                 {{ vendor.initials }}
               </div>
               <div class="flex-1 min-w-0">
-                <p class="font-semibold text-gray-900 truncate">{{ vendor.name }}</p>
-                <p class="text-sm text-gray-500">{{ vendor.count }} ventes</p>
+                <p class="font-semibold text-gray-900 dark:text-white truncate">{{ vendor.name }}</p>
+                <p class="text-sm text-gray-500 dark:text-gray-400">{{ vendor.count }} ventes</p>
               </div>
               <div class="text-right">
-                <p class="text-lg font-bold text-gray-900">{{ formatPrice(vendor.total) }}€</p>
+                <p class="text-lg font-bold text-gray-900 dark:text-white">{{ formatPrice(vendor.total) }}€</p>
               </div>
             </div>
           </div>
         </div>
 
         <!-- Journal des ventes du jour -->
-        <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-          <div class="p-5 border-b border-gray-200 flex items-center justify-between">
-            <h3 class="text-sm font-semibold text-gray-900 uppercase tracking-wider flex items-center gap-2">
-              <Clock class="w-4 h-4" />
+        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+          <div class="p-5 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+            <h3 class="text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+              <Clock class="w-4 h-4 dark:text-gray-400" />
               Journal des ventes — {{ formatFullDate(new Date().toISOString()) }}
             </h3>
-            <span class="text-sm text-gray-500">{{ todayJournal.length }} ventes</span>
+            <span class="text-sm text-gray-500 dark:text-gray-400">{{ todayJournal.length }} ventes</span>
           </div>
 
-          <div v-if="todayJournal.length === 0" class="p-8 text-center text-gray-500">
+          <div v-if="todayJournal.length === 0" class="p-8 text-center text-gray-500 dark:text-gray-400">
             Aucune vente aujourd'hui
           </div>
 
-          <div v-else class="divide-y divide-gray-100 max-h-96 overflow-y-auto">
+          <div v-else class="divide-y divide-gray-100 dark:divide-gray-700 max-h-96 overflow-y-auto">
             <div
               v-for="sale in todayJournal"
               :key="sale.id"
-              class="px-5 py-3 flex items-center gap-4 hover:bg-gray-50 transition-colors"
+              class="px-5 py-3 flex items-center gap-4 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
             >
               <div class="w-14 text-center shrink-0">
-                <p class="text-sm font-semibold text-gray-900">{{ formatTime(sale.created_at) }}</p>
+                <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ formatTime(sale.created_at) }}</p>
               </div>
               <div class="flex-1 min-w-0">
-                <p class="text-sm font-medium text-gray-900 truncate">
+                <p class="text-sm font-medium text-gray-900 dark:text-white truncate">
                   {{ sale.client_name || 'Client anonyme' }}
                 </p>
-                <p class="text-xs text-gray-500">
+                <p class="text-xs text-gray-500 dark:text-gray-400">
                   {{ sale.ticket_number }} · {{ sale.items_count }} article(s) · {{ sale.vendor_name }}
                 </p>
               </div>
-              <p class="text-lg font-bold text-gray-900 shrink-0">{{ formatPrice(sale.total) }}€</p>
+              <p class="text-lg font-bold text-gray-900 dark:text-white shrink-0">{{ formatPrice(sale.total) }}€</p>
             </div>
           </div>
         </div>

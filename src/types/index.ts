@@ -26,10 +26,12 @@ export interface Client {
   postalCode?: string;
   birthDate?: string;
   notes?: string;
+  /** Nom de l'entreprise (optionnel) */
+  company?: string;
 }
 
 // Types pour les moyens de paiement
-export type PaymentMethod = 'cash' | 'card' | 'contactless' | 'check' | 'gift_card';
+export type PaymentMethod = 'cash' | 'card' | 'contactless' | 'check' | 'gift_card' | 'amex';
 
 // Types pour les catégories
 export interface Category {

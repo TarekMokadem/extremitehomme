@@ -15,6 +15,7 @@ const currentClient = ref<Client>({
   postalCode: '',
   birthDate: '',
   notes: '',
+  company: '',
 });
 
 // Mode édition (client existant) ou création (nouveau client)
@@ -50,6 +51,7 @@ export function useClient() {
       postalCode: '',
       birthDate: '',
       notes: '',
+      company: '',
     };
     isEditMode.value = false;
     selectClient(null);
@@ -96,6 +98,7 @@ export function useClient() {
         postal_code: currentClient.value.postalCode || null,
         birth_date: currentClient.value.birthDate || null,
         notes: currentClient.value.notes || null,
+        company: currentClient.value.company?.trim() || null,
       };
 
       if (isEditMode.value && currentClient.value.id) {

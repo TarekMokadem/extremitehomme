@@ -40,17 +40,26 @@ const handleAddToCart = (): void => {
       quantity > 0 && 'active'
     ]"
   >
-    <!-- Badge quantité -->
-    <div v-if="quantity > 0" class="quantity-badge" :aria-label="`Quantité: ${quantity}`">
-      {{ quantity }}
+    <!-- Ligne du haut : code à gauche, prix à droite (+ quantité éventuelle) -->
+    <div class="service-header">
+      <div class="service-header-left">
+        <span class="service-code">{{ service.code }}</span>
+        <span
+          v-if="quantity > 0"
+          class="quantity-badge"
+          :aria-label="`Quantité: ${quantity}`"
+        >
+          {{ quantity }}
+        </span>
+      </div>
+      <span class="service-price">
+        {{ service.price_ttc?.toFixed(2) || service.price_ht?.toFixed(2) }}€
+      </span>
     </div>
 
-    <!-- Nom du service -->
-    <h3 class="service-name">{{ service.name }}</h3>
-
-    <!-- Prix et durée -->
-    <div class="service-info">
-      <span class="service-price">{{ service.price_ttc?.toFixed(2) || service.price_ht?.toFixed(2) }}€</span>
+    <!-- Centre : nom du service -->
+    <div class="service-body">
+      <h3 class="service-name">{{ service.name }}</h3>
       <span v-if="service.duration" class="service-duration">
         <Clock class="w-3 h-3 md:w-3.5 md:h-3.5" />
         <span class="hidden sm:inline">{{ service.duration }}min</span>
@@ -64,12 +73,13 @@ const handleAddToCart = (): void => {
 @reference "../style.css";
 
 .service-card {
-  @apply relative flex flex-col items-start justify-between;
+  @apply relative flex flex-col justify-between;
   @apply p-3 md:p-4 bg-white rounded-xl border-l-4;
   @apply shadow-sm hover:shadow-md;
   @apply transition-all duration-200 ease-in-out;
   @apply text-left cursor-pointer;
   @apply min-h-[80px] md:min-h-[100px];
+  @apply dark:bg-gray-700 dark:shadow-none dark:hover:bg-gray-600;
 }
 
 .service-card:hover {
@@ -78,25 +88,35 @@ const handleAddToCart = (): void => {
 
 .service-card.active {
   @apply ring-2 ring-gray-900 ring-offset-1 md:ring-offset-2;
+  @apply dark:ring-emerald-500 dark:ring-offset-gray-800;
+}
+
+.service-header {
+  @apply w-full flex items-start justify-between gap-2 mb-2;
+}
+
+.service-header-left {
+  @apply flex items-center gap-1.5;
+}
+
+.service-code {
+  @apply inline-flex items-center justify-center px-1.5 py-0.5 rounded-full;
+  @apply bg-gray-900 text-white text-[10px] md:text-xs font-semibold;
+  @apply dark:bg-gray-600 dark:text-white;
 }
 
 .quantity-badge {
-  @apply absolute -top-1.5 -right-1.5 md:-top-2 md:-right-2;
-  @apply w-6 h-6 md:w-7 md:h-7 rounded-full;
-  @apply bg-gray-900 text-white;
-  @apply flex items-center justify-center;
-  @apply text-[10px] md:text-xs font-bold;
-  @apply shadow-lg;
-  animation: pulse 0.5s ease-in-out;
-}
-
-@keyframes pulse {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.1); }
+  @apply inline-flex items-center justify-center w-4 h-4 md:w-5 md:h-5 rounded-full;
+  @apply bg-red-600 text-white text-[10px] md:text-xs font-bold;
 }
 
 .service-name {
-  @apply text-xs md:text-sm font-semibold text-gray-900 mb-1.5 md:mb-2 leading-snug line-clamp-2;
+  @apply text-xs md:text-sm font-semibold text-gray-900 leading-snug text-center line-clamp-2;
+  @apply dark:text-white;
+}
+
+.service-body {
+  @apply flex-1 w-full flex flex-col items-center justify-center gap-1;
 }
 
 .service-info {
@@ -105,9 +125,11 @@ const handleAddToCart = (): void => {
 
 .service-price {
   @apply font-bold text-gray-900 text-sm md:text-base tabular-nums;
+  @apply dark:text-white;
 }
 
 .service-duration {
   @apply flex items-center gap-0.5 md:gap-1 text-gray-500;
+  @apply dark:text-white/80;
 }
 </style>

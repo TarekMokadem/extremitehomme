@@ -145,39 +145,39 @@ const openCloseModal = () => {
 </script>
 
 <template>
-  <main class="flex-1 p-4 lg:p-6 overflow-auto">
+  <main class="flex-1 p-4 lg:p-6 overflow-auto bg-gray-50 dark:bg-gray-900">
     <div class="max-w-4xl mx-auto space-y-6">
       
       <!-- En-tête -->
       <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 class="text-xl lg:text-2xl font-bold text-gray-900">Tiroir de caisse</h1>
-          <p class="text-sm text-gray-500 mt-1">Gérez le fond de caisse et les mouvements</p>
+          <h1 class="text-xl lg:text-2xl font-bold text-gray-900 dark:text-white">Tiroir de caisse</h1>
+          <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Gérez le fond de caisse et les mouvements</p>
         </div>
 
         <!-- Sélecteur de date -->
         <div class="flex items-center gap-3">
-          <Calendar class="w-5 h-5 text-gray-400" />
+          <Calendar class="w-5 h-5 text-gray-400 dark:text-gray-500" />
           <input
             v-model="selectedDate"
             type="date"
-            class="px-4 py-2.5 bg-white border border-gray-300 rounded-xl text-sm font-medium focus:outline-none focus:border-gray-900 focus:ring-2 focus:ring-gray-900/10"
+            class="px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 dark:text-gray-100 rounded-xl text-sm font-medium focus:outline-none focus:border-gray-900 dark:focus:border-emerald-500 focus:ring-2 focus:ring-gray-900/10 dark:focus:ring-emerald-500/30"
           />
         </div>
       </div>
 
       <!-- Date affichée -->
       <div class="text-center py-2">
-        <p class="text-lg font-semibold text-gray-700 capitalize">{{ formatDate(selectedDate) }}</p>
+        <p class="text-lg font-semibold text-gray-700 dark:text-gray-300 capitalize">{{ formatDate(selectedDate) }}</p>
       </div>
 
       <!-- État : Caisse non ouverte -->
-      <div v-if="!currentRegister && !isLoading" class="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 text-center">
-        <div class="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-4">
-          <Lock class="w-8 h-8 text-gray-400" />
+      <div v-if="!currentRegister && !isLoading" class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-8 text-center">
+        <div class="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center mx-auto mb-4">
+          <Lock class="w-8 h-8 text-gray-400 dark:text-gray-500" />
         </div>
-        <h2 class="text-xl font-bold text-gray-900 mb-2">Caisse fermée</h2>
-        <p class="text-gray-500 mb-6">Aucune caisse ouverte pour cette date</p>
+        <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-2">Caisse fermée</h2>
+        <p class="text-gray-500 dark:text-gray-400 mb-6">Aucune caisse ouverte pour cette date</p>
         <button
           @click="showOpenModal = true"
           class="inline-flex items-center gap-2 px-6 py-3 bg-emerald-600 text-white rounded-xl font-medium hover:bg-emerald-700 transition-colors"
@@ -188,31 +188,31 @@ const openCloseModal = () => {
       </div>
 
       <!-- État : Chargement -->
-      <div v-else-if="isLoading" class="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 text-center">
-        <RefreshCw class="w-8 h-8 text-gray-400 animate-spin mx-auto" />
+      <div v-else-if="isLoading" class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-8 text-center">
+        <RefreshCw class="w-8 h-8 text-gray-400 dark:text-gray-500 animate-spin mx-auto" />
       </div>
 
       <!-- Caisse ouverte ou fermée -->
       <template v-else-if="currentRegister">
         <!-- Résumé -->
         <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <div class="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
-            <p class="text-xs text-gray-500 uppercase tracking-wider font-semibold mb-1">Fond de caisse</p>
-            <p class="text-xl font-bold text-gray-900">{{ formatPrice(currentRegister.opening_amount) }}€</p>
+          <div class="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-200 dark:border-gray-700">
+            <p class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider font-semibold mb-1">Fond de caisse</p>
+            <p class="text-xl font-bold text-gray-900 dark:text-white">{{ formatPrice(currentRegister.opening_amount) }}€</p>
           </div>
-          <div class="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
-            <p class="text-xs text-gray-500 uppercase tracking-wider font-semibold mb-1">Ventes espèces</p>
-            <p class="text-xl font-bold text-emerald-600">+{{ formatPrice(cashSalesTotal) }}€</p>
+          <div class="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-200 dark:border-gray-700">
+            <p class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider font-semibold mb-1">Ventes espèces</p>
+            <p class="text-xl font-bold text-emerald-600 dark:text-emerald-400">+{{ formatPrice(cashSalesTotal) }}€</p>
           </div>
-          <div class="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
-            <p class="text-xs text-gray-500 uppercase tracking-wider font-semibold mb-1">Mouvements</p>
-            <p :class="['text-xl font-bold', movementsBalance >= 0 ? 'text-emerald-600' : 'text-red-600']">
+          <div class="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-200 dark:border-gray-700">
+            <p class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider font-semibold mb-1">Mouvements</p>
+            <p :class="['text-xl font-bold', movementsBalance >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400']">
               {{ movementsBalance >= 0 ? '+' : '' }}{{ formatPrice(movementsBalance) }}€
             </p>
           </div>
-          <div class="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
-            <p class="text-xs text-gray-500 uppercase tracking-wider font-semibold mb-1">Solde attendu</p>
-            <p class="text-xl font-bold text-gray-900">{{ formatPrice(expectedAmount) }}€</p>
+          <div class="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-200 dark:border-gray-700">
+            <p class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider font-semibold mb-1">Solde attendu</p>
+            <p class="text-xl font-bold text-gray-900 dark:text-white">{{ formatPrice(expectedAmount) }}€</p>
           </div>
         </div>
 
@@ -220,29 +220,29 @@ const openCloseModal = () => {
         <div 
           :class="[
             'rounded-xl p-4 flex items-center gap-3',
-            isOpen ? 'bg-emerald-50 border border-emerald-200' : 'bg-gray-100 border border-gray-200'
+            isOpen ? 'bg-emerald-50 border border-emerald-200 dark:bg-emerald-900/30 dark:border-emerald-700' : 'bg-gray-100 border border-gray-200 dark:bg-gray-700 dark:border-gray-600'
           ]"
         >
-          <component :is="isOpen ? Unlock : Lock" :class="['w-5 h-5', isOpen ? 'text-emerald-600' : 'text-gray-500']" />
+          <component :is="isOpen ? Unlock : Lock" :class="['w-5 h-5', isOpen ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-500 dark:text-gray-400']" />
           <div class="flex-1">
-            <p :class="['font-semibold', isOpen ? 'text-emerald-700' : 'text-gray-700']">
+            <p :class="['font-semibold', isOpen ? 'text-emerald-700 dark:text-emerald-300' : 'text-gray-700 dark:text-gray-300']">
               {{ isOpen ? 'Caisse ouverte' : 'Caisse fermée' }}
             </p>
-            <p class="text-sm text-gray-500">
+            <p class="text-sm text-gray-500 dark:text-gray-400">
               {{ isOpen ? `Ouverte à ${formatTime(currentRegister.opened_at)}` : `Fermée à ${formatTime(currentRegister.closed_at || '')}` }}
             </p>
           </div>
           <template v-if="isOpen">
             <button
               @click="showMovementModal = true"
-              class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-xl text-sm font-medium hover:bg-gray-50 transition-colors"
+              class="inline-flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200 border border-gray-300 rounded-xl text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
             >
               <Plus class="w-4 h-4" />
               Mouvement
             </button>
             <button
               @click="openCloseModal"
-              class="inline-flex items-center gap-2 px-4 py-2 bg-gray-900 text-white rounded-xl text-sm font-medium hover:bg-gray-800 transition-colors"
+              class="inline-flex items-center gap-2 px-4 py-2 bg-gray-900 dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white rounded-xl text-sm font-medium hover:bg-gray-800 transition-colors"
             >
               <Lock class="w-4 h-4" />
               Fermer
@@ -251,58 +251,58 @@ const openCloseModal = () => {
         </div>
 
         <!-- Résultat fermeture -->
-        <div v-if="isClosed && currentRegister.difference !== null" class="rounded-xl p-4 flex items-center gap-3" :class="currentRegister.difference === 0 ? 'bg-emerald-50 border border-emerald-200' : 'bg-amber-50 border border-amber-200'">
-          <component :is="currentRegister.difference === 0 ? CheckCircle : AlertCircle" :class="['w-6 h-6', currentRegister.difference === 0 ? 'text-emerald-600' : 'text-amber-600']" />
+        <div v-if="isClosed && currentRegister.difference !== null" class="rounded-xl p-4 flex items-center gap-3" :class="currentRegister.difference === 0 ? 'bg-emerald-50 border border-emerald-200 dark:bg-emerald-900/30 dark:border-emerald-700' : 'bg-amber-50 border border-amber-200 dark:bg-amber-900/30 dark:border-amber-700'">
+          <component :is="currentRegister.difference === 0 ? CheckCircle : AlertCircle" :class="['w-6 h-6', currentRegister.difference === 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400']" />
           <div class="flex-1">
-            <p :class="['font-semibold', currentRegister.difference === 0 ? 'text-emerald-700' : 'text-amber-700']">
+            <p :class="['font-semibold', currentRegister.difference === 0 ? 'text-emerald-700 dark:text-emerald-300' : 'text-amber-700 dark:text-amber-300']">
               {{ currentRegister.difference === 0 ? 'Caisse juste' : 'Écart de caisse' }}
             </p>
-            <p v-if="currentRegister.difference !== 0" class="text-sm text-amber-600">
+            <p v-if="currentRegister.difference !== 0" class="text-sm text-amber-600 dark:text-amber-400">
               Écart : {{ currentRegister.difference > 0 ? '+' : '' }}{{ formatPrice(currentRegister.difference) }}€
             </p>
           </div>
           <div class="text-right">
-            <p class="text-xs text-gray-500">Montant compté</p>
-            <p class="text-lg font-bold text-gray-900">{{ formatPrice(currentRegister.closing_amount || 0) }}€</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400">Montant compté</p>
+            <p class="text-lg font-bold text-gray-900 dark:text-white">{{ formatPrice(currentRegister.closing_amount || 0) }}€</p>
           </div>
         </div>
 
         <!-- Liste des mouvements -->
-        <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-          <div class="p-4 border-b border-gray-200">
-            <h3 class="text-sm font-semibold text-gray-900 uppercase tracking-wider">Mouvements du jour</h3>
+        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+          <div class="p-4 border-b border-gray-200 dark:border-gray-700">
+            <h3 class="text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wider">Mouvements du jour</h3>
           </div>
 
-          <div v-if="movements.length === 0" class="p-8 text-center text-gray-500">
-            <DollarSign class="w-10 h-10 text-gray-300 mx-auto mb-2" />
+          <div v-if="movements.length === 0" class="p-8 text-center text-gray-500 dark:text-gray-400">
+            <DollarSign class="w-10 h-10 text-gray-300 dark:text-gray-600 mx-auto mb-2" />
             <p>Aucun mouvement</p>
           </div>
 
-          <div v-else class="divide-y divide-gray-100">
+          <div v-else class="divide-y divide-gray-100 dark:divide-gray-700">
             <div
               v-for="movement in movements"
               :key="movement.id"
-              class="px-4 py-3 flex items-center gap-4"
+              class="px-4 py-3 flex items-center gap-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
             >
               <div 
                 :class="[
                   'w-10 h-10 rounded-full flex items-center justify-center',
-                  movement.type === 'in' ? 'bg-emerald-100' : 'bg-red-100'
+                  movement.type === 'in' ? 'bg-emerald-100 dark:bg-emerald-900/40' : 'bg-red-100 dark:bg-red-900/40'
                 ]"
               >
                 <component 
                   :is="movement.type === 'in' ? ArrowDownCircle : ArrowUpCircle" 
-                  :class="['w-5 h-5', movement.type === 'in' ? 'text-emerald-600' : 'text-red-600']"
+                  :class="['w-5 h-5', movement.type === 'in' ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400']"
                 />
               </div>
               <div class="flex-1 min-w-0">
-                <p class="font-medium text-gray-900 truncate">{{ movement.label }}</p>
-                <p class="text-xs text-gray-500">{{ formatTime(movement.created_at) }}</p>
+                <p class="font-medium text-gray-900 dark:text-white truncate">{{ movement.label }}</p>
+                <p class="text-xs text-gray-500 dark:text-gray-400">{{ formatTime(movement.created_at) }}</p>
               </div>
               <p 
                 :class="[
                   'font-bold text-lg',
-                  movement.type === 'in' ? 'text-emerald-600' : 'text-red-600'
+                  movement.type === 'in' ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'
                 ]"
               >
                 {{ movement.type === 'in' ? '+' : '-' }}{{ formatPrice(movement.amount) }}€
@@ -310,7 +310,7 @@ const openCloseModal = () => {
               <button
                 v-if="isOpen"
                 @click="deleteMovement(movement.id)"
-                class="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                class="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:text-red-400 dark:hover:bg-red-900/30 rounded-lg transition-colors"
               >
                 <Trash2 class="w-4 h-4" />
               </button>
@@ -329,31 +329,31 @@ const openCloseModal = () => {
         leave-to-class="opacity-0"
       >
         <div v-if="showOpenModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
-          <div class="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
-            <div class="p-4 border-b border-gray-200 flex items-center justify-between">
-              <h3 class="text-lg font-bold text-gray-900">Ouvrir la caisse</h3>
-              <button @click="showOpenModal = false" class="p-2 text-gray-500 hover:bg-gray-100 rounded-lg">
+          <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-md overflow-hidden border border-gray-200 dark:border-gray-700">
+            <div class="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+              <h3 class="text-lg font-bold text-gray-900 dark:text-white">Ouvrir la caisse</h3>
+              <button @click="showOpenModal = false" class="p-2 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
                 <X class="w-5 h-5" />
               </button>
             </div>
             <div class="p-6 space-y-4">
               <div>
-                <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-2">Fond de caisse (€)</label>
+                <label class="block text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-2">Fond de caisse (€)</label>
                 <input
                   v-model.number="openingAmountInput"
                   type="number"
                   step="0.01"
                   min="0"
-                  class="w-full px-4 py-3 border border-gray-300 rounded-xl text-lg font-semibold text-center focus:outline-none focus:border-gray-900"
+                  class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:placeholder-gray-400 rounded-xl text-lg font-semibold text-center focus:outline-none focus:border-gray-900 dark:focus:border-emerald-500"
                   placeholder="0.00"
                 />
               </div>
             </div>
-            <div class="p-4 border-t border-gray-200 flex gap-3">
-              <button @click="showOpenModal = false" class="flex-1 px-4 py-2.5 border border-gray-300 rounded-xl hover:bg-gray-50 font-medium">
+            <div class="p-4 border-t border-gray-200 dark:border-gray-700 flex gap-3">
+              <button @click="showOpenModal = false" class="flex-1 px-4 py-2.5 border border-gray-300 dark:border-gray-600 dark:text-gray-200 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 font-medium">
                 Annuler
               </button>
-              <button @click="handleOpenRegister" class="flex-1 px-4 py-2.5 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 font-medium">
+              <button @click="handleOpenRegister" class="flex-1 px-4 py-2.5 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 dark:hover:bg-emerald-500 font-medium">
                 Ouvrir
               </button>
             </div>
@@ -371,25 +371,25 @@ const openCloseModal = () => {
         leave-to-class="opacity-0"
       >
         <div v-if="showMovementModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
-          <div class="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
-            <div class="p-4 border-b border-gray-200 flex items-center justify-between">
-              <h3 class="text-lg font-bold text-gray-900">Ajouter un mouvement</h3>
-              <button @click="showMovementModal = false" class="p-2 text-gray-500 hover:bg-gray-100 rounded-lg">
+          <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-md overflow-hidden border border-gray-200 dark:border-gray-700">
+            <div class="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+              <h3 class="text-lg font-bold text-gray-900 dark:text-white">Ajouter un mouvement</h3>
+              <button @click="showMovementModal = false" class="p-2 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
                 <X class="w-5 h-5" />
               </button>
             </div>
             <div class="p-6 space-y-4">
               <!-- Type -->
               <div>
-                <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-2">Type</label>
+                <label class="block text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-2">Type</label>
                 <div class="grid grid-cols-2 gap-3">
                   <button
                     @click="movementType = 'out'"
                     :class="[
                       'flex items-center justify-center gap-2 px-4 py-3 rounded-xl border-2 transition-colors font-medium',
                       movementType === 'out' 
-                        ? 'border-red-500 bg-red-50 text-red-700' 
-                        : 'border-gray-200 text-gray-600 hover:border-gray-300'
+                        ? 'border-red-500 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300' 
+                        : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-500'
                     ]"
                   >
                     <Minus class="w-4 h-4" />
@@ -400,8 +400,8 @@ const openCloseModal = () => {
                     :class="[
                       'flex items-center justify-center gap-2 px-4 py-3 rounded-xl border-2 transition-colors font-medium',
                       movementType === 'in' 
-                        ? 'border-emerald-500 bg-emerald-50 text-emerald-700' 
-                        : 'border-gray-200 text-gray-600 hover:border-gray-300'
+                        ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300' 
+                        : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-500'
                     ]"
                   >
                     <Plus class="w-4 h-4" />
@@ -412,36 +412,36 @@ const openCloseModal = () => {
 
               <!-- Libellé -->
               <div>
-                <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-2">Libellé</label>
+                <label class="block text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-2">Libellé</label>
                 <input
                   v-model="movementLabel"
                   type="text"
-                  class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:border-gray-900"
+                  class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:placeholder-gray-400 rounded-xl focus:outline-none focus:border-gray-900 dark:focus:border-emerald-500"
                   placeholder="Ex: Achat fournitures, Retrait banque..."
                 />
               </div>
 
               <!-- Montant -->
               <div>
-                <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-2">Montant (€)</label>
+                <label class="block text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-2">Montant (€)</label>
                 <input
                   v-model.number="movementAmount"
                   type="number"
                   step="0.01"
                   min="0"
-                  class="w-full px-4 py-3 border border-gray-300 rounded-xl text-lg font-semibold text-center focus:outline-none focus:border-gray-900"
+                  class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:placeholder-gray-400 rounded-xl text-lg font-semibold text-center focus:outline-none focus:border-gray-900 dark:focus:border-emerald-500"
                   placeholder="0.00"
                 />
               </div>
             </div>
-            <div class="p-4 border-t border-gray-200 flex gap-3">
-              <button @click="showMovementModal = false" class="flex-1 px-4 py-2.5 border border-gray-300 rounded-xl hover:bg-gray-50 font-medium">
+            <div class="p-4 border-t border-gray-200 dark:border-gray-700 flex gap-3">
+              <button @click="showMovementModal = false" class="flex-1 px-4 py-2.5 border border-gray-300 dark:border-gray-600 dark:text-gray-200 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 font-medium">
                 Annuler
               </button>
               <button 
                 @click="handleAddMovement" 
                 :disabled="!movementLabel.trim() || movementAmount <= 0"
-                class="flex-1 px-4 py-2.5 bg-gray-900 text-white rounded-xl hover:bg-gray-800 font-medium disabled:opacity-50"
+                class="flex-1 px-4 py-2.5 bg-gray-900 dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white rounded-xl hover:bg-gray-800 font-medium disabled:opacity-50"
               >
                 Ajouter
               </button>
@@ -460,72 +460,72 @@ const openCloseModal = () => {
         leave-to-class="opacity-0"
       >
         <div v-if="showCloseModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
-          <div class="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
-            <div class="p-4 border-b border-gray-200 flex items-center justify-between">
-              <h3 class="text-lg font-bold text-gray-900">Fermer la caisse</h3>
-              <button @click="showCloseModal = false" class="p-2 text-gray-500 hover:bg-gray-100 rounded-lg">
+          <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-md overflow-hidden border border-gray-200 dark:border-gray-700">
+            <div class="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+              <h3 class="text-lg font-bold text-gray-900 dark:text-white">Fermer la caisse</h3>
+              <button @click="showCloseModal = false" class="p-2 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
                 <X class="w-5 h-5" />
               </button>
             </div>
             <div class="p-6 space-y-4">
               <!-- Récapitulatif -->
-              <div class="bg-gray-50 rounded-xl p-4 space-y-2">
+              <div class="bg-gray-50 dark:bg-gray-700 rounded-xl p-4 space-y-2">
                 <div class="flex justify-between text-sm">
-                  <span class="text-gray-500">Fond de caisse</span>
-                  <span class="font-medium">{{ formatPrice(currentRegister?.opening_amount || 0) }}€</span>
+                  <span class="text-gray-500 dark:text-gray-400">Fond de caisse</span>
+                  <span class="font-medium dark:text-gray-100">{{ formatPrice(currentRegister?.opening_amount || 0) }}€</span>
                 </div>
                 <div class="flex justify-between text-sm">
-                  <span class="text-gray-500">Ventes espèces</span>
-                  <span class="font-medium text-emerald-600">+{{ formatPrice(cashSalesTotal) }}€</span>
+                  <span class="text-gray-500 dark:text-gray-400">Ventes espèces</span>
+                  <span class="font-medium text-emerald-600 dark:text-emerald-400">+{{ formatPrice(cashSalesTotal) }}€</span>
                 </div>
                 <div class="flex justify-between text-sm">
-                  <span class="text-gray-500">Mouvements</span>
-                  <span :class="['font-medium', movementsBalance >= 0 ? 'text-emerald-600' : 'text-red-600']">
+                  <span class="text-gray-500 dark:text-gray-400">Mouvements</span>
+                  <span :class="['font-medium', movementsBalance >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400']">
                     {{ movementsBalance >= 0 ? '+' : '' }}{{ formatPrice(movementsBalance) }}€
                   </span>
                 </div>
-                <div class="flex justify-between text-base font-bold pt-2 border-t border-gray-200">
-                  <span>Solde attendu</span>
-                  <span>{{ formatPrice(expectedAmount) }}€</span>
+                <div class="flex justify-between text-base font-bold pt-2 border-t border-gray-200 dark:border-gray-600">
+                  <span class="dark:text-white">Solde attendu</span>
+                  <span class="dark:text-white">{{ formatPrice(expectedAmount) }}€</span>
                 </div>
               </div>
 
               <!-- Montant compté -->
               <div>
-                <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-2">Montant réellement compté (€)</label>
+                <label class="block text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-2">Montant réellement compté (€)</label>
                 <input
                   v-model.number="closingAmountInput"
                   type="number"
                   step="0.01"
                   min="0"
-                  class="w-full px-4 py-3 border border-gray-300 rounded-xl text-lg font-semibold text-center focus:outline-none focus:border-gray-900"
+                  class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-xl text-lg font-semibold text-center focus:outline-none focus:border-gray-900 dark:focus:border-emerald-500"
                 />
               </div>
 
               <!-- Écart -->
-              <div v-if="closingAmountInput !== expectedAmount" class="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-center gap-2">
-                <AlertCircle class="w-5 h-5 text-amber-600 flex-shrink-0" />
-                <p class="text-sm text-amber-700">
+              <div v-if="closingAmountInput !== expectedAmount" class="bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700 rounded-xl p-3 flex items-center gap-2">
+                <AlertCircle class="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0" />
+                <p class="text-sm text-amber-700 dark:text-amber-300">
                   Écart de <span class="font-bold">{{ formatPrice(closingAmountInput - expectedAmount) }}€</span>
                 </p>
               </div>
 
               <!-- Notes -->
               <div>
-                <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-2">Notes (optionnel)</label>
+                <label class="block text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-2">Notes (optionnel)</label>
                 <textarea
                   v-model="closingNotes"
                   rows="2"
-                  class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:border-gray-900 resize-none"
+                  class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:placeholder-gray-400 rounded-xl focus:outline-none focus:border-gray-900 dark:focus:border-emerald-500 resize-none"
                   placeholder="Remarques sur la journée..."
                 ></textarea>
               </div>
             </div>
-            <div class="p-4 border-t border-gray-200 flex gap-3">
-              <button @click="showCloseModal = false" class="flex-1 px-4 py-2.5 border border-gray-300 rounded-xl hover:bg-gray-50 font-medium">
+            <div class="p-4 border-t border-gray-200 dark:border-gray-700 flex gap-3">
+              <button @click="showCloseModal = false" class="flex-1 px-4 py-2.5 border border-gray-300 dark:border-gray-600 dark:text-gray-200 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 font-medium">
                 Annuler
               </button>
-              <button @click="handleCloseRegister" class="flex-1 px-4 py-2.5 bg-gray-900 text-white rounded-xl hover:bg-gray-800 font-medium">
+              <button @click="handleCloseRegister" class="flex-1 px-4 py-2.5 bg-gray-900 dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white rounded-xl hover:bg-gray-800 font-medium">
                 Fermer la caisse
               </button>
             </div>
