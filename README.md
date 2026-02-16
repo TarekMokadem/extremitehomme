@@ -1,117 +1,58 @@
 # 💼 Extrémités Homme - Système de Caisse
 
-Application de caisse moderne pour salon de coiffure et barbier, développée avec Vue 3, TypeScript et TailwindCSS.
+Application de caisse moderne pour salon de coiffure et barbier, développée avec Vue 3, TypeScript, TailwindCSS et Supabase.
 
 ## ✨ Fonctionnalités
 
-### 👤 Gestion des Vendeurs
-- **Sélection du vendeur** : Menu déroulant dans le header pour changer facilement de vendeur
-- 4 vendeurs pré-configurés avec avatars colorés
-- Affichage du vendeur actif en temps réel
+### 🏪 Page Caisse
+- **Sélection du vendeur** : Menu déroulant dans le header
+- **Grille de services** : Produits et services chargés depuis Supabase, recherche et filtres par catégorie
+- **Panier** : Ajout/suppression, modification des quantités, calcul HT/TVA/TTC
+- **Réductions** : Mode € (euros) ou % (pourcentage)
+- **Paiements** : Espèces, CB, Sans contact, American Express, Chèque, Carte cadeau
+- **Validation** : Enregistrement des ventes en base de données
 
-### 🛒 Gestion du Panier
-- Ajout/suppression de services
-- Modification des quantités (+/-)
-- Badge visuel indiquant la quantité sur chaque service
-- Calcul automatique du sous-total et total
-- Validation de transaction
+### 👥 Page Clients
+- Liste des clients avec recherche
+- Fiche détaillée : coordonnées, stats (total dépensé, visites, points fidélité)
+- Historique des achats avec détail des produits/services
+- Carte de fidélité (points tampons)
+- Création, modification, suppression
 
-### 💰 Réductions Flexibles
-- **Mode € (euros)** : Réduction en montant fixe
-- **Mode % (pourcentage)** : Réduction en pourcentage du total
-- Toggle intuitif pour basculer entre les deux modes
-- Calcul automatique du montant final
+### 📜 Page Historique
+- Liste des ventes avec filtres par date
+- Détail des ventes (articles, montant, mode de paiement)
+- Modification du mode de paiement d'une vente
 
-### 💳 Moyens de Paiement
-- Espèces
-- Carte bancaire (CB)
-- Sans contact
-- Chèque
-- Carte cadeau
+### 📦 Page Stock
+- Gestion des produits et variantes
+- Alertes de stock
+- Mouvements d'inventaire
 
-### 🔍 Recherche Avancée
+### 📊 Page Statistiques
+- Graphiques et indicateurs de ventes
+- Analyse par service/produit
 
-#### Services
-- **Recherche en temps réel** : Filtrage instantané
-- **Autocomplétion** : Suggestions de services dès 2 caractères
-- Menu déroulant avec prix et durée
-- Affichage limité à 8 résultats pertinents
+### 💵 Page Tiroir de Caisse
+- Ouverture/fermeture de caisse
+- Mouvements (entrées/sorties)
+- Rapprochement espèces
 
-#### Clients
-- **Recherche par nom, prénom ou téléphone**
-- Suggestions avec informations de contact
-- Sélection rapide pour remplir le formulaire
+### ⚙️ Page Paramètres
+- Configuration de l'application
 
-### 👥 Gestion des Clients
+### 📋 Page Commande
+- Gestion des commandes fournisseurs
 
-#### Formulaire Complet
-- Nom et prénom
-- 2 numéros de téléphone
-- Email
-- Adresse complète
-- Date d'anniversaire
-- Notes et commentaires
+### 🎨 Interface
+- **Thème sombre** : Bascule clair/sombre
+- **Responsive** : Adapté mobile et desktop
+- **Navigation** : Vue Router avec 8 pages
 
-#### Autocomplétion d'Adresses (API Gouvernement FR)
-- **Sans Google Maps !** Utilise l'API gratuite du gouvernement français
-- **Adresses** : Suggestions en temps réel dès 3 caractères
-- **Villes** : Autocomplétion avec codes postaux
-- Remplissage automatique de l'adresse, ville et CP
-- API officielle : `api-adresse.data.gouv.fr`
-
-#### Actions Client
-- Historique des visites (à implémenter)
-- Effacer le formulaire
-- Enregistrer les informations
-
-### 📊 Interface
-
-#### Disposition 3 Colonnes
-```
-┌─────────────┬──────────────────┬─────────────┐
-│   TICKET    │     SERVICES     │   CLIENT    │
-│             │                  │             │
-│  Date       │  Recherche       │  Recherche  │
-│  Articles   │  Catégories      │  Formulaire │
-│  +/-        │  Grille          │  Adresse    │
-│  Réduction  │  (responsive)    │  Notes      │
-│  Paiement   │                  │  Actions    │
-│  Total      │                  │             │
-│  Actions    │                  │             │
-└─────────────┴──────────────────┴─────────────┘
-```
-
-#### Catégories de Services
-- Tous
-- Coupes (bordure bleue)
-- Barbe (bordure ambre)
-- Soins (bordure émeraude)
-- Épilation (bordure rose)
-- Massage (bordure violette)
-- Autres (bordure grise)
-
-## 🎨 Design
-
-### Principes UX
-- **Design épuré** : Thème clair, couleurs sobres
-- **Icônes professionnelles** : Lucide Icons (SVG)
-- **Typographie Inter** : Police moderne et lisible
-- **Espacements généreux** : Padding et margins optimisés
-- **Zones tactiles** : 44x44px minimum (standard mobile)
-
-### Accessibilité (WCAG 2.1)
-- Contraste texte AAA
-- Focus visible sur tous les éléments
-- Labels ARIA sur les boutons
-- Navigation au clavier
-- États hover/active/disabled
-
-### Animations
-- Transitions fluides (200ms)
-- Feedbacks visuels immédiats
-- Pulse sur les badges de quantité
-- Hover avec élévation des cartes
-- Transitions CSS optimisées GPU
+### 🔍 Recherche & Autocomplétion
+- **Services** : Recherche en temps réel, suggestions dès 2 caractères
+- **Clients** : Par nom, prénom, téléphone
+- **Adresses** : API gouvernementale française (api-adresse.data.gouv.fr) - gratuite, sans clé
 
 ## 🏗️ Architecture Technique
 
@@ -119,48 +60,68 @@ Application de caisse moderne pour salon de coiffure et barbier, développée av
 - **Vue 3** - Framework progressif
 - **TypeScript** - Typage fort
 - **TailwindCSS v4** - Styling utility-first
-- **Vite** - Build tool rapide
+- **Vite** - Build tool
+- **Supabase** - Backend as a Service (PostgreSQL, Auth, Realtime)
 - **Lucide Vue** - Icônes SVG
 
-### Structure SOLID
+### Structure du projet
 
 ```
 src/
-├── components/              # Single Responsibility
-│   ├── AppHeader.vue       # En-tête avec vendeur
-│   ├── TicketPanel.vue     # Ticket et paiement
-│   ├── ServiceGrid.vue     # Grille des services
-│   ├── ServiceCard.vue     # Carte de service
-│   └── ClientPanel.vue     # Formulaire client
+├── components/           # Composants réutilisables
+│   ├── AppHeader.vue     # En-tête + vendeur + navigation
+│   ├── TicketPanel.vue   # Panier + paiement
+│   ├── ServiceGrid.vue   # Grille des services
+│   ├── ServiceCard.vue    # Carte de service
+│   ├── ClientPanel.vue    # Formulaire client
+│   ├── CartPanel.vue      # Panier (mode alternatif)
+│   └── LoyaltyCard.vue    # Carte fidélité
 │
-├── composables/            # Dependency Inversion
-│   ├── useCart.ts          # Logique panier
-│   ├── useClient.ts        # Logique client
-│   ├── useVendor.ts        # Logique vendeur
-│   └── useAddressAutocomplete.ts  # API adresses
+├── pages/                # Pages de l'application
+│   ├── CaissePage.vue     # Page principale caisse
+│   ├── ClientsPage.vue    # Gestion clients
+│   ├── HistoriquePage.vue # Historique des ventes
+│   ├── StockPage.vue      # Gestion stock
+│   ├── StatistiquesPage.vue
+│   ├── TiroirCaissePage.vue
+│   ├── ParametresPage.vue
+│   └── CommandePage.vue
 │
-├── types/                  # Interface Segregation
-│   └── index.ts            # Types TypeScript
+├── composables/          # Logique métier
+│   ├── useCart.ts        # Panier
+│   ├── useSales.ts       # Ventes (Supabase)
+│   ├── useProducts.ts    # Produits (Supabase)
+│   ├── useClients.ts     # Clients (Supabase)
+│   ├── useClient.ts      # Client courant
+│   ├── useVendor.ts      # Vendeurs
+│   ├── useLoyalty.ts     # Fidélité
+│   ├── useStock.ts       # Stock
+│   ├── useCashRegister.ts # Tiroir de caisse
+│   ├── useAuth.ts        # Authentification
+│   ├── useTheme.ts       # Thème clair/sombre
+│   └── useAddressAutocomplete.ts
 │
-├── data/
-│   └── services.ts         # Données des services
+├── lib/                  # Bibliothèques
+│   └── supabase.ts       # Client Supabase
 │
-└── style.css               # Styles globaux
+├── types/                # Types TypeScript
+│   ├── database.ts       # Types Supabase
+│   └── index.ts          # Types métier
+│
+├── router/               # Vue Router
+└── style.css             # Styles globaux
 ```
-
-### Principes SOLID Appliqués
-
-1. **Single Responsibility** : Chaque composant a une seule responsabilité
-2. **Open/Closed** : Composants extensibles via props et slots
-3. **Liskov Substitution** : Types cohérents et interchangeables
-4. **Interface Segregation** : Composables séparés par domaine
-5. **Dependency Inversion** : Injection via composables
 
 ## 🚀 Installation & Lancement
 
 ```bash
 # Installation des dépendances
 npm install
+
+# Configuration Supabase
+# Créez un fichier .env à la racine avec :
+# VITE_SUPABASE_URL=https://xxx.supabase.co
+# VITE_SUPABASE_ANON_KEY=eyJ...
 
 # Lancement du serveur de développement
 npm run dev
@@ -171,50 +132,30 @@ npm run build
 
 L'application sera accessible sur : `http://localhost:5173/`
 
-## 📦 Dépendances
+## 📦 Configuration
 
-```json
-{
-  "dependencies": {
-    "vue": "^3.5.24",
-    "lucide-vue-next": "latest"
-  },
-  "devDependencies": {
-    "@tailwindcss/postcss": "latest",
-    "tailwindcss": "latest",
-    "typescript": "~5.9.3",
-    "vite": "^7.2.4",
-    "@vitejs/plugin-vue": "^6.0.1"
-  }
-}
+### Supabase
+Voir `SUPABASE-SETUP.md` pour la configuration complète de la base de données.
+
+### Migration des données
+```bash
+# Migration complète (clients, produits, ventes)
+npm run migrate
+
+# Migration à partir des ventes uniquement
+npm run migrate:from-sales
+
+# Simulation (sans exécuter)
+npm run migrate:dry
 ```
 
 ## 🎯 Fonctionnalités à Venir
 
-- [ ] Base de données clients persistante
-- [ ] Historique des transactions
-- [ ] Statistiques et rapports
+- [ ] Conformité NF525 complète
+- [ ] Impression thermique
+- [ ] Scanner code-barres
 - [ ] Planning des rendez-vous
-- [ ] Impression de tickets
-- [ ] Export comptable
-- [ ] Multi-devises
 - [ ] Mode hors-ligne (PWA)
-
-## 🔧 Configuration
-
-### API Adresse Gouvernement
-L'autocomplétion utilise l'API publique gratuite :
-- **URL** : `https://api-adresse.data.gouv.fr`
-- **Documentation** : https://adresse.data.gouv.fr/api-doc/adresse
-- **Aucune clé API requise**
-- **Données officielles** de la Base Adresse Nationale
-
-### Services
-Les services sont configurables dans `src/data/services.ts` :
-- Prix
-- Durée
-- Catégorie
-- Nom et description
 
 ## 📝 License
 

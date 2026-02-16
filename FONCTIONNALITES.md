@@ -89,12 +89,9 @@ Résultats :
 - ✅ Autocomplétion avec liste de suggestions
 - ✅ Clic pour remplir automatiquement le formulaire
 - ✅ Recherche dès 2 caractères
-- ✅ Clients mockés (à remplacer par vraie API)
-
-**Clients de test :**
-- Jean Dupont - 06 12 34 56 78
-- Marie Martin - 06 98 76 54 32
-- Pierre Bernard - 07 11 22 33 44
+- ✅ Clients chargés depuis Supabase (base de données réelle)
+- ✅ Historique des achats par client
+- ✅ Points de fidélité (carte tampons)
 
 ---
 
@@ -126,8 +123,16 @@ Résultats :
 #### 1. Single Responsibility ✅
 Chaque composant/fichier a une seule responsabilité :
 - `useCart` → Gestion du panier
-- `useClient` → Gestion des clients
+- `useSales` → Ventes (Supabase)
+- `useProducts` → Produits (Supabase)
+- `useClients` → Clients (Supabase)
+- `useClient` → Client courant
 - `useVendor` → Gestion des vendeurs
+- `useLoyalty` → Fidélité (carte tampons)
+- `useStock` → Stock
+- `useCashRegister` → Tiroir de caisse
+- `useAuth` → Authentification
+- `useTheme` → Thème clair/sombre
 - `useAddressAutocomplete` → API adresses
 
 #### 2. Open/Closed ✅
@@ -199,6 +204,7 @@ Chaque composant/fichier a une seule responsabilité :
 | TypeScript | ~5.9.3 | Typage fort |
 | TailwindCSS | v4 | Styling utility-first |
 | Vite | 7.2.4 | Build tool |
+| Supabase | 2.x | Backend (PostgreSQL, Auth) |
 | Lucide Vue | latest | Icônes SVG |
 | API Adresse FR | - | Autocomplétion gratuite |
 
@@ -300,23 +306,24 @@ Large: 2rem (8)
 
 ## 🔮 Améliorations Futures
 
-### Court terme
-- [ ] Connexion à une vraie base de données
-- [ ] Système d'authentification
-- [ ] Impression de tickets PDF
-- [ ] Export des transactions
+### ✅ Réalisé
+- [x] Connexion Supabase (PostgreSQL)
+- [x] Authentification
+- [x] Page Clients avec historique achats
+- [x] Page Historique des ventes
+- [x] Page Stock
+- [x] Page Statistiques
+- [x] Page Tiroir de caisse
+- [x] Programme de fidélité (carte tampons)
+- [x] Thème sombre
+- [x] American Express
 
-### Moyen terme
-- [ ] Application mobile (Capacitor/Ionic)
+### À venir
+- [ ] Conformité NF525 complète
+- [ ] Impression thermique
+- [ ] Scanner code-barres
 - [ ] Mode hors-ligne (PWA)
-- [ ] Statistiques et graphiques
 - [ ] Planning des rendez-vous
-
-### Long terme
-- [ ] Multi-établissements
-- [ ] Programme de fidélité
-- [ ] Gestion des stocks
-- [ ] Comptabilité intégrée
 
 ---
 
@@ -369,64 +376,37 @@ Large: 2rem (8)
 
 ## 📊 État du Projet
 
-### Phase 0 : Audit Technique ✅ TERMINÉ
-**Date :** 29 janvier 2026
+### ✅ Réalisé
+- **Backend** : Supabase (PostgreSQL)
+- **Caisse** : Page fonctionnelle avec ventes persistées
+- **Clients** : Page complète avec historique et fidélité
+- **Historique** : Liste des ventes, modification paiement
+- **Stock** : Gestion produits et mouvements
+- **Statistiques** : Graphiques et indicateurs
+- **Tiroir de caisse** : Ouverture/fermeture, mouvements
+- **Paramètres** : Configuration
+- **Commande** : Page commandes fournisseurs
+- **Thème sombre** : Bascule clair/sombre
+- **Moyens de paiement** : + American Express
 
-✅ Audit technique complet réalisé  
-✅ Roadmap détaillée créée  
-✅ Architecture définie  
-✅ Estimation budgétaire et temporelle  
-
-**Documents créés :**
-- `AUDIT-TECHNIQUE.md` - Analyse approfondie de l'existant
-- `ROADMAP.md` - Plan de développement sur 3 phases
-- `NEXT-STEPS.md` - Guide de démarrage Phase 1
-
-### Phase 1 : Backend + Caisse Finalisée 🔄 EN ATTENTE
-**Durée estimée :** 4-6 semaines  
-**Objectif :** Page de caisse 100% fonctionnelle avec backend
-
-**Tâches principales :**
-- [ ] Setup backend (Express + TypeScript + PostgreSQL + Prisma)
-- [ ] API REST avec authentification JWT
-- [ ] Calculs HT/TVA/TTC
-- [ ] Système de codes produits (1V, 2B, etc.)
-- [ ] Gestion stock automatique
-- [ ] Tests complets
-
-### Phase 2 : Modules Complémentaires ⏳ PLANIFIÉ
-**Durée estimée :** 4-6 semaines
-
-Modules : Stock, Clients, Historique, Commandes, Inventaire
-
-### Phase 3 : Avancé + NF525 ⏳ PLANIFIÉ
-**Durée estimée :** 4-6 semaines
-
-Modules : Fidélité, Statistiques, Tiroir de caisse, Paramètres, NF525
+### À venir
+- Conformité NF525 complète
+- Impression thermique
+- Scanner code-barres
 
 ---
 
 ## 📁 Documentation Projet
 
-### Documents Techniques
+### Documents techniques
 - `README.md` - Présentation générale
-- `FONCTIONNALITES.md` - Ce fichier (fonctionnalités et état)
-- `AUDIT-TECHNIQUE.md` - Audit complet de l'existant
-- `ROADMAP.md` - Plan de développement détaillé
-- `NEXT-STEPS.md` - Guide de démarrage Phase 1
-
-### À Créer (Phase 1+)
-- `DATABASE.md` - Schéma de base de données
-- `API.md` - Documentation API REST
-- `DEPLOYMENT.md` - Guide de déploiement
-- `NF525.md` - Conformité fiscale
-- `USER-GUIDE.md` - Guide utilisateur
+- `FONCTIONNALITES.md` - Ce fichier
+- `SUPABASE-SETUP.md` - Configuration Supabase
+- `MIGRATION-README.md` - Guide migration données
 
 ---
 
-**Date de création maquette :** 2 décembre 2025  
-**Date audit technique :** 29 janvier 2026  
-**Version actuelle :** 1.0.0-alpha (Maquette fonctionnelle)  
-**Prochaine version :** 1.1.0-beta (Phase 1 complète)  
+**Dernière mise à jour :** Janvier 2026  
+**Version actuelle :** Application fonctionnelle avec Supabase  
 **Status :** 🔄 En développement actif
 

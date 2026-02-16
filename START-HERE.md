@@ -44,17 +44,15 @@ Ce document vous aide à démarrer rapidement selon votre rôle.
    - Forces et faiblesses
    - Recommandations techniques
 
-3. **`ROADMAP.md`** (30 min)
-   - Plan détaillé des 3 phases
-   - Architecture proposée
-   - Tâches détaillées
+3. **`SUPABASE-SETUP.md`** (30 min)
+   - Configuration Supabase
+   - Schéma de base de données
 
-4. **`NEXT-STEPS.md`** (20 min)
-   - Guide pas à pas Phase 1
-   - Code d'exemple prêt à copier
-   - Commandes à exécuter
+4. **`README.md`** (10 min)
+   - Structure du code
+   - Comment lancer l'application
 
-**🚀 Puis :** Commencez Phase 1 !
+**🚀 Puis :** `npm run dev` pour démarrer !
 
 ---
 

@@ -7,9 +7,8 @@
 ## 🎯 EN BREF
 
 ```
-ÉTAT ACTUEL : 30% (Maquette fonctionnelle)
-PROCHAINE ÉTAPE : Phase 1 (Backend + Caisse)
-LIVRAISON FINALE : Août 2026
+ÉTAT ACTUEL : ~80% (Application fonctionnelle avec Supabase)
+PROCHAINE ÉTAPE : NF525, impression, scanner
 ```
 
 ---
@@ -20,9 +19,7 @@ LIVRAISON FINALE : Août 2026
 |--------|---------|-------|-------|
 | 🆕 **JE DÉMARRE** | START-HERE.md | 4 | 5 min |
 | 💼 **Infos client/commercial** | PRESENTATION-CLIENT.md | 32 | 20 min |
-| 🛠️ **Comprendre le code actuel** | AUDIT-TECHNIQUE.md | 47 | 45 min |
-| 🗺️ **Voir le plan complet** | ROADMAP.md | 56 | 30 min |
-| 🚀 **Démarrer Phase 1** | NEXT-STEPS.md | 42 | 30 min |
+| 🛠️ **Configuration Supabase** | SUPABASE-SETUP.md | - | 30 min |
 | 📖 **Vue d'ensemble** | README-PROJET.md | 10 | 10 min |
 | ✅ **Fonctionnalités existantes** | FONCTIONNALITES.md | 25 | 15 min |
 | 📝 **Historique** | CHANGELOG.md | 12 | 10 min |
@@ -48,56 +45,33 @@ TOTAL : 6 000€
 ## 📅 PLANNING
 
 ```
-✅ Jan 2026    Phase 0 : Audit TERMINÉ
-⏳ Fév-Mar     Phase 1 : Backend + Caisse (4-6 sem)
-⏳ Avr-Mai     Phase 2 : Modules Gestion (4-6 sem)
-⏳ Juin-Juil   Phase 3 : Avancé + NF525 (4-6 sem)
-✅ Août 2026   Production
+✅ Phase 0 : Audit TERMINÉ
+✅ Supabase + Caisse + Clients + Historique TERMINÉ
+✅ Stock + Stats + Tiroir + Paramètres TERMINÉ
+⏳ NF525 + Impression + Scanner À VENIR
 ```
 
 ---
 
-## 🎯 LES 3 PHASES
+## 🎯 ÉTAT DES MODULES
 
-### Phase 1 : Backend + Caisse Finalisée
-```
-✅ LIVRABLE : Caisse utilisable tous les jours
-💰 800€
+### ✅ Réalisé
+- Supabase (PostgreSQL)
+- Caisse (ventes persistées)
+- Clients (historique, fidélité)
+- Historique des ventes
+- Stock
+- Statistiques
+- Tiroir de caisse
+- Paramètres
+- Commande
+- Thème sombre
+- American Express
 
-Backend API REST ✓
-PostgreSQL + Prisma ✓
-Authentification JWT ✓
-Calculs HT/TVA/TTC ✓
-Codes produits (1V, 2B) ✓
-Gestion stock ✓
-Enregistrement ventes BDD ✓
-```
-
-### Phase 2 : Modules Complémentaires
-```
-✅ LIVRABLE : Gestion complète du salon
-💰 850€
-
-Module Clients ✓
-Module Stock ✓
-Module Commandes ✓
-Module Historique ✓
-Module Inventaire ✓
-```
-
-### Phase 3 : Avancé + NF525
-```
-✅ LIVRABLE : App complète certifiable
-💰 850€
-
-Module Fidélité ✓
-Module Statistiques ✓
-Module Tiroir de caisse ✓
-Module Paramètres ✓
-Conformité NF525 ✓
-Imprimante thermique ✓
-Scanner code-barres ✓
-```
+### ⏳ À venir
+- Conformité NF525 complète
+- Impression thermique
+- Scanner code-barres
 
 ---
 

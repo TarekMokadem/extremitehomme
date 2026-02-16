@@ -4,7 +4,7 @@
 **Client :** Extrémités Homme (Salon de coiffure)  
 **Budget :** 6 000€  
 **Durée :** 6-7 mois (Janvier - Août 2026)  
-**Statut :** 🔄 Phase 0 terminée, Phase 1 à démarrer
+**Statut :** 🔄 Application fonctionnelle avec Supabase
 
 ---
 
@@ -13,11 +13,11 @@
 Refonte complète d'une application de caisse obsolète en une solution moderne, sécurisée et conforme NF525.
 
 **État actuel :**
-- ✅ 30% fait : Maquette frontend moderne (Vue 3 + TypeScript)
-- ⏳ 70% à faire : Backend, BDD, modules avancés, NF525
-
-**Prochaine étape :**
-→ Démarrer Phase 1 (Backend + Caisse finalisée)
+- ✅ Backend : Supabase (PostgreSQL)
+- ✅ Caisse : Ventes persistées
+- ✅ Clients : Page complète + historique + fidélité
+- ✅ Historique, Stock, Statistiques, Tiroir de caisse
+- ⏳ À venir : NF525, impression thermique, scanner
 
 ---
 
@@ -31,16 +31,16 @@ Refonte complète d'une application de caisse obsolète en une solution moderne,
 ├── 📄 FONCTIONNALITES.md           # Liste des fonctionnalités + état
 ├── 📄 CHANGELOG.md                 # Historique des changements
 │
-├── 🔍 AUDIT-TECHNIQUE.md           # Audit complet (47 pages)
-├── 🗺️ ROADMAP.md                   # Plan détaillé 3 phases (56 pages)
-├── 🚀 NEXT-STEPS.md                # Guide Phase 1 (42 pages)
-├── 💼 PRESENTATION-CLIENT.md       # Document commercial (32 pages)
+├── 📘 SUPABASE-SETUP.md            # Configuration Supabase
+├── 📘 MIGRATION-README.md          # Guide migration données
+├── 💼 PRESENTATION-CLIENT.md       # Document commercial
 │
-└── 📁 src/                         # Code source (maquette actuelle)
-    ├── components/                 # 7 composants Vue
-    ├── composables/                # 4 composables métier
-    ├── types/                      # Types TypeScript
-    └── data/                       # Données mockées
+└── 📁 src/                         # Code source
+    ├── components/                 # Composants Vue
+    ├── pages/                      # 8 pages (Caisse, Clients, etc.)
+    ├── composables/                # Logique métier (Supabase)
+    ├── lib/                        # Supabase client
+    └── types/                      # Types TypeScript
 ```
 
 ---
@@ -74,20 +74,11 @@ Application moderne en 3 phases :
 ## 📅 PLANNING
 
 ```
-├─ Phase 0 : Audit (1 semaine)          ✅ TERMINÉ
-│  └─ 29 janvier 2026
-│
-├─ Phase 1 : Backend + Caisse (4-6 sem) ⏳ À DÉMARRER
-│  ├─ Février-Mars 2026
-│  └─ Livrable : Caisse utilisable
-│
-├─ Phase 2 : Modules Gestion (4-6 sem)  ⏳ PLANIFIÉ
-│  ├─ Avril-Mai 2026
-│  └─ Livrable : Gestion complète
-│
-└─ Phase 3 : Avancé + NF525 (4-6 sem)   ⏳ PLANIFIÉ
-   ├─ Juin-Juillet 2026
-   └─ Livrable : App complète + conforme
+├─ Phase 0 : Audit                    ✅ TERMINÉ
+├─ Intégration Supabase              ✅ TERMINÉ
+├─ Caisse + Clients + Historique     ✅ TERMINÉ
+├─ Stock + Stats + Tiroir            ✅ TERMINÉ
+└─ NF525 + Impression + Scanner      ⏳ À VENIR
 ```
 
 ---
@@ -115,48 +106,43 @@ Application moderne en 3 phases :
 - Vite 7.2.4
 - Lucide Icons
 
-### Backend (À créer - Phase 1)
-- Node.js + Express
-- TypeScript
-- PostgreSQL 16
-- Prisma ORM
-- JWT (authentification)
-
-### Tests (À créer)
-- Vitest (unitaires)
-- Cypress (E2E)
+### Backend (Supabase)
+- Supabase (PostgreSQL)
+- Authentification Supabase
+- Données persistées
 
 ---
 
 ## 📊 AVANCEMENT
 
-### Maquette Actuelle (30%)
-✅ Design moderne et responsive  
-✅ 7 composants Vue fonctionnels  
-✅ 4 composables métier  
-✅ Recherche et autocomplétion  
-✅ Calculs panier basiques  
+### Réalisé (~80%)
+✅ Backend Supabase (PostgreSQL)  
+✅ Page Caisse avec ventes persistées  
+✅ Page Clients (historique, fidélité)  
+✅ Page Historique des ventes  
+✅ Page Stock  
+✅ Page Statistiques  
+✅ Page Tiroir de caisse  
+✅ Page Paramètres  
+✅ Page Commande  
+✅ Thème sombre  
+✅ American Express  
 
-### À Développer (70%)
-❌ Backend complet  
-❌ Base de données  
-❌ Calculs HT/TVA/TTC détaillés  
-❌ Gestion stock  
-❌ Historique et rapports  
-❌ Statistiques  
-❌ Conformité NF525  
-❌ Impression thermique  
+### À venir
+⏳ Conformité NF525 complète  
+⏳ Impression thermique  
+⏳ Scanner code-barres  
 
 ---
 
 ## 📚 DOCUMENTATION DÉTAILLÉE
 
-### Pour Démarrer le Développement
-1. **AUDIT-TECHNIQUE.md** - Comprendre l'existant
-2. **ROADMAP.md** - Voir le plan complet
-3. **NEXT-STEPS.md** - Démarrer Phase 1
+### Pour le développement
+1. **README.md** - Présentation technique
+2. **SUPABASE-SETUP.md** - Configuration Supabase
+3. **MIGRATION-README.md** - Migration des données
 
-### Pour le Client
+### Pour le client
 1. **PRESENTATION-CLIENT.md** - Vue d'ensemble commerciale
 2. **FONCTIONNALITES.md** - Liste des fonctionnalités
 
@@ -167,36 +153,18 @@ Application moderne en 3 phases :
 
 ## 🚀 DÉMARRAGE RAPIDE
 
-### Phase 1 - Première Tâche
-
 ```bash
-# 1. Créer dossier backend
-mkdir backend
-cd backend
+# Installation
+npm install
 
-# 2. Initialiser npm
-npm init -y
+# Configuration Supabase
+# Créer .env avec VITE_SUPABASE_URL et VITE_SUPABASE_ANON_KEY
 
-# 3. Installer dépendances
-npm install express @prisma/client cors helmet dotenv
-npm install -D typescript @types/node @types/express prisma tsx
-
-# 4. Setup PostgreSQL (Docker)
-# Voir NEXT-STEPS.md section 1.4
-
-# 5. Configuration Prisma
-npx prisma init
-
-# 6. Créer schéma BDD
-# Copier depuis NEXT-STEPS.md section 1.5
-
-# 7. Migration
-npx prisma migrate dev --name init
+# Lancer l'application
+npm run dev
 ```
 
-**Durée estimée :** 2-3 heures
-
-**Documentation complète :** Voir `NEXT-STEPS.md`
+**Documentation :** Voir `SUPABASE-SETUP.md`
 
 ---
 
@@ -229,7 +197,7 @@ npx prisma migrate dev --name init
 - [Vue 3 Docs](https://vuejs.org/)
 - [TypeScript Handbook](https://www.typescriptlang.org/docs/)
 - [TailwindCSS v4](https://tailwindcss.com/)
-- [Prisma Docs](https://www.prisma.io/docs)
+- [Supabase Docs](https://supabase.com/docs)
 
 ### APIs Utilisées
 - [API Adresse Data.gouv.fr](https://adresse.data.gouv.fr/api-doc/adresse)
@@ -251,10 +219,9 @@ npx prisma migrate dev --name init
 ## 📝 NOTES IMPORTANTES
 
 ### Décisions Techniques Clés
-- Backend séparé (API REST) pour flexibilité
+- Supabase (Backend as a Service) pour rapidité
 - PostgreSQL pour conformité NF525
-- JWT pour authentification
-- Prisma pour génération types automatique
+- Authentification Supabase
 
 ### Risques Identifiés
 - Migration données anciennes (complexité inconnue)
@@ -283,24 +250,18 @@ Avant de commencer Phase 1 :
 
 ## 🎉 ÉTAT ACTUEL
 
-**Phase 0 : TERMINÉE ✅**
+**Application fonctionnelle ✅**
 
-**Livrables Phase 0 :**
-- ✅ 6 documents techniques (200+ pages)
-- ✅ Audit complet de l'existant
-- ✅ Roadmap détaillée 3 phases
-- ✅ Architecture définie
-- ✅ Schéma BDD proposé
-- ✅ Code d'exemple pour Phase 1
-- ✅ Document présentation client
-- ✅ Checklist complète
+- ✅ Supabase intégré
+- ✅ 8 pages opérationnelles
+- ✅ Ventes, clients, stock, historique, stats, tiroir
+- ✅ Fidélité clients
+- ✅ Thème sombre
 
-**Prochaine Étape :**
-→ Valider avec client  
-→ Démarrer Phase 1
+**Prochaines étapes :**
+→ NF525, impression thermique, scanner
 
 ---
 
-**Dernière mise à jour :** 29 janvier 2026  
-**Version :** 1.0.0-alpha (Maquette + Audit)  
-**Prochain jalon :** Phase 1 (Mars 2026)
+**Dernière mise à jour :** Janvier 2026  
+**Version :** 1.1.0 (Application fonctionnelle)

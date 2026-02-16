@@ -4,6 +4,45 @@ Historique des changements et évolutions du projet.
 
 ---
 
+## [1.1.0] - 2026-01-29 (Mise à jour documentation)
+
+### 📚 Documentation
+- Suppression de `NEXT-STEPS.md` (obsolète - proposait Prisma/Express, projet utilise Supabase)
+- Suppression de `PHASE0-DELIVERABLES.md` (archivé)
+- Mise à jour `README.md` : état actuel, Supabase, toutes les pages, American Express
+- Mise à jour `FONCTIONNALITES.md` : modules réalisés, technologies, état du projet
+
+---
+
+## [1.0.0] - Janvier 2026
+
+### ✅ Intégration Supabase
+- Backend Supabase (PostgreSQL)
+- Ventes persistées en base
+- Produits et catégories depuis Supabase
+- Clients depuis Supabase
+
+### ✅ Nouvelles pages
+- **Clients** : Liste, fiche détaillée, historique achats, fidélité
+- **Historique** : Liste des ventes, modification paiement
+- **Stock** : Gestion produits, variantes, mouvements
+- **Statistiques** : Graphiques et indicateurs
+- **Tiroir de caisse** : Ouverture/fermeture, mouvements
+- **Paramètres** : Configuration
+- **Commande** : Commandes fournisseurs
+
+### ✅ Fonctionnalités
+- Thème sombre (bascule clair/sombre)
+- American Express ajouté aux moyens de paiement
+- Carte fidélité (points tampons)
+- Historique achats client avec détail produits/services
+- Migration des données (scripts SQL)
+
+### 🗑️ Nettoyage
+- Suppression fichiers obsolètes (HelloWorld.vue, react.svg, services.ts, index.css)
+
+---
+
 ## [Phase 0] - 2026-01-29
 
 ### 🎯 Phase 0 : Audit Technique Complet - TERMINÉ ✅
@@ -50,21 +89,6 @@ Historique des changements et évolutions du projet.
   - Support et maintenance
   - Métriques de succès
   - Checklist finale
-
-- ✅ **NEXT-STEPS.md** (42 pages)
-  - Guide de démarrage Phase 1
-  - Setup backend pas à pas
-  - Installation PostgreSQL
-  - Configuration Prisma
-  - Structure du projet backend
-  - Code d'exemple (API, controllers, routes)
-  - Authentification JWT
-  - Intégration frontend
-  - Refactorisation useCart avec HT/TVA/TTC
-  - Affichage détaillé TVA
-  - Tests Phase 1
-  - Checklist complète
-  - Questions à poser au client
 
 - ✅ **PRESENTATION-CLIENT.md** (32 pages)
   - Document commercial pour le client
@@ -122,17 +146,10 @@ Historique des changements et évolutions du projet.
 - ✅ Document de présentation client
 - ✅ Checklist complète pour démarrage
 
-**Décisions Techniques :**
-- Backend : Node.js + Express + TypeScript
-- BDD : PostgreSQL 16
-- ORM : Prisma
-- Auth : JWT
-- Validation : Zod
-- Tests : Vitest + Cypress
-
-**Prochaine Étape :**
-→ Valider roadmap et présentation avec client  
-→ Démarrer Phase 1 : Setup backend
+**Décisions Techniques (Phase 0 - révisées) :**
+- Backend : **Supabase** (choisi en lieu de Express/Prisma)
+- BDD : PostgreSQL (via Supabase)
+- Auth : Supabase Auth
 
 ---
 
@@ -212,15 +229,14 @@ Historique des changements et évolutions du projet.
 - autocompletion-services.png
 - flux-complet-reduction-pourcent.png
 
-#### ⚠️ Limitations
-- Données mockées (non persistantes)
-- Pas de backend
-- Pas de base de données
-- Calculs TVA non détaillés
-- Pas de gestion stock
-- Pas d'historique
-- Pas de statistiques
-- Pas de NF525
+#### ⚠️ Limitations (résolues en v1.0.0)
+- ~~Données mockées~~ → Supabase
+- ~~Pas de backend~~ → Supabase
+- ~~Pas de base de données~~ → PostgreSQL (Supabase)
+- ~~Pas de gestion stock~~ → Page Stock
+- ~~Pas d'historique~~ → Page Historique
+- ~~Pas de statistiques~~ → Page Statistiques
+- Pas de NF525 (à venir)
 
 ---
 
@@ -265,19 +281,16 @@ Historique des changements et évolutions du projet.
 
 ## 📊 Métriques du Projet
 
-### État Actuel (29/01/2026)
-- **Avancement global :** 30%
-- **Phase 0 :** 100% ✅
-- **Phase 1 :** 0%
-- **Phase 2 :** 0%
-- **Phase 3 :** 0%
+### État Actuel (Janvier 2026)
+- **Avancement global :** ~80%
+- **Backend :** Supabase intégré ✅
+- **Pages :** Caisse, Clients, Historique, Stock, Stats, Tiroir, Paramètres, Commande ✅
+- **À venir :** NF525, impression, scanner
 
-### Code Stats (Maquette)
-- **Composants Vue :** 7 fichiers
-- **Composables :** 4 fichiers
-- **Types TypeScript :** 1 fichier
-- **Lignes de code (frontend) :** ~2500 lignes
-- **Lignes de code (backend) :** 0 (à créer)
+### Code Stats
+- **Composants Vue :** 7+ composants
+- **Pages :** 8 pages
+- **Composables :** 12+ (useSales, useProducts, useClients, useLoyalty, useStock, etc.)
 
 ### Documentation Stats
 - **Documents techniques :** 6 fichiers
@@ -332,5 +345,4 @@ Historique des changements et évolutions du projet.
 
 ---
 
-**Dernière mise à jour :** 29 janvier 2026  
-**Prochaine mise à jour :** Fin Phase 1 (estimé Mars 2026)
+**Dernière mise à jour :** Janvier 2026

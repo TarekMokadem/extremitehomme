@@ -35,7 +35,7 @@
 |---------|-------------|-------|----------|
 | **AUDIT-TECHNIQUE.md** | Analyse complète de l'existant | 47 | Dev |
 | **ROADMAP.md** | Plan détaillé 3 phases | 56 | Dev |
-| **NEXT-STEPS.md** | Guide démarrage Phase 1 | 42 | Dev |
+| **SUPABASE-SETUP.md** | Configuration Supabase | - | Dev |
 | README.md | Doc technique du code actuel | 10 | Dev |
 | README-PROJET.md | Vue d'ensemble projet | 10 | Tous |
 

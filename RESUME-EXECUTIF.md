@@ -16,52 +16,43 @@ Transformation d'une ancienne application de caisse obsolète en une solution mo
 
 ## 📊 ÉTAT ACTUEL
 
-### ✅ Ce qui est fait (30%)
-- Maquette frontend moderne et responsive
-- Interface utilisateur professionnelle
-- Recherche et autocomplétion fonctionnelles
-- Calculs de base (panier, réductions)
+### ✅ Ce qui est fait (~80%)
+- Application fonctionnelle avec Supabase (PostgreSQL)
+- Page Caisse : ventes persistées
+- Page Clients : historique achats, fidélité
+- Page Historique des ventes
+- Page Stock
+- Page Statistiques
+- Page Tiroir de caisse
+- Page Paramètres
+- Page Commande
+- Thème sombre
+- American Express
 
-### ❌ Ce qui manque (70%)
-- Backend et base de données
-- Enregistrement permanent des données
-- Gestion complète du stock
-- Historique et statistiques
-- Conformité fiscale NF525
+### ⏳ Ce qui reste
+- Conformité NF525 complète
+- Impression thermique
+- Scanner code-barres
 
 ---
 
-## 🗺️ PLAN D'ACTION - 3 PHASES
+## 🗺️ RÉALISATIONS
 
-### Phase 1 : Caisse Fonctionnelle (Mars 2026)
-**💰 800€** | **⏱️ 4-6 semaines**
-
-Livrable : Page de caisse 100% utilisable tous les jours
-- Backend API REST sécurisé
-- Base de données PostgreSQL
-- Calculs HT/TVA/TTC détaillés
-- Enregistrement automatique des ventes
-- Gestion stock en temps réel
-
-### Phase 2 : Gestion Complète (Mai 2026)
-**💰 850€** | **⏱️ 4-6 semaines**
-
-Livrable : Application de gestion complète du salon
-- Module Clients (historique, stats)
-- Module Stock (alertes, inventaire)
-- Module Commandes fournisseurs
+### ✅ Réalisé
+- Supabase (PostgreSQL) intégré
+- Caisse fonctionnelle avec ventes persistées
+- Module Clients (historique, stats, fidélité)
+- Module Stock
 - Module Historique des ventes
-- Exports et rapports
-
-### Phase 3 : Application Complète (Juillet 2026)
-**💰 850€** | **⏱️ 4-6 semaines**
-
-Livrable : Solution professionnelle certifiable NF525
-- Fidélité clients automatisée
-- Statistiques avec graphiques
+- Module Statistiques
 - Tiroir de caisse
-- Conformité fiscale NF525
-- Impression thermique + Scanner
+- Paramètres
+- Commandes fournisseurs
+
+### ⏳ À venir
+- Conformité NF525 complète
+- Impression thermique
+- Scanner code-barres
 
 ---
 
@@ -122,11 +113,10 @@ Livrable : Solution professionnelle certifiable NF525
 
 ## 🚀 PROCHAINES ÉTAPES
 
-1. ✅ Valider cette présentation
-2. ✅ Confirmer le planning
-3. ✅ Choisir hébergement (local recommandé)
-4. ✅ Donner accès ancienne application
-5. 🔄 Démarrer Phase 1 (Février 2026)
+1. ✅ Application fonctionnelle
+2. 🔄 Conformité NF525
+3. 🔄 Impression thermique
+4. 🔄 Scanner code-barres
 
 ---
 
