@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
-import { Scissors, ChevronDown, LayoutGrid, History, Users, Wallet, BarChart3, Settings, Package, ClipboardList, Sun, Moon } from 'lucide-vue-next';
+import { Scissors, ChevronDown, LayoutGrid, History, Users, Wallet, BarChart3, Settings, Package, ClipboardList, Sun, Moon, FileText } from 'lucide-vue-next';
 import { useAuth } from '../composables/useAuth';
 import type { Vendor } from '../types/database';
 import { useTheme } from '../composables/useTheme';
@@ -14,19 +14,28 @@ const route = useRoute();
 const { vendor: currentVendor, loadVendors, setActiveVendor } = useAuth();
 const { isDark, toggleTheme } = useTheme();
 
-// Navigation
+// Navigation (Tiroir et Fin de journée regroupés dans "Caisse")
 const navItems = [
   { path: '/', name: 'caisse', label: 'Caisse', icon: LayoutGrid },
   { path: '/historique', name: 'historique', label: 'Historique', icon: History },
   { path: '/clients', name: 'clients', label: 'Clients', icon: Users },
   { path: '/stock', name: 'stock', label: 'Stock', icon: Package },
   { path: '/commande', name: 'commande', label: 'Commande', icon: ClipboardList },
-  { path: '/tiroir', name: 'tiroir', label: 'Tiroir', icon: Wallet },
+  {
+    group: 'caisse',
+    label: 'Caisse',
+    icon: Wallet,
+    items: [
+      { path: '/tiroir', name: 'tiroir', label: 'Tiroir de caisse', icon: Wallet },
+      { path: '/fin-de-journee', name: 'fin-de-journee', label: 'Fin de journée', icon: FileText },
+    ],
+  },
   { path: '/stats', name: 'stats', label: 'Stats', icon: BarChart3 },
   { path: '/parametres', name: 'parametres', label: 'Paramètres', icon: Settings },
 ];
 
 // State
+const showCaisseMenu = ref(false);
 const currentDate = ref('');
 const currentTime = ref('');
 const showVendorMenu = ref(false);
@@ -64,6 +73,9 @@ const selectVendor = (vendor: Vendor): void => {
   showVendorMenu.value = false;
 };
 
+// Fermer le menu Caisse quand on clique ailleurs
+const closeCaisseMenu = () => { showCaisseMenu.value = false; };
+
 // Lifecycle hooks
 onMounted(async () => {
   updateClock();
@@ -90,29 +102,74 @@ onUnmounted(() => {
         </div>
         <div>
           <h1 class="text-sm md:text-lg font-semibold tracking-tight leading-tight">
-            EXTRÉMITÉS <span class="font-normal text-gray-300 hidden sm:inline">HOMME</span>
+            EXTRÉMITÉS <span class="font-normal text-gray-300 hidden sm:inline">HOMMES</span>
           </h1>
-          <p class="text-[10px] md:text-[11px] text-gray-400 uppercase tracking-widest mt-0.5 hidden sm:block">Coiffeur · Barbier</p>
+          <p class="text-[10px] md:text-[11px] text-gray-400 uppercase tracking-widest mt-0.5 hidden sm:block">Chausseur · Coiffeur · Barbier</p>
         </div>
       </router-link>
     </div>
 
     <!-- Navigation centrale -->
     <nav class="hidden md:flex items-center gap-1">
-      <router-link
-        v-for="item in navItems"
-        :key="item.name"
-        :to="item.path"
-        :class="[
-          'flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-colors',
-          route.path === item.path
-            ? 'bg-white/10 text-white'
-            : 'text-gray-400 hover:text-white hover:bg-white/5'
-        ]"
-      >
-        <component :is="item.icon" class="w-4 h-4" />
-        <span>{{ item.label }}</span>
-      </router-link>
+      <template v-for="item in navItems" :key="item.path || item.group">
+        <router-link
+          v-if="item.path"
+          :to="item.path"
+          :class="[
+            'flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-colors',
+            route.path === item.path
+              ? 'bg-white/10 text-white'
+              : 'text-gray-400 hover:text-white hover:bg-white/5'
+          ]"
+        >
+          <component :is="item.icon" class="w-4 h-4" />
+          <span>{{ item.label }}</span>
+        </router-link>
+        <div v-else class="relative">
+          <button
+            @click="showCaisseMenu = !showCaisseMenu"
+            :class="[
+              'flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-colors',
+              item.items?.some((i: any) => route.path === i.path)
+                ? 'bg-white/10 text-white'
+                : 'text-gray-400 hover:text-white hover:bg-white/5'
+            ]"
+          >
+            <component :is="item.icon" class="w-4 h-4" />
+            <span>{{ item.label }}</span>
+            <ChevronDown class="w-4 h-4" />
+          </button>
+          <Transition
+            enter-active-class="transition ease-out duration-100"
+            enter-from-class="opacity-0 scale-95"
+            enter-to-class="opacity-100 scale-100"
+            leave-active-class="transition ease-in duration-75"
+            leave-from-class="opacity-100 scale-100"
+            leave-to-class="opacity-0 scale-95"
+          >
+            <div
+              v-if="showCaisseMenu"
+              class="absolute left-0 top-full mt-1 w-48 bg-gray-800 rounded-xl shadow-xl border border-gray-700 py-2 z-50"
+            >
+              <router-link
+                v-for="sub in item.items"
+                :key="sub.path"
+                :to="sub.path"
+                @click="showCaisseMenu = false"
+                :class="[
+                  'flex items-center gap-2 px-4 py-2 text-sm transition-colors',
+                  route.path === sub.path
+                    ? 'bg-white/10 text-white'
+                    : 'text-gray-400 hover:text-white hover:bg-white/5'
+                ]"
+              >
+                <component :is="sub.icon" class="w-4 h-4" />
+                {{ sub.label }}
+              </router-link>
+            </div>
+          </Transition>
+        </div>
+      </template>
     </nav>
 
     <!-- Date & Heure, thème & Vendeur -->
@@ -196,5 +253,12 @@ onUnmounted(() => {
         ></div>
       </div>
     </div>
+
+    <!-- Backdrop menu Caisse -->
+    <div
+      v-if="showCaisseMenu"
+      @click="closeCaisseMenu"
+      class="fixed inset-0 z-30"
+    ></div>
   </header>
 </template>

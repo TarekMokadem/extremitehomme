@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
-import { Search, Zap, Barcode } from 'lucide-vue-next';
+import { Search, Zap, Barcode, Package } from 'lucide-vue-next';
 import ServiceCard from './ServiceCard.vue';
 import LoyaltyCard from './LoyaltyCard.vue';
 import { useProducts } from '../composables/useProducts';
@@ -9,6 +9,7 @@ import { useClients } from '../composables/useClients';
 import { useLoyalty } from '../composables/useLoyalty';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import type { Product, Vendor } from '../types/database';
+import ProductPickerDialog from './ProductPickerDialog.vue';
 
 // Composables
 const { products, isLoading, searchProducts, findByBarcode } = useProducts();
@@ -35,6 +36,7 @@ watch(selectedClient, (newClient) => {
 });
 
 // State
+const showProductPicker = ref(false);
 const searchQuery = ref<string>('');
 const showAutocomplete = ref<boolean>(false);
 const autocompleteResults = ref<Product[]>([]);
@@ -208,6 +210,17 @@ const processShortcut = (): void => {
   <div class="card flex flex-col bg-white dark:bg-gray-800 h-full">
     <!-- Barre de recherche + Raccourci -->
     <div class="p-4 md:p-6 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 space-y-3">
+      <!-- Bouton Produits -->
+      <div class="flex gap-2">
+        <button
+          @click="showProductPicker = true"
+          class="inline-flex items-center gap-2 px-4 py-2.5 bg-gray-900 dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white rounded-xl font-medium hover:bg-gray-800 transition-colors text-sm"
+        >
+          <Package class="w-4 h-4" />
+          Produits
+        </button>
+      </div>
+
       <!-- Champ Raccourci -->
       <div class="relative">
         <div class="flex items-center gap-3">
@@ -335,5 +348,8 @@ const processShortcut = (): void => {
       <!-- Carte de fidélité (si client sélectionné) — sous la liste des services -->
       <LoyaltyCard v-if="selectedClient" />
     </div>
+
+    <!-- Dialog sélection produits -->
+    <ProductPickerDialog v-model="showProductPicker" />
   </div>
 </template>

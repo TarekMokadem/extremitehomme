@@ -46,13 +46,9 @@ export function useStock() {
     try {
       let query = supabase
         .from('stock_movements')
-        .select(`
-          *,
-          product:products(id, name, code, stock),
-          vendor:vendors(first_name, last_name)
-        `)
+        .select('*')
         .order('created_at', { ascending: false })
-        .limit(100);
+        .limit(productId ? 100 : 200);
 
       if (productId) {
         query = query.eq('product_id', productId);
@@ -159,7 +155,9 @@ export function useStock() {
     model?: string | null;
     barcode?: string | null;
     price_ht: number;
+    price_ttc: number;
     tva_rate?: number;
+    size?: string | null;
     stock?: number;
     alert_threshold?: number;
   }) => {
@@ -176,7 +174,9 @@ export function useStock() {
         barcode: params.barcode?.trim() || null,
         type: 'product',
         price_ht: params.price_ht,
+        price_ttc: params.price_ttc,
         tva_rate: params.tva_rate ?? 0.2,
+        size: params.size || null,
         stock: params.stock ?? 0,
         alert_threshold: params.alert_threshold ?? 5,
         is_active: true,
@@ -231,6 +231,41 @@ export function useStock() {
     }
   };
 
+  const updateProduct = async (
+    productId: string,
+    params: {
+      name?: string;
+      code?: string | null;
+      barcode?: string | null;
+      category_id?: string | null;
+      brand?: string | null;
+      model?: string | null;
+      price_ht?: number;
+      price_ttc?: number;
+      tva_rate?: number;
+      size?: string | null;
+      alert_threshold?: number;
+    }
+  ) => {
+    if (!isSupabaseConfigured()) throw new Error('Supabase non configuré');
+
+    isSaving.value = true;
+    try {
+      const { error } = await supabase
+        .from('products')
+        .update({
+          ...params,
+          updated_at: new Date().toISOString(),
+        } as Record<string, unknown>)
+        .eq('id', productId);
+
+      if (error) throw error;
+      await loadProducts();
+    } finally {
+      isSaving.value = false;
+    }
+  };
+
   const productsOnly = computed(() => productsWithStock.value);
   const lowStockList = computed(() =>
     productsWithStock.value.filter((p) => p.stock <= p.alert_threshold)
@@ -249,6 +284,7 @@ export function useStock() {
     createProduct,
     updateAlertThreshold,
     updateBarcode,
+    updateProduct,
     isLoading,
     isSaving,
   };

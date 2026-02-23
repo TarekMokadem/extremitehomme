@@ -32,91 +32,96 @@ export function useSales() {
   // GESTION DU PANIER
   // =====================================================
 
-  // Ajouter un produit au panier (avec vendeur optionnel par article)
+  // Quantité déjà en panier pour un produit (même product_id)
+  const getCartQuantityForProduct = (productId: string, excludeLineId?: string) => {
+    return cartItems.value
+      .filter((i) => i.product.id === productId && i.lineId !== excludeLineId)
+      .reduce((sum, i) => sum + i.quantity, 0);
+  };
+
+  // Stock disponible pour ajout au panier (produits uniquement ; services = illimité)
+  const getAvailableStock = (product: Product, excludeLineId?: string) => {
+    if (product.type !== 'product') return Infinity;
+    const inCart = getCartQuantityForProduct(product.id, excludeLineId);
+    return Math.max(0, (product.stock ?? 0) - inCart);
+  };
+
+  // Ajouter un produit au panier (chaque ajout crée une nouvelle ligne, pas de regroupement)
   const addToCart = (product: Product, quantity: number = 1, vendor?: Vendor) => {
-    // Si un vendeur est spécifié, on cherche un article existant avec le même produit ET le même vendeur
-    // Sinon on cherche un article existant avec le même produit (sans vendeur spécifique)
-    const existingItem = cartItems.value.find(item => 
-      item.product.id === product.id && 
-      (vendor ? item.vendor_id === vendor.id : !item.vendor_id)
-    );
-    
-    if (existingItem) {
-      existingItem.quantity += quantity;
-      recalculateItem(existingItem);
-    } else {
-      const newItem: CartItem = {
-        product,
-        quantity,
-        vendor_id: vendor?.id,
-        vendor: vendor,
-        price_ht: product.price_ht,
-        tva_rate: product.tva_rate || DEFAULT_TVA_RATE,
-        subtotal_ht: 0,
-        tva: 0,
-        subtotal_ttc: 0,
-      };
-      recalculateItem(newItem);
-      cartItems.value.push(newItem);
-    }
+    const maxQty = getAvailableStock(product);
+    const qty = product.type === 'product' ? Math.min(quantity, maxQty) : quantity;
+    if (qty <= 0) return;
+
+    const lineId = `line-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+    const newItem: CartItem = {
+      lineId,
+      product,
+      quantity: qty,
+      vendor_id: vendor?.id,
+      vendor: vendor,
+      price_ht: product.price_ht,
+      tva_rate: product.tva_rate || DEFAULT_TVA_RATE,
+      subtotal_ht: 0,
+      tva: 0,
+      subtotal_ttc: 0,
+    };
+    recalculateItem(newItem);
+    cartItems.value.push(newItem);
   };
 
   // Recalculer les totaux d'un item
   const recalculateItem = (item: CartItem) => {
-    // IMPORTANT : On part du prix TTC (ce que le client paie)
-    // et on calcule le HT pour éviter les arrondis
-    const priceTTC = item.product.price_ttc;
+    // Prix unitaire TTC : fixé manuellement (ex. Bon cadeau) ou prix produit
+    const priceTTC = item.fixedPriceTTC ?? item.product.price_ttc;
     item.subtotal_ttc = priceTTC * item.quantity;
-    
+
     // Calculer le HT à partir du TTC
     const tvaMultiplier = 1 + item.tva_rate;
     item.subtotal_ht = item.subtotal_ttc / tvaMultiplier;
     item.tva = item.subtotal_ttc - item.subtotal_ht;
-    
+
     // Mettre à jour le price_ht calculé (pour cohérence)
     item.price_ht = item.subtotal_ht / item.quantity;
   };
 
-  // Générer une clé unique pour un article (produit + vendeur)
-  const getItemKey = (productId: string, vendorId?: string) => {
-    return vendorId ? `${productId}:${vendorId}` : productId;
+  // Trouver un article par lineId
+  const findCartItemByLineId = (lineId: string) => {
+    return cartItems.value.find(i => i.lineId === lineId);
   };
 
-  // Trouver un article par produit et vendeur (optionnel)
-  const findCartItem = (productId: string, vendorId?: string) => {
-    if (vendorId) {
-      return cartItems.value.find(i => i.product.id === productId && i.vendor_id === vendorId);
+  // Fixer ou annuler le prix unitaire TTC d'une ligne (ex. Bon cadeau)
+  const setItemFixedPrice = (lineId: string, priceTTC: number | null) => {
+    const item = findCartItemByLineId(lineId);
+    if (item) {
+      if (priceTTC == null || priceTTC < 0) {
+        delete item.fixedPriceTTC;
+      } else {
+        item.fixedPriceTTC = priceTTC;
+      }
+      recalculateItem(item);
     }
-    // Si pas de vendorId fourni, on cherche le premier article avec ce produit
-    return cartItems.value.find(i => i.product.id === productId);
   };
 
-  // Modifier la quantité d'un item
-  const updateQuantity = (productId: string, quantity: number, vendorId?: string) => {
-    const item = findCartItem(productId, vendorId);
+  // Modifier la quantité d'un item (par lineId)
+  const updateQuantity = (lineId: string, quantity: number) => {
+    const item = findCartItemByLineId(lineId);
     if (item) {
       if (quantity <= 0) {
-        removeFromCart(productId, item.vendor_id);
+        removeFromCart(lineId);
       } else {
-        item.quantity = quantity;
+        const maxQty =
+          item.product.type === 'product'
+            ? getAvailableStock(item.product, lineId) + item.quantity
+            : quantity;
+        item.quantity = Math.min(quantity, maxQty);
         recalculateItem(item);
       }
     }
   };
 
-  // Retirer un produit du panier
-  const removeFromCart = (productId: string, vendorId?: string) => {
-    if (vendorId) {
-      cartItems.value = cartItems.value.filter(
-        item => !(item.product.id === productId && item.vendor_id === vendorId)
-      );
-    } else {
-      // Si pas de vendorId, supprimer le premier article trouvé avec ce produit
-      const idx = cartItems.value.findIndex(item => item.product.id === productId);
-      if (idx !== -1) {
-        cartItems.value.splice(idx, 1);
-      }
-    }
+  // Retirer une ligne du panier (par lineId)
+  const removeFromCart = (lineId: string) => {
+    cartItems.value = cartItems.value.filter(item => item.lineId !== lineId);
   };
 
   // Vider le panier
@@ -282,6 +287,37 @@ export function useSales() {
     console.log('Validation vente - vendorId:', vendorId, 'clientId:', clientId);
 
     try {
+      // VÉRIFIER LE STOCK AVANT TOUTE CRÉATION (éviter de valider une vente avec stock insuffisant)
+      if (isSupabaseConfigured()) {
+        const qtyByProduct = new Map<string, number>();
+        for (const item of cartItems.value) {
+          if (item.product.type === 'product') {
+            const prev = qtyByProduct.get(item.product.id) ?? 0;
+            qtyByProduct.set(item.product.id, prev + item.quantity);
+          }
+        }
+        for (const [productId, totalQty] of qtyByProduct) {
+          const item = cartItems.value.find((i) => i.product.id === productId);
+          if (!item) continue;
+          const { data: productRow, error: fetchErr } = await supabase
+            .from('products')
+            .select('stock')
+            .eq('id', productId)
+            .single();
+
+          if (fetchErr || !productRow) {
+            throw new Error(`Produit ${item.product.name} introuvable`);
+          }
+
+          const currentStock = (productRow as { stock: number }).stock ?? 0;
+          if (currentStock < totalQty) {
+            throw new Error(
+              `Stock insuffisant pour "${item.product.name}" : ${currentStock} en stock, ${totalQty} demandé`
+            );
+          }
+        }
+      }
+
       // Générer le numéro de ticket
       let ticketNumber: string;
       
@@ -380,27 +416,45 @@ export function useSales() {
 
       if (paymentsError) throw paymentsError;
 
-      // 4. Mettre à jour le stock (pour les produits physiques)
+      // 4. Mettre à jour le stock (produits physiques uniquement)
       for (const item of cartItems.value) {
         if (item.product.type === 'product') {
-          // Décrémenter le stock
-          await supabase
+          const { data: productRow, error: fetchErr } = await supabase
             .from('products')
-            .update({ stock: item.product.stock - item.quantity })
+            .select('stock')
+            .eq('id', item.product.id)
+            .single();
+
+          if (fetchErr || !productRow) {
+            throw new Error(`Produit ${item.product.name} introuvable`);
+          }
+
+          const currentStock = (productRow as { stock: number }).stock ?? 0;
+          if (currentStock < item.quantity) {
+            throw new Error(
+              `Stock insuffisant pour "${item.product.name}" : ${currentStock} en stock, ${item.quantity} demandé`
+            );
+          }
+
+          const newStock = currentStock - item.quantity;
+          const { error: updateErr } = await supabase
+            .from('products')
+            .update({ stock: newStock, updated_at: new Date().toISOString() })
             .eq('id', item.product.id);
 
-          // Créer le mouvement de stock
-          await supabase
-            .from('stock_movements')
-            .insert({
-              product_id: item.product.id,
-              variant_id: item.variant?.id || null,
-              type: 'out',
-              quantity: -item.quantity,
-              reason: 'Vente',
-              reference_id: sale.id,
-              vendor_id: vendorId,
-            });
+          if (updateErr) throw updateErr;
+
+          const { error: moveErr } = await supabase.from('stock_movements').insert({
+            product_id: item.product.id,
+            variant_id: item.variant?.id || null,
+            type: 'out',
+            quantity: -item.quantity,
+            reason: 'Vente',
+            reference_id: sale.id,
+            vendor_id: vendorId,
+          });
+
+          if (moveErr) throw moveErr;
         }
       }
 
@@ -532,6 +586,12 @@ export function useSales() {
     }
   };
 
+  // Quantité max pour une ligne (pour désactiver le bouton +)
+  const getMaxQuantityForItem = (item: CartItem) => {
+    if (item.product.type !== 'product') return Infinity;
+    return getAvailableStock(item.product, item.lineId) + item.quantity;
+  };
+
   return {
     // State
     cartItems,
@@ -558,6 +618,8 @@ export function useSales() {
     addToCart,
     updateQuantity,
     removeFromCart,
+    getMaxQuantityForItem,
+    setItemFixedPrice,
     clearCart,
     // Methods - Réduction
     setDiscount,

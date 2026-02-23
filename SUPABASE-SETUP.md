@@ -907,6 +907,23 @@ testConnection();
 
 ---
 
+## 📦 Migration depuis MySQL + Backfill codes-barres
+
+Si vous migrez depuis l'ancienne base MySQL :
+
+1. **Exécuter le script de migration** : `python migration_script.py` génère les fichiers dans `migration_output/`
+2. **Exécuter les SQL** dans Supabase SQL Editor (dans l'ordre : schéma, clients, produits, etc.)
+3. **Ajouter la colonne barcode** : exécuter `PRODUCTS-BARCODE.sql`
+4. **Backfill des codes-barres** :
+   ```bash
+   python backfill_barcodes.py
+   ```
+   Puis exécuter `migration_output/backfill_barcodes.sql` dans Supabase.
+
+Le script extrait les codes-barres de `produit_code_barre` et `stock` (MySQL) et met à jour `products.barcode` via `migration_product_mapping`.
+
+---
+
 ## 🎯 RÉCAPITULATIF
 
 ### Ce Qui Est Configuré

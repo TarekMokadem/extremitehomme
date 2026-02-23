@@ -178,6 +178,51 @@ export function useCashRegister() {
   // FERMETURE DE CAISSE
   // =====================================================
 
+  // Réouvrir une caisse fermée (possible uniquement dans les 24h suivant la fermeture)
+  const reopenRegister = async () => {
+    if (!currentRegister.value || !isSupabaseConfigured()) return null;
+    if (currentRegister.value.status !== 'closed') return null;
+
+    const closedAt = currentRegister.value.closed_at;
+    if (!closedAt) return null;
+
+    const closedTime = new Date(closedAt).getTime();
+    const now = Date.now();
+    const hoursSinceClosed = (now - closedTime) / (1000 * 60 * 60);
+    if (hoursSinceClosed >= 24) return null;
+
+    isLoading.value = true;
+    error.value = null;
+
+    try {
+      const { data, error: updateError } = await supabase
+        .from('cash_registers')
+        .update({
+          status: 'open',
+          closed_at: null,
+          closing_amount: null,
+          expected_amount: null,
+          difference: null,
+          notes: null,
+        } as any)
+        .eq('id', currentRegister.value.id)
+        .select()
+        .single();
+
+      if (updateError) throw updateError;
+
+      currentRegister.value = data as CashRegister;
+      await loadMovements(data.id);
+      return data;
+    } catch (err: any) {
+      console.error('Erreur réouverture caisse:', err);
+      error.value = err.message;
+      return null;
+    } finally {
+      isLoading.value = false;
+    }
+  };
+
   const closeRegister = async (closingAmount: number, cashSalesTotal: number, notes?: string) => {
     if (!currentRegister.value || !isSupabaseConfigured()) return null;
 
@@ -238,6 +283,15 @@ export function useCashRegister() {
     }
   };
 
+  // Peut-on réouvrir la caisse ? (fermée depuis moins de 24h)
+  const canReopen = computed(() => {
+    const r = currentRegister.value;
+    if (!r || r.status !== 'closed' || !r.closed_at) return false;
+    const closedTime = new Date(r.closed_at).getTime();
+    const hoursSinceClosed = (Date.now() - closedTime) / (1000 * 60 * 60);
+    return hoursSinceClosed < 24;
+  });
+
   return {
     // State
     currentRegister,
@@ -248,9 +302,11 @@ export function useCashRegister() {
     totalIn,
     totalOut,
     movementsBalance,
+    canReopen,
     // Methods
     loadRegister,
     openRegister,
+    reopenRegister,
     addMovement,
     deleteMovement,
     closeRegister,

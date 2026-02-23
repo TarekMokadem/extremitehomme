@@ -10,6 +10,8 @@ import {
   Smartphone, 
   FileText, 
   Gift,
+  HandCoins,
+  Wrench,
   Check
 } from 'lucide-vue-next';
 import { useCart } from '../composables/useCart';
@@ -33,11 +35,13 @@ const { openClientPanel, hasClientInfo, currentClient } = useClient();
 
 const paymentMethods: { id: PaymentMethod; label: string; icon: any }[] = [
   { id: 'cash', label: 'Espèces', icon: Banknote },
-  { id: 'card', label: 'Carte', icon: CreditCard },
+  { id: 'card', label: 'CB', icon: CreditCard },
   { id: 'contactless', label: 'Sans contact', icon: Smartphone },
   { id: 'amex', label: 'American Express', icon: CreditCard },
   { id: 'check', label: 'Chèque', icon: FileText },
-  { id: 'gift_card', label: 'Cadeau', icon: Gift },
+  { id: 'gift_card', label: 'Chèque Cadeau', icon: Gift },
+  { id: 'free', label: 'Gratuit', icon: HandCoins },
+  { id: 'technical', label: 'Utilisation technique', icon: Wrench },
 ];
 
 const handleCheckout = () => {

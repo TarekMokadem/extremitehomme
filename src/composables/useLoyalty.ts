@@ -6,6 +6,8 @@ export interface LoyaltyStamp {
   position: number; // 1-12
   isStamped: boolean;
   date: string | null;
+  transactionId?: string | null; // ID de la transaction en BDD (pour suppression)
+  markedForRemoval?: boolean; // Marqué pour retrait manuel
 }
 
 const STAMPS_COUNT = 12;
@@ -21,6 +23,8 @@ const initializeCard = () => {
     position: i + 1,
     isStamped: false,
     date: null,
+    transactionId: null,
+    markedForRemoval: false,
   }));
 };
 
@@ -55,6 +59,8 @@ const loadClientStamps = async (clientId: string) => {
         position: i + 1,
         isStamped: !!transaction,
         date: transaction?.created_at || null,
+        transactionId: transaction?.id || null,
+        markedForRemoval: false,
       };
     });
   } catch (err) {
@@ -67,15 +73,17 @@ const loadClientStamps = async (clientId: string) => {
   }
 };
 
-// Toggle une case (cocher/décocher)
+// Toggle une case (cocher/décocher) ou marquer pour retrait
 const toggleStamp = (position: number) => {
   const stamp = stamps.value.find(s => s.position === position);
-  if (stamp) {
+  if (!stamp) return;
+  if (stamp.date) {
+    // Point déjà enregistré : toggle marqué pour retrait
+    stamp.markedForRemoval = !stamp.markedForRemoval;
+  } else {
+    // Point non enregistré : toggle cocher/décocher
     stamp.isStamped = !stamp.isStamped;
-    // La date n'est définie qu'après validation de la vente
-    if (!stamp.isStamped) {
-      stamp.date = null;
-    }
+    if (!stamp.isStamped) stamp.date = null;
   }
 };
 
@@ -87,6 +95,119 @@ const checkedCount = computed(() =>
 // Vérifier si la carte est complète
 const isCardComplete = computed(() => checkedCount.value === STAMPS_COUNT);
 
+// Ajouter des points manuellement (sans vente)
+const addPointsManually = async (clientId: string, vendorId: string) => {
+  const newStamps = stamps.value.filter(s => s.isStamped && !s.date);
+  if (newStamps.length === 0) return { success: false, count: 0 };
+
+  if (!isSupabaseConfigured()) {
+    // Mode démo : mettre à jour les dates localement
+    const now = new Date().toISOString();
+    stamps.value = stamps.value.map(stamp => {
+      if (stamp.isStamped && !stamp.date) return { ...stamp, date: now };
+      return stamp;
+    });
+    return { success: true, count: newStamps.length };
+  }
+
+  try {
+    const transactions = newStamps.map(stamp => ({
+      client_id: clientId,
+      vendor_id: vendorId,
+      sale_id: null,
+      points: 1,
+      type: 'earned' as const,
+      notes: `Point ${stamp.position}/${STAMPS_COUNT} (manuel)`,
+    }));
+
+    const { data, error } = await supabase
+      .from('loyalty_transactions')
+      .insert(transactions as any)
+      .select('id, created_at');
+
+    if (error) throw error;
+
+    if (data && data.length > 0) {
+      let idx = 0;
+      stamps.value = stamps.value.map(stamp => {
+        if (stamp.isStamped && !stamp.date && data[idx]) {
+          const row = data[idx] as { id: string; created_at: string };
+          idx += 1;
+          return { ...stamp, date: row.created_at, transactionId: row.id, markedForRemoval: false };
+        }
+        return stamp;
+      });
+    }
+
+    const { data: currentClient } = await supabase
+      .from('clients')
+      .select('loyalty_points')
+      .eq('id', clientId)
+      .single();
+
+    if (currentClient) {
+      await supabase
+        .from('clients')
+        .update({ loyalty_points: currentClient.loyalty_points + newStamps.length })
+        .eq('id', clientId);
+    }
+
+    console.log(`✅ ${newStamps.length} point(s) fidélité ajouté(s) manuellement`);
+    return { success: true, count: newStamps.length };
+  } catch (err) {
+    console.error('Erreur ajout manuel points:', err);
+    return { success: false, count: 0 };
+  }
+};
+
+// Retirer des points manuellement
+const removePointsManually = async (clientId: string) => {
+  const toRemove = stamps.value.filter(s => s.markedForRemoval && s.transactionId);
+  if (toRemove.length === 0) return { success: false, count: 0 };
+
+  if (!isSupabaseConfigured()) {
+    stamps.value = stamps.value.map(stamp => {
+      if (stamp.markedForRemoval) {
+        return { position: stamp.position, isStamped: false, date: null, transactionId: null, markedForRemoval: false };
+      }
+      return stamp;
+    });
+    return { success: true, count: toRemove.length };
+  }
+
+  try {
+    for (const stamp of toRemove) {
+      if (stamp.transactionId) {
+        await supabase.from('loyalty_transactions').delete().eq('id', stamp.transactionId);
+      }
+    }
+
+    const { data: currentClient } = await supabase
+      .from('clients')
+      .select('loyalty_points')
+      .eq('id', clientId)
+      .single();
+
+    if (currentClient) {
+      const newTotal = Math.max(0, (currentClient as { loyalty_points: number }).loyalty_points - toRemove.length);
+      await supabase.from('clients').update({ loyalty_points: newTotal } as any).eq('id', clientId);
+    }
+
+    stamps.value = stamps.value.map(stamp => {
+      if (stamp.markedForRemoval) {
+        return { position: stamp.position, isStamped: false, date: null, transactionId: null, markedForRemoval: false };
+      }
+      return stamp;
+    });
+
+    console.log(`✅ ${toRemove.length} point(s) fidélité retiré(s)`);
+    return { success: true, count: toRemove.length };
+  } catch (err) {
+    console.error('Erreur retrait manuel points:', err);
+    return { success: false, count: 0 };
+  }
+};
+
 // Sauvegarder les points lors de la validation de vente
 const saveStamps = async (clientId: string, vendorId: string, saleId: string) => {
   if (!isSupabaseConfigured()) return;
@@ -96,7 +217,7 @@ const saveStamps = async (clientId: string, vendorId: string, saleId: string) =>
 
   try {
     // Créer une transaction pour chaque nouveau tampon
-    const transactions = newStamps.map(stamp => ({
+    const transactions = newStamps.map((stamp: LoyaltyStamp) => ({
       client_id: clientId,
       vendor_id: vendorId,
       sale_id: saleId,
@@ -190,6 +311,8 @@ export function useLoyalty() {
     initializeCard,
     loadClientStamps,
     toggleStamp,
+    addPointsManually,
+    removePointsManually,
     saveStamps,
     clearStamps,
     resetPointsToZero,

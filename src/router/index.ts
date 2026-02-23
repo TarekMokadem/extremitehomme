@@ -28,6 +28,12 @@ const router = createRouter({
       meta: { title: 'Tiroir de caisse' }
     },
     {
+      path: '/fin-de-journee',
+      name: 'fin-de-journee',
+      component: () => import('../pages/FinDeJourneePage.vue'),
+      meta: { title: 'Fin de journée' }
+    },
+    {
       path: '/stats',
       name: 'stats',
       component: () => import('../pages/StatistiquesPage.vue'),

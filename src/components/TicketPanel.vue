@@ -1,11 +1,13 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { 
   Banknote, 
   CreditCard, 
   Smartphone, 
   FileText, 
   Gift,
+  HandCoins,
+  Wrench,
   Minus,
   Plus,
   Trash2,
@@ -20,6 +22,7 @@ import { useSales } from '../composables/useSales';
 import { useAuth } from '../composables/useAuth';
 import { useClients } from '../composables/useClients';
 import { useLoyalty } from '../composables/useLoyalty';
+import { useProducts } from '../composables/useProducts';
 import type { PaymentMethod } from '../types/database';
 
 const { 
@@ -33,18 +36,22 @@ const {
   discountAmount,
   fixedTotal,
   setFixedTotal,
-  selectedPaymentMethods,
   updateQuantity,
   removeFromCart,
+  setItemFixedPrice,
   clearCart,
   setDiscount,
   setPayment,
+  clearPayments,
   validateSale,
   isProcessing,
+  getMaxQuantityForItem,
+  error: saleError,
 } = useSales();
 
 const { vendor } = useAuth();
 const { selectedClient } = useClients();
+const { loadProducts } = useProducts();
 const { saveStamps, loadClientStamps } = useLoyalty();
 
 // Pour le mode de réduction
@@ -61,7 +68,9 @@ const paymentMethods: { id: PaymentMethod; label: string; icon: typeof Banknote 
   { id: 'contactless', label: 'Sans contact', icon: Smartphone },
   { id: 'amex', label: 'American Express', icon: CreditCard },
   { id: 'check', label: 'Chèque', icon: FileText },
-  { id: 'gift_card', label: 'Cadeau', icon: Gift },
+  { id: 'gift_card', label: 'Chèque Cadeau', icon: Gift },
+  { id: 'free', label: 'Gratuit', icon: HandCoins },
+  { id: 'technical', label: 'Utilisation technique', icon: Wrench },
 ];
 
 // Formatage du prix
@@ -92,12 +101,19 @@ const handleDiscountChange = (event: Event): void => {
   setDiscount(localDiscountType.value, localDiscount.value);
 };
 
-// Sélection du moyen de paiement
+// Sélection du moyen de paiement (mode mono-paiement : remplace tout)
 const selectPaymentMethod = (method: PaymentMethod) => {
   selectedPaymentMethod.value = method;
-  // Définir le paiement pour le total
+  clearPayments();
   setPayment(method, total.value);
 };
+
+// Synchroniser le montant du paiement quand le total change (ajout/suppression d'articles, réduction, etc.)
+watch([total, selectedPaymentMethod], () => {
+  if (total.value > 0 && selectedPaymentMethod.value) {
+    setPayment(selectedPaymentMethod.value, total.value);
+  }
+}, { immediate: true });
 
 // Validation du ticket
 const handleValidate = async (): Promise<void> => {
@@ -107,11 +123,9 @@ const handleValidate = async (): Promise<void> => {
     return;
   }
   
-  // S'assurer qu'un paiement est défini
-  if (selectedPaymentMethods.value.length === 0) {
-    setPayment(selectedPaymentMethod.value, total.value);
-  }
-  
+  // Toujours synchroniser le paiement avec le total actuel (au cas où il a changé)
+  setPayment(selectedPaymentMethod.value, total.value);
+
   const sale = await validateSale(
     vendor.value?.id || 'demo',
     selectedClient.value?.id
@@ -123,8 +137,10 @@ const handleValidate = async (): Promise<void> => {
       await saveStamps(selectedClient.value.id, vendor.value.id, sale.id);
       await loadClientStamps(selectedClient.value.id);
     }
-    
+    await loadProducts();
     alert(`✅ Vente validée !\nTicket: ${sale.ticket_number}\nTotal: ${formatPrice(sale.total)}€`);
+  } else if (saleError.value) {
+    alert(`❌ Erreur : ${saleError.value}`);
   }
 };
 
@@ -163,7 +179,7 @@ const subtotal = computed(() => subtotalTTC.value);
       <template v-if="cartItems.length > 0">
         <div
           v-for="item in cartItems"
-          :key="`${item.product.id}-${item.vendor_id || 'default'}`"
+          :key="item.lineId"
           class="cart-item"
         >
           <div class="flex items-start justify-between gap-2 md:gap-3 mb-2 md:mb-3">
@@ -179,10 +195,23 @@ const subtotal = computed(() => subtotalTTC.value);
               {{ formatPrice(item.subtotal_ttc) }}€
             </p>
           </div>
+          <!-- Prix unitaire fixe (ex. Bon cadeau) -->
+          <div class="flex items-center gap-2 mb-2">
+            <label class="text-[10px] text-gray-500 dark:text-gray-400 shrink-0">Prix unit. (€)</label>
+            <input
+              type="number"
+              :value="item.fixedPriceTTC ?? ''"
+              @input="(e) => { const v = (e.target as HTMLInputElement).value; setItemFixedPrice(item.lineId, v === '' ? null : Math.max(0, Number(v))); }"
+              min="0"
+              step="0.01"
+              placeholder="Prix libre"
+              class="flex-1 min-w-0 px-2 py-1.5 text-[11px] bg-gray-50 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-gray-400 tabular-nums"
+            />
+          </div>
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-2">
               <button
-                @click="updateQuantity(item.product.id, item.quantity - 1, item.vendor_id)"
+                @click="updateQuantity(item.lineId, item.quantity - 1)"
                 class="w-8 h-8 md:w-9 md:h-9 rounded-lg bg-white border border-gray-300 flex items-center justify-center hover:bg-gray-100 hover:border-gray-400 dark:bg-gray-600 dark:border-gray-500 dark:hover:bg-gray-500 dark:text-gray-100 transition-colors"
                 aria-label="Diminuer la quantité"
               >
@@ -190,15 +219,16 @@ const subtotal = computed(() => subtotalTTC.value);
               </button>
               <span class="w-7 md:w-9 text-center text-xs md:text-sm font-semibold tabular-nums text-gray-900 dark:text-gray-100">{{ item.quantity }}</span>
               <button
-                @click="updateQuantity(item.product.id, item.quantity + 1, item.vendor_id)"
-                class="w-8 h-8 md:w-9 md:h-9 rounded-lg bg-white border border-gray-300 flex items-center justify-center hover:bg-gray-100 hover:border-gray-400 dark:bg-gray-600 dark:border-gray-500 dark:hover:bg-gray-500 dark:text-gray-100 transition-colors"
+                @click="updateQuantity(item.lineId, item.quantity + 1)"
+                :disabled="item.quantity >= getMaxQuantityForItem(item)"
+                class="w-8 h-8 md:w-9 md:h-9 rounded-lg bg-white border border-gray-300 flex items-center justify-center hover:bg-gray-100 hover:border-gray-400 dark:bg-gray-600 dark:border-gray-500 dark:hover:bg-gray-500 dark:text-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 aria-label="Augmenter la quantité"
               >
                 <Plus class="w-3.5 h-3.5 md:w-4 md:h-4" />
               </button>
             </div>
             <button
-              @click="removeFromCart(item.product.id, item.vendor_id)"
+              @click="removeFromCart(item.lineId)"
               class="p-1.5 md:p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:text-red-400 dark:hover:bg-red-900/30 rounded-lg transition-colors"
               aria-label="Supprimer l'article"
             >

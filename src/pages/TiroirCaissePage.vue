@@ -27,8 +27,10 @@ const {
   totalIn,
   totalOut,
   movementsBalance,
+  canReopen,
   loadRegister,
   openRegister,
+  reopenRegister,
   addMovement,
   deleteMovement,
   closeRegister,
@@ -142,6 +144,10 @@ const openCloseModal = () => {
   closingAmountInput.value = expectedAmount.value;
   showCloseModal.value = true;
 };
+
+const handleReopenRegister = async () => {
+  await reopenRegister();
+};
 </script>
 
 <template>
@@ -247,6 +253,19 @@ const openCloseModal = () => {
               <Lock class="w-4 h-4" />
               Fermer
             </button>
+          </template>
+          <template v-else-if="canReopen">
+            <button
+              @click="handleReopenRegister"
+              :disabled="isLoading"
+              class="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-xl text-sm font-medium hover:bg-emerald-700 dark:hover:bg-emerald-500 transition-colors disabled:opacity-50"
+            >
+              <Unlock class="w-4 h-4" />
+              Réouvrir la caisse
+            </button>
+          </template>
+          <template v-else>
+            <p class="text-sm text-gray-500 dark:text-gray-400 italic">Caisse non modifiable après 24h</p>
           </template>
         </div>
 

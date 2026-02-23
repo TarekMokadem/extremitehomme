@@ -2,28 +2,30 @@
 import { ref, onMounted, computed, watch } from 'vue';
 import { 
   Search, 
-  Calendar, 
-  Euro, 
-  User, 
-  Clock, 
+  Euro,
   ChevronDown, 
   ChevronUp,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
   Receipt,
   CreditCard,
   Banknote,
-  Filter,
   RefreshCw,
   Smartphone,
   FileText,
   Gift,
+  HandCoins,
+  Wrench,
   Edit,
   X
 } from 'lucide-vue-next';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
-import type { Sale, PaymentMethod } from '../types/database';
+import type { Sale, PaymentMethod, SaleStatus } from '../types/database';
 
-// Types
-interface SaleWithDetails extends Sale {
+// Types (vendor/client partiels depuis l'API)
+interface SaleWithDetails extends Omit<Sale, 'vendor' | 'client'> {
   items?: {
     id: string;
     product_name: string;
@@ -35,25 +37,23 @@ interface SaleWithDetails extends Sale {
     method: PaymentMethod;
     amount: number;
   }[];
-  vendor?: {
-    first_name: string;
-    last_name: string;
-  };
-  client?: {
-    first_name: string;
-    last_name: string;
-  };
+  vendor?: { first_name: string; last_name: string };
+  client?: { first_name: string; last_name: string };
 }
 
 // State
 const sales = ref<SaleWithDetails[]>([]);
-const totalSalesCount = ref<number | null>(null); // Nombre total en base (avec filtre date)
-const globalTotalAmount = ref<number | null>(null); // Si RPC get_sales_stats existe
+const totalSalesCount = ref<number | null>(null);
+const globalTotalAmount = ref<number | null>(null);
 const globalAvgTicket = ref<number | null>(null);
 const isLoading = ref(true);
 const searchQuery = ref('');
-const dateFilter = ref('today'); // today, week, month, all
-const LIST_LIMIT = 1000; // Nombre de ventes chargées dans la liste
+const dateFilter = ref('today'); // today, week, month, custom, all
+const dateFrom = ref<string>(''); // Pour période personnalisée
+const dateTo = ref<string>(''); // Pour période personnalisée
+const statusFilter = ref<SaleStatus | 'all'>('all');
+const pageSize = ref(50); // 25, 50, 100
+const currentPage = ref(1);
 const expandedSaleId = ref<string | null>(null);
 const saleToEditPayment = ref<SaleWithDetails | null>(null);
 const editPaymentMethod = ref<PaymentMethod>('card');
@@ -66,7 +66,9 @@ const paymentMethodsList: { id: PaymentMethod; label: string; icon: typeof Bankn
   { id: 'contactless', label: 'Sans contact', icon: Smartphone },
   { id: 'amex', label: 'American Express', icon: CreditCard },
   { id: 'check', label: 'Chèque', icon: FileText },
-  { id: 'gift_card', label: 'Cadeau', icon: Gift },
+  { id: 'gift_card', label: 'Chèque Cadeau', icon: Gift },
+  { id: 'free', label: 'Gratuit', icon: HandCoins },
+  { id: 'technical', label: 'Utilisation technique', icon: Wrench },
 ];
 
 // Filtres de date
@@ -74,51 +76,109 @@ const dateFilters = [
   { id: 'today', label: "Aujourd'hui" },
   { id: 'week', label: 'Cette semaine' },
   { id: 'month', label: 'Ce mois' },
+  { id: 'custom', label: 'Période' },
   { id: 'all', label: 'Tout' },
 ];
+
+// Filtres de statut
+const statusFilters: { id: SaleStatus | 'all'; label: string }[] = [
+  { id: 'all', label: 'Tous' },
+  { id: 'completed', label: 'Complétées' },
+  { id: 'cancelled', label: 'Annulées' },
+  { id: 'refunded', label: 'Remboursées' },
+  { id: 'pending', label: 'En attente' },
+];
+
+// Options de pagination
+const pageSizeOptions = [25, 50, 100];
+
+// Computed
+const totalPages = computed(() => {
+  const total = totalSalesCount.value ?? 0;
+  const size = pageSize.value;
+  return Math.max(1, Math.ceil(total / size));
+});
+
+const paginationInfo = computed(() => {
+  const total = totalSalesCount.value ?? 0;
+  const size = pageSize.value;
+  const page = currentPage.value;
+  const from = total === 0 ? 0 : (page - 1) * size + 1;
+  const to = Math.min(page * size, total);
+  return { from, to, total };
+});
+
+// Numéros de page à afficher (fenêtre glissante)
+const visiblePages = computed(() => {
+  const total = totalPages.value;
+  const current = currentPage.value;
+  const delta = 2; // pages avant/après la courante
+  const pages: number[] = [];
+  for (let p = Math.max(1, current - delta); p <= Math.min(total, current + delta); p++) {
+    pages.push(p);
+  }
+  return pages;
+});
+
+// Calculer les bornes de date selon le filtre
+function getDateBounds(): { startDate: string | null; endDate: string | null } {
+  const now = new Date();
+  const today = now.toISOString().split('T')[0] ?? null;
+  if (!today) return { startDate: null, endDate: null };
+
+  if (dateFilter.value === 'today') {
+    return { startDate: today, endDate: today };
+  }
+  if (dateFilter.value === 'week') {
+    const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const start = weekAgo.toISOString().split('T')[0] ?? today;
+    return { startDate: start, endDate: today };
+  }
+  if (dateFilter.value === 'month') {
+    const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    const start = monthAgo.toISOString().split('T')[0] ?? today;
+    return { startDate: start, endDate: today };
+  }
+  if (dateFilter.value === 'custom' && dateFrom.value && dateTo.value) {
+    return { startDate: dateFrom.value, endDate: dateTo.value };
+  }
+  return { startDate: null, endDate: null };
+}
 
 // Charger les ventes
 const loadSales = async () => {
   isLoading.value = true;
   
   if (!isSupabaseConfigured()) {
-    // Mode démo
     sales.value = [];
     isLoading.value = false;
     return;
   }
 
   try {
-    // Calculer les dates de filtre
-    const now = new Date();
-    let startDate: string | null = null;
-    
-    if (dateFilter.value === 'today') {
-      startDate = now.toISOString().split('T')[0];
-    } else if (dateFilter.value === 'week') {
-      const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-      startDate = weekAgo.toISOString().split('T')[0];
-    } else if (dateFilter.value === 'month') {
-      const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-      startDate = monthAgo.toISOString().split('T')[0];
-    }
+    const { startDate, endDate } = getDateBounds();
+    const size = pageSize.value;
+    const page = currentPage.value;
+    const from = (page - 1) * size;
+    const to = from + size - 1;
 
-    // Requête du nombre total (même filtre date) pour les stats
+    // Requête du nombre total (filtres date + statut)
     let countQuery = supabase
       .from('sales')
       .select('*', { count: 'exact', head: true });
-    if (startDate) {
-      countQuery = countQuery.gte('created_at', startDate);
-    }
+    if (startDate) countQuery = countQuery.gte('created_at', startDate);
+    if (endDate) countQuery = countQuery.lte('created_at', endDate + 'T23:59:59.999Z');
+    if (statusFilter.value !== 'all') countQuery = countQuery.eq('status', statusFilter.value);
     const { count } = await countQuery;
     totalSalesCount.value = count ?? null;
 
-    // Stats globales (si la fonction existe dans Supabase)
+    // Stats globales (RPC get_sales_stats)
     globalTotalAmount.value = null;
     globalAvgTicket.value = null;
     try {
       const { data: statsData } = await (supabase as any).rpc('get_sales_stats', {
-        p_start_date: startDate ?? null,
+        p_start_date: startDate != null ? startDate : null,
+        p_end_date: endDate != null ? endDate + 'T23:59:59.999Z' : null,
       });
       if (statsData && Array.isArray(statsData) && statsData[0]) {
         const row = statsData[0] as { total_count: number; total_amount: number; avg_ticket: number };
@@ -126,10 +186,10 @@ const loadSales = async () => {
         globalAvgTicket.value = Number(row.avg_ticket);
       }
     } catch {
-      // Fonction absente ou erreur : on garde les stats calculées sur la liste
+      // Fonction absente ou ancienne version
     }
 
-    // Requête des ventes (liste)
+    // Requête des ventes (liste paginée)
     let query = supabase
       .from('sales')
       .select(`
@@ -140,11 +200,11 @@ const loadSales = async () => {
         payments(method, amount)
       `)
       .order('created_at', { ascending: false })
-      .limit(LIST_LIMIT);
+      .range(from, to);
 
-    if (startDate) {
-      query = query.gte('created_at', startDate);
-    }
+    if (startDate) query = query.gte('created_at', startDate);
+    if (endDate) query = query.lte('created_at', endDate + 'T23:59:59.999Z');
+    if (statusFilter.value !== 'all') query = query.eq('status', statusFilter.value);
 
     const { data, error } = await query;
 
@@ -156,6 +216,30 @@ const loadSales = async () => {
   } finally {
     isLoading.value = false;
   }
+};
+
+// Réinitialiser à la page 1 quand les filtres changent
+const goToPage = (page: number) => {
+  currentPage.value = Math.max(1, Math.min(page, totalPages.value));
+  loadSales();
+};
+
+const pageInputValue = ref('');
+const syncPageInput = () => {
+  pageInputValue.value = String(currentPage.value);
+};
+const onPageInputSubmit = () => {
+  const num = parseInt(pageInputValue.value, 10);
+  if (!isNaN(num) && num >= 1) {
+    goToPage(num);
+  } else {
+    syncPageInput();
+  }
+};
+
+const applyFilters = () => {
+  currentPage.value = 1;
+  loadSales();
 };
 
 // Filtrer par recherche
@@ -211,6 +295,9 @@ const paymentIcon = (method: PaymentMethod) => {
     case 'card':
     case 'contactless':
     case 'amex': return CreditCard;
+    case 'free': return HandCoins;
+    case 'technical': return Wrench;
+    case 'gift_card': return Gift;
     default: return Euro;
   }
 };
@@ -222,7 +309,9 @@ const paymentLabel = (method: PaymentMethod) => {
     contactless: 'Sans contact',
     amex: 'American Express',
     check: 'Chèque',
-    gift_card: 'Carte cadeau',
+    gift_card: 'Chèque Cadeau',
+    free: 'Gratuit',
+    technical: 'Utilisation technique',
   };
   return labels[method] || method;
 };
@@ -266,8 +355,15 @@ const saveEditPayment = async () => {
 // Lifecycle
 onMounted(loadSales);
 
-// Watcher pour recharger quand le filtre change
-watch(dateFilter, loadSales);
+// Recharger quand page ou pageSize change
+watch([currentPage, pageSize], () => loadSales());
+watch(currentPage, () => syncPageInput(), { immediate: true });
+
+// Recharger quand les filtres changent (reset page 1)
+watch([dateFilter, statusFilter], () => {
+  currentPage.value = 1;
+  if (dateFilter.value !== 'custom') loadSales();
+});
 </script>
 
 <template>
@@ -306,43 +402,94 @@ watch(dateFilter, loadSales);
           <p class="text-2xl font-bold text-gray-900 dark:text-white mt-1">{{ (globalAvgTicket ?? stats.avgTicket).toFixed(2) }}€</p>
         </div>
       </div>
-      <p v-if="totalSalesCount != null && totalSalesCount > sales.length" class="text-sm text-gray-500 dark:text-gray-400">
-        <template v-if="globalTotalAmount == null">
-          Affichage des {{ sales.length }} dernières ventes. Total € et panier moyen calculés sur ces ventes.
-        </template>
-        <template v-else>
-          Affichage des {{ sales.length }} dernières ventes ({{ totalSalesCount }} au total avec ce filtre).
-        </template>
+      <p v-if="totalSalesCount != null && totalSalesCount > 0" class="text-sm text-gray-500 dark:text-gray-400">
+        {{ paginationInfo.from }}-{{ paginationInfo.to }} sur {{ paginationInfo.total }} ventes
       </p>
 
       <!-- Filtres -->
-      <div class="flex flex-col sm:flex-row gap-4">
-        <!-- Recherche -->
-        <div class="relative flex-1">
-          <Search class="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-gray-500" />
-          <input
-            v-model="searchQuery"
-            type="text"
-            placeholder="Rechercher par ticket, client, vendeur..."
-            class="w-full pl-12 pr-4 py-3 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 dark:text-gray-100 dark:placeholder-gray-400 rounded-xl text-sm focus:outline-none focus:border-gray-900 dark:focus:border-emerald-500 focus:ring-2 focus:ring-gray-900/10 dark:focus:ring-emerald-500/30"
-          />
+      <div class="space-y-4">
+        <div class="flex flex-col lg:flex-row gap-4">
+          <!-- Recherche -->
+          <div class="relative flex-1">
+            <Search class="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-gray-500" />
+            <input
+              v-model="searchQuery"
+              type="text"
+              placeholder="Rechercher par ticket, client, vendeur..."
+              class="w-full pl-12 pr-4 py-3 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 dark:text-gray-100 dark:placeholder-gray-400 rounded-xl text-sm focus:outline-none focus:border-gray-900 dark:focus:border-emerald-500 focus:ring-2 focus:ring-gray-900/10 dark:focus:ring-emerald-500/30"
+            />
+          </div>
+
+          <!-- Filtre date -->
+          <div class="flex flex-wrap gap-2">
+            <button
+              v-for="filter in dateFilters"
+              :key="filter.id"
+              @click="dateFilter = filter.id; if (filter.id !== 'custom') loadSales()"
+              :class="[
+                'px-4 py-2 text-sm font-medium rounded-xl transition-colors',
+                dateFilter === filter.id
+                  ? 'bg-gray-900 dark:bg-emerald-600 text-white'
+                  : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'
+              ]"
+            >
+              {{ filter.label }}
+            </button>
+          </div>
         </div>
 
-        <!-- Filtre date -->
-        <div class="flex gap-2">
+        <!-- Période personnalisée -->
+        <div v-if="dateFilter === 'custom'" class="flex flex-wrap items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800/50 rounded-xl">
+          <div class="flex items-center gap-2">
+            <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Du</label>
+            <input
+              v-model="dateFrom"
+              type="date"
+              class="px-3 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-sm dark:text-gray-100"
+            />
+          </div>
+          <div class="flex items-center gap-2">
+            <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Au</label>
+            <input
+              v-model="dateTo"
+              type="date"
+              class="px-3 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-sm dark:text-gray-100"
+            />
+          </div>
           <button
-            v-for="filter in dateFilters"
-            :key="filter.id"
-            @click="dateFilter = filter.id"
-            :class="[
-              'px-4 py-2 text-sm font-medium rounded-xl transition-colors',
-              dateFilter === filter.id
-                ? 'bg-gray-900 dark:bg-emerald-600 text-white'
-                : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'
-            ]"
+            @click="applyFilters"
+            class="px-4 py-2 text-sm font-medium bg-gray-900 dark:bg-emerald-600 text-white rounded-xl hover:bg-gray-800 dark:hover:bg-emerald-500 transition-colors"
           >
-            {{ filter.label }}
+            Appliquer
           </button>
+        </div>
+
+        <!-- Filtre statut + taille page -->
+        <div class="flex flex-wrap items-center gap-3">
+          <div class="flex gap-2">
+            <button
+              v-for="sf in statusFilters"
+              :key="sf.id"
+              @click="statusFilter = sf.id; applyFilters()"
+              :class="[
+                'px-3 py-1.5 text-sm font-medium rounded-lg transition-colors',
+                statusFilter === sf.id
+                  ? 'bg-gray-900 dark:bg-emerald-600 text-white'
+                  : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'
+              ]"
+            >
+              {{ sf.label }}
+            </button>
+          </div>
+          <div class="flex items-center gap-2 ml-auto">
+            <span class="text-sm text-gray-500 dark:text-gray-400">Par page</span>
+            <select
+              v-model.number="pageSize"
+              class="px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-sm dark:text-gray-100"
+            >
+              <option v-for="opt in pageSizeOptions" :key="opt" :value="opt">{{ opt }}</option>
+            </select>
+          </div>
         </div>
       </div>
 
@@ -489,6 +636,73 @@ watch(dateFilter, loadSales);
                 </div>
               </div>
             </Transition>
+          </div>
+        </div>
+
+        <!-- Pagination -->
+        <div
+          v-if="!isLoading && totalSalesCount != null && totalSalesCount > 0"
+          class="flex flex-wrap items-center justify-between gap-4 px-4 py-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50"
+        >
+          <div class="flex items-center gap-3">
+            <span class="text-sm text-gray-600 dark:text-gray-400">Page</span>
+            <input
+              v-model="pageInputValue"
+              type="number"
+              min="1"
+              :max="totalPages"
+              @keydown.enter="onPageInputSubmit"
+              @blur="onPageInputSubmit"
+              class="w-16 px-2 py-1.5 text-sm text-center bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-900 dark:focus:ring-emerald-500"
+            />
+            <span class="text-sm text-gray-600 dark:text-gray-400">/ {{ totalPages }}</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <button
+              :disabled="currentPage <= 1"
+              @click="goToPage(1)"
+              title="Première page"
+              class="p-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              <ChevronsLeft class="w-5 h-5" />
+            </button>
+            <button
+              :disabled="currentPage <= 1"
+              @click="goToPage(currentPage - 1)"
+              class="p-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              <ChevronLeft class="w-5 h-5" />
+            </button>
+            <div class="flex gap-1">
+              <button
+                v-for="p in visiblePages"
+                :key="p"
+                @click="goToPage(p)"
+                :class="[
+                  'min-w-[2.25rem] px-2 py-1.5 text-sm font-medium rounded-lg transition-colors',
+                  currentPage === p
+                    ? 'bg-gray-900 dark:bg-emerald-600 text-white'
+                    : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600'
+                ]"
+              >
+                {{ p }}
+              </button>
+            </div>
+            <button
+              :disabled="currentPage >= totalPages"
+              @click="goToPage(currentPage + 1)"
+              class="p-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              <ChevronRight class="w-5 h-5" />
+            </button>
+            <button
+              :disabled="currentPage >= totalPages"
+              @click="goToPage(totalPages)"
+              title="Dernière page"
+              class="p-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              <ChevronsRight class="w-5 h-5" />
+            </button>
           </div>
         </div>
       </div>

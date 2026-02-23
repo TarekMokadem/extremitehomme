@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, computed, watch } from 'vue';
 import { 
   Search, 
   UserPlus, 
@@ -11,6 +11,9 @@ import {
   ShoppingBag,
   Star,
   ChevronRight,
+  ChevronLeft,
+  ChevronsLeft,
+  ChevronsRight,
   X,
   Edit,
   Trash2,
@@ -23,8 +26,12 @@ import type { Client, Sale } from '../types/database';
 
 // State
 const clients = ref<Client[]>([]);
+const totalClientsCount = ref<number>(0);
 const isLoading = ref(true);
 const searchQuery = ref('');
+const currentPage = ref(1);
+const pageSize = ref(50);
+const pageSizeOptions = [25, 50, 100];
 const selectedClient = ref<Client | null>(null);
 const clientSales = ref<Sale[]>([]);
 const isLoadingSales = ref(false);
@@ -59,29 +66,87 @@ const editForm = ref({
   notes: '',
 });
 
-// Charger les clients
+// Pagination
+const totalPages = computed(() => Math.max(1, Math.ceil(totalClientsCount.value / pageSize.value)));
+const paginationInfo = computed(() => {
+  const total = totalClientsCount.value;
+  const size = pageSize.value;
+  const page = currentPage.value;
+  const from = total === 0 ? 0 : (page - 1) * size + 1;
+  const to = Math.min(page * size, total);
+  return { from, to, total };
+});
+const visiblePages = computed(() => {
+  const total = totalPages.value;
+  const current = currentPage.value;
+  const delta = 2;
+  const pages: number[] = [];
+  for (let p = Math.max(1, current - delta); p <= Math.min(total, current + delta); p++) {
+    pages.push(p);
+  }
+  return pages;
+});
+
+// Charger les clients (pagination + recherche serveur)
 const loadClients = async () => {
   isLoading.value = true;
   
   if (!isSupabaseConfigured()) {
     clients.value = [];
+    totalClientsCount.value = 0;
     isLoading.value = false;
     return;
   }
 
   try {
-    const { data, error } = await supabase
+    const size = pageSize.value;
+    const page = currentPage.value;
+    const from = (page - 1) * size;
+    const to = from + size - 1;
+    const q = searchQuery.value.trim();
+
+    // Requête avec filtre recherche si présent
+    let query = supabase
       .from('clients')
-      .select('*')
-      .order('last_name');
+      .select('*', { count: 'exact' })
+      .order('last_name')
+      .range(from, to);
+
+    if (q) {
+      query = query.or(
+        `first_name.ilike.%${q}%,last_name.ilike.%${q}%,phone.ilike.%${q}%,email.ilike.%${q}%`
+      );
+    }
+
+    const { data, error, count } = await query;
 
     if (error) throw error;
     clients.value = data || [];
+    totalClientsCount.value = count ?? 0;
   } catch (err) {
     console.error('Erreur chargement clients:', err);
     clients.value = [];
+    totalClientsCount.value = 0;
   } finally {
     isLoading.value = false;
+  }
+};
+
+const goToPage = (p: number) => {
+  currentPage.value = Math.max(1, Math.min(p, totalPages.value));
+  loadClients();
+};
+
+const pageInputValue = ref('');
+const syncPageInput = () => {
+  pageInputValue.value = String(currentPage.value);
+};
+const onPageInputSubmit = () => {
+  const num = parseInt(pageInputValue.value, 10);
+  if (!isNaN(num) && num >= 1) {
+    goToPage(num);
+  } else {
+    syncPageInput();
   }
 };
 
@@ -113,18 +178,18 @@ const loadClientSales = async (clientId: string) => {
   }
 };
 
-// Filtrer les clients
-const filteredClients = computed(() => {
-  if (!searchQuery.value.trim()) return clients.value;
-  
-  const q = searchQuery.value.toLowerCase();
-  return clients.value.filter(client => 
-    client.first_name.toLowerCase().includes(q) ||
-    client.last_name.toLowerCase().includes(q) ||
-    client.phone.includes(q) ||
-    client.email?.toLowerCase().includes(q)
-  );
+// Recherche serveur : recharger quand la recherche change (avec debounce)
+let searchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+watch(searchQuery, () => {
+  if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
+  searchDebounceTimer = setTimeout(() => {
+    currentPage.value = 1;
+    loadClients();
+  }, 300);
 });
+
+watch([currentPage, pageSize], () => loadClients());
+watch(currentPage, () => syncPageInput(), { immediate: true });
 
 // Sélectionner un client
 const selectClient = (client: Client) => {
@@ -175,7 +240,7 @@ const saveClient = async () => {
         postal_code: editForm.value.postal_code || null,
         birth_date: editForm.value.birth_date || null,
         notes: editForm.value.notes || null,
-      })
+      } as any)
       .eq('id', editForm.value.id);
 
     if (error) throw error;
@@ -183,10 +248,14 @@ const saveClient = async () => {
     // Recharger les clients
     await loadClients();
     
-    // Mettre à jour le client sélectionné
+    // Mettre à jour le client sélectionné (peut ne pas être sur la page courante)
     if (selectedClient.value?.id === editForm.value.id) {
       const updated = clients.value.find(c => c.id === editForm.value.id);
-      if (updated) selectedClient.value = updated;
+      if (updated) {
+        selectedClient.value = updated;
+      } else {
+        selectedClient.value = { ...selectedClient.value!, ...editForm.value } as Client;
+      }
     }
     
     showEditModal.value = false;
@@ -241,7 +310,7 @@ onMounted(loadClients);
         <div class="flex items-center justify-between mb-4">
           <div>
             <h1 class="text-xl lg:text-2xl font-bold text-gray-900 dark:text-white">Clients</h1>
-            <p class="text-sm text-gray-500 dark:text-gray-400">{{ clients.length }} clients enregistrés</p>
+            <p class="text-sm text-gray-500 dark:text-gray-400">{{ totalClientsCount }} clients enregistrés</p>
           </div>
           <button
             @click="loadClients"
@@ -254,13 +323,29 @@ onMounted(loadClients);
 
         <!-- Recherche -->
         <div class="relative">
-          <Search class="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+          <Search class="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-gray-500" />
           <input
             v-model="searchQuery"
             type="text"
             placeholder="Rechercher par nom, téléphone, email..."
             class="w-full pl-12 pr-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 dark:text-gray-100 dark:placeholder-gray-400 rounded-xl text-sm focus:outline-none focus:border-gray-900 dark:focus:border-emerald-500 focus:ring-2 focus:ring-gray-900/10 dark:focus:ring-emerald-500/30"
           />
+        </div>
+
+        <!-- Pagination : taille page + infos -->
+        <div class="flex flex-wrap items-center justify-between gap-3 mt-3">
+          <p v-if="totalClientsCount > 0" class="text-sm text-gray-500 dark:text-gray-400">
+            {{ paginationInfo.from }}-{{ paginationInfo.to }} sur {{ paginationInfo.total }} clients
+          </p>
+          <div class="flex items-center gap-2">
+            <span class="text-sm text-gray-500 dark:text-gray-400">Par page</span>
+            <select
+              v-model.number="pageSize"
+              class="px-3 py-1.5 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-sm dark:text-gray-100"
+            >
+              <option v-for="opt in pageSizeOptions" :key="opt" :value="opt">{{ opt }}</option>
+            </select>
+          </div>
         </div>
       </div>
 
@@ -272,7 +357,7 @@ onMounted(loadClients);
         </div>
 
         <!-- Vide -->
-        <div v-else-if="filteredClients.length === 0" class="p-8 text-center">
+        <div v-else-if="clients.length === 0" class="p-8 text-center">
           <UserPlus class="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto" />
           <p class="text-gray-500 dark:text-gray-400 mt-2">Aucun client trouvé</p>
         </div>
@@ -280,7 +365,7 @@ onMounted(loadClients);
         <!-- Liste des clients -->
         <div v-else class="divide-y divide-gray-100 dark:divide-gray-700">
           <button
-            v-for="client in filteredClients"
+            v-for="client in clients"
             :key="client.id"
             @click="selectClient(client)"
             :class="[
@@ -305,6 +390,73 @@ onMounted(loadClients);
 
             <ChevronRight class="w-5 h-5 text-gray-400 dark:text-gray-500 flex-shrink-0" />
           </button>
+        </div>
+
+        <!-- Pagination -->
+        <div
+          v-if="!isLoading && totalClientsCount > 0"
+          class="flex flex-wrap items-center justify-between gap-4 px-4 py-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50"
+        >
+          <div class="flex items-center gap-3">
+            <span class="text-sm text-gray-600 dark:text-gray-400">Page</span>
+            <input
+              v-model="pageInputValue"
+              type="number"
+              min="1"
+              :max="totalPages"
+              @keydown.enter="onPageInputSubmit"
+              @blur="onPageInputSubmit"
+              class="w-16 px-2 py-1.5 text-sm text-center bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-900 dark:focus:ring-emerald-500"
+            />
+            <span class="text-sm text-gray-600 dark:text-gray-400">/ {{ totalPages }}</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <button
+              :disabled="currentPage <= 1"
+              @click="goToPage(1)"
+              title="Première page"
+              class="p-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              <ChevronsLeft class="w-5 h-5" />
+            </button>
+            <button
+              :disabled="currentPage <= 1"
+              @click="goToPage(currentPage - 1)"
+              class="p-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              <ChevronLeft class="w-5 h-5" />
+            </button>
+            <div class="flex gap-1">
+              <button
+                v-for="p in visiblePages"
+                :key="p"
+                @click="goToPage(p)"
+                :class="[
+                  'min-w-[2.25rem] px-2 py-1.5 text-sm font-medium rounded-lg transition-colors',
+                  currentPage === p
+                    ? 'bg-gray-900 dark:bg-emerald-600 text-white'
+                    : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600'
+                ]"
+              >
+                {{ p }}
+              </button>
+            </div>
+            <button
+              :disabled="currentPage >= totalPages"
+              @click="goToPage(currentPage + 1)"
+              class="p-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              <ChevronRight class="w-5 h-5" />
+            </button>
+            <button
+              :disabled="currentPage >= totalPages"
+              @click="goToPage(totalPages)"
+              title="Dernière page"
+              class="p-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              <ChevronsRight class="w-5 h-5" />
+            </button>
+          </div>
         </div>
       </div>
     </div>

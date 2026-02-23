@@ -113,7 +113,15 @@ const formFields = [
 
 function onFieldInput(key: keyof Client, value: string, format: 'phone' | null): void {
   const formatted = format === 'phone' ? formatPhoneFR(value) : value;
-  (currentClient as unknown as Record<string, string>)[key] = formatted;
+  (currentClient.value as Record<string, string>)[key] = formatted;
+}
+
+function onSimpleFieldInput(key: keyof Client, value: string): void {
+  (currentClient.value as Record<string, string>)[key] = value;
+}
+
+function onPostalCodeInput(value: string): void {
+  (currentClient.value as Record<string, string>).postalCode = formatPostalCode(value);
 }
 
 </script>
@@ -211,7 +219,7 @@ function onFieldInput(key: keyof Client, value: string, format: 'phone' | null):
               :type="field.type"
               :placeholder="field.placeholder"
               class="w-full px-3 md:px-4 py-2.5 md:py-3 bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 dark:placeholder-gray-400 border border-gray-300 rounded-xl text-xs md:text-sm font-medium focus:outline-none focus:border-gray-900 focus:ring-2 focus:ring-gray-900/10 dark:focus:border-emerald-500 dark:focus:ring-emerald-500/30 hover:border-gray-400 transition-all"
-              @input="field.format ? onFieldInput(field.key, ($event.target as HTMLInputElement).value, field.format) : ((currentClient as any)[field.key] = ($event.target as HTMLInputElement).value)"
+              @input="field.format ? onFieldInput(field.key, ($event.target as HTMLInputElement).value, field.format) : onSimpleFieldInput(field.key, ($event.target as HTMLInputElement).value)"
             />
           </div>
         </template>
@@ -269,7 +277,7 @@ function onFieldInput(key: keyof Client, value: string, format: 'phone' | null):
             :maxlength="INPUT_LENGTHS.postalCode"
             placeholder="75001"
             class="w-full px-3 md:px-4 py-2.5 md:py-3 bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 dark:placeholder-gray-400 border border-gray-300 rounded-xl text-xs md:text-sm font-medium focus:outline-none focus:border-gray-900 focus:ring-2 focus:ring-gray-900/10 dark:focus:border-emerald-500 dark:focus:ring-emerald-500/30 hover:border-gray-400 transition-all"
-            @input="currentClient.postalCode = formatPostalCode(($event.target as HTMLInputElement).value)"
+            @input="onPostalCodeInput(($event.target as HTMLInputElement).value)"
           />
         </div>
       </div>

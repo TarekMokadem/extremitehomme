@@ -31,7 +31,7 @@ export interface Client {
 }
 
 // Types pour les moyens de paiement
-export type PaymentMethod = 'cash' | 'card' | 'contactless' | 'check' | 'gift_card' | 'amex';
+export type PaymentMethod = 'cash' | 'card' | 'contactless' | 'check' | 'gift_card' | 'amex' | 'free' | 'technical';
 
 // Types pour les catégories
 export interface Category {

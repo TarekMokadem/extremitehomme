@@ -1,10 +1,54 @@
 <script setup lang="ts">
-import { Gift, Check, RotateCcw } from 'lucide-vue-next';
+import { ref, computed } from 'vue';
+import { Gift, Check, RotateCcw, Plus, Minus } from 'lucide-vue-next';
 import { useLoyalty } from '../composables/useLoyalty';
 import { useClients } from '../composables/useClients';
+import { useAuth } from '../composables/useAuth';
 
-const { stamps, checkedCount, isCardComplete, stampsCount, toggleStamp, resetPointsToZero, loadClientStamps } = useLoyalty();
+const { stamps, checkedCount, isCardComplete, stampsCount, toggleStamp, addPointsManually, removePointsManually, resetPointsToZero, loadClientStamps } = useLoyalty();
 const { selectedClient } = useClients();
+const { vendor } = useAuth();
+
+const isSavingPoints = ref(false);
+const pendingStampsCount = computed(() => stamps.value.filter(s => s.isStamped && !s.date).length);
+const pendingRemovalCount = computed(() => stamps.value.filter(s => s.markedForRemoval).length);
+
+const handleAddPointsManually = async () => {
+  if (!selectedClient.value || !vendor.value || pendingStampsCount.value === 0) return;
+  isSavingPoints.value = true;
+  try {
+    const result = await addPointsManually(selectedClient.value.id, vendor.value.id);
+    if (result?.success) {
+      await loadClientStamps(selectedClient.value.id);
+      alert(`${result.count} point(s) fidélité ajouté(s)`);
+    } else {
+      alert('Erreur lors de l\'ajout des points');
+    }
+  } catch {
+    alert('Erreur lors de l\'ajout des points');
+  } finally {
+    isSavingPoints.value = false;
+  }
+};
+
+const handleRemovePointsManually = async () => {
+  if (!selectedClient.value || pendingRemovalCount.value === 0) return;
+  if (!confirm(`Retirer ${pendingRemovalCount.value} point(s) fidélité ?`)) return;
+  isSavingPoints.value = true;
+  try {
+    const result = await removePointsManually(selectedClient.value.id);
+    if (result?.success) {
+      await loadClientStamps(selectedClient.value.id);
+      alert(`${result.count} point(s) fidélité retiré(s)`);
+    } else {
+      alert('Erreur lors du retrait des points');
+    }
+  } catch {
+    alert('Erreur lors du retrait des points');
+  } finally {
+    isSavingPoints.value = false;
+  }
+};
 
 const handleResetPoints = async () => {
   if (!selectedClient.value || !confirm('Réinitialiser les points fidélité à 0 ?')) return;
@@ -40,6 +84,28 @@ const formatDate = (dateStr: string | null) => {
       </div>
       <div class="flex items-center gap-2">
         <button
+          v-if="selectedClient && pendingStampsCount > 0"
+          type="button"
+          @click="handleAddPointsManually"
+          :disabled="isSavingPoints"
+          class="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-yellow-700 bg-yellow-100 hover:bg-yellow-200 dark:text-amber-300 dark:bg-amber-900/50 dark:hover:bg-amber-900/70 rounded-lg transition-colors disabled:opacity-50"
+          title="Enregistrer les points cochés (sans vente)"
+        >
+          <Plus class="w-3.5 h-3.5" />
+          {{ isSavingPoints ? 'Enregistrement...' : `+${pendingStampsCount} point(s)` }}
+        </button>
+        <button
+          v-if="selectedClient && pendingRemovalCount > 0"
+          type="button"
+          @click="handleRemovePointsManually"
+          :disabled="isSavingPoints"
+          class="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-red-700 bg-red-100 hover:bg-red-200 dark:text-red-300 dark:bg-red-900/50 dark:hover:bg-red-900/70 rounded-lg transition-colors disabled:opacity-50"
+          title="Retirer les points sélectionnés"
+        >
+          <Minus class="w-3.5 h-3.5" />
+          {{ isSavingPoints ? 'Retrait...' : `-${pendingRemovalCount} point(s)` }}
+        </button>
+        <button
           v-if="selectedClient"
           type="button"
           @click="handleResetPoints"
@@ -67,15 +133,17 @@ const formatDate = (dateStr: string | null) => {
         @click="toggleStamp(stamp.position)"
         :class="[
           'relative aspect-square w-full max-w-none rounded-xl border-2 transition-all duration-200 flex flex-col items-center justify-center overflow-hidden',
-          stamp.isStamped
-            ? 'border-yellow-500 bg-yellow-50 hover:bg-yellow-100 dark:border-amber-500 dark:bg-amber-900/30 dark:hover:bg-amber-900/50'
-            : 'border-gray-300 bg-white hover:bg-gray-50 hover:border-gray-400 dark:border-gray-600 dark:bg-gray-700 dark:hover:bg-gray-600 dark:hover:border-gray-500'
+          stamp.markedForRemoval
+            ? 'border-red-500 bg-red-50 dark:border-red-500 dark:bg-red-900/30 ring-2 ring-red-400'
+            : stamp.isStamped
+              ? 'border-yellow-500 bg-yellow-50 hover:bg-yellow-100 dark:border-amber-500 dark:bg-amber-900/30 dark:hover:bg-amber-900/50'
+              : 'border-gray-300 bg-white hover:bg-gray-50 hover:border-gray-400 dark:border-gray-600 dark:bg-gray-700 dark:hover:bg-gray-600 dark:hover:border-gray-500'
         ]"
       >
         <span
           :class="[
             'text-base font-bold',
-            stamp.isStamped ? 'text-yellow-600 dark:text-amber-400' : 'text-gray-400 dark:text-gray-500'
+            stamp.markedForRemoval ? 'text-red-600 dark:text-red-400 line-through' : stamp.isStamped ? 'text-yellow-600 dark:text-amber-400' : 'text-gray-400 dark:text-gray-500'
           ]"
         >
           {{ stamp.position }}
@@ -87,9 +155,12 @@ const formatDate = (dateStr: string | null) => {
         >
           <div
             v-if="stamp.isStamped"
-            class="absolute inset-0 flex items-center justify-center bg-yellow-500/20 dark:bg-amber-500/30"
+            :class="[
+              'absolute inset-0 flex items-center justify-center',
+              stamp.markedForRemoval ? 'bg-red-500/20 dark:bg-red-500/30' : 'bg-yellow-500/20 dark:bg-amber-500/30'
+            ]"
           >
-            <Check class="w-6 h-6 text-yellow-600 dark:text-amber-400 drop-shadow" />
+            <Check :class="['w-6 h-6 drop-shadow', stamp.markedForRemoval ? 'text-red-600 dark:text-red-400' : 'text-yellow-600 dark:text-amber-400']" />
           </div>
         </Transition>
         <span

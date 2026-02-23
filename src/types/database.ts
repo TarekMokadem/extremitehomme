@@ -14,7 +14,7 @@ export type UserRole = 'admin' | 'manager' | 'vendor';
 export type ProductType = 'service' | 'product';
 export type DiscountType = 'euro' | 'percent';
 export type SaleStatus = 'pending' | 'completed' | 'cancelled' | 'refunded';
-export type PaymentMethod = 'cash' | 'card' | 'contactless' | 'check' | 'gift_card' | 'amex';
+export type PaymentMethod = 'cash' | 'card' | 'contactless' | 'check' | 'gift_card' | 'amex' | 'free' | 'technical';
 export type StockMovementType = 'in' | 'out' | 'adjustment';
 
 // Tables
@@ -74,6 +74,8 @@ export interface Product {
   price_ht: number;
   tva_rate: number;
   price_ttc: number;
+  /** Taille du produit (ex. 39, TU, 90) */
+  size?: string | null;
   duration: number | null;
   stock: number;
   alert_threshold: number;
@@ -348,12 +350,16 @@ export type PaymentInsert = Database['public']['Tables']['payments']['Insert'];
 
 // Types pour le panier (frontend uniquement)
 export interface CartItem {
+  /** Identifiant unique de la ligne (chaque ajout crée une nouvelle ligne) */
+  lineId: string;
   product: Product;
   variant?: ProductVariant;
   quantity: number;
   // Vendeur associé à cet article (peut être différent par ligne)
   vendor_id?: string;
   vendor?: Vendor;
+  /** Prix unitaire TTC fixé manuellement (ex. Bon cadeau). Si défini, prioritaire sur product.price_ttc */
+  fixedPriceTTC?: number;
   // Calculés
   price_ht: number;
   tva_rate: number;
