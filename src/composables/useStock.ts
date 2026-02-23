@@ -1,6 +1,6 @@
 import { ref, computed } from 'vue';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
-import type { Product, Category, StockMovement, StockMovementType } from '../types/database';
+import type { Product, Category, StockMovement, StockMovementType, StockCategory } from '../types/database';
 
 export interface MovementWithDetails extends StockMovement {
   product?: Product;
@@ -28,7 +28,10 @@ export function useStock() {
         .order('display_order');
 
       if (error) throw error;
-      productsWithStock.value = data || [];
+      productsWithStock.value = (data || []).map(p => ({
+        ...p,
+        stock_technical: (p as any).stock_technical ?? 0,
+      }));
     } catch (err) {
       console.error('Erreur chargement produits (stock):', err);
       productsWithStock.value = [];
@@ -56,7 +59,10 @@ export function useStock() {
 
       const { data, error } = await query;
       if (error) throw error;
-      movements.value = (data || []) as MovementWithDetails[];
+      movements.value = ((data || []) as MovementWithDetails[]).map(m => ({
+        ...m,
+        stock_type: (m as any).stock_type ?? 'sale',
+      }));
     } catch (err) {
       console.error('Erreur chargement mouvements:', err);
       movements.value = [];
@@ -69,7 +75,9 @@ export function useStock() {
    * Ajoute un mouvement et met à jour le stock du produit.
    * - in: quantity > 0, stock += quantity
    * - out: quantity > 0 (saisi), stock -= quantity (on enregistre -quantity)
-   * - adjustment: quantity peut être + ou -, stock += quantity
+   * - adjustment: quantity = nouvelle valeur cible du stock (on calcule le delta)
+   * 
+   * stockType : 'sale' (vente) ou 'technical' (technique)
    */
   const addMovement = async (params: {
     product_id: string;
@@ -78,17 +86,37 @@ export function useStock() {
     reason: string;
     reference_id?: string | null;
     vendor_id?: string | null;
+    stock_type?: StockCategory;
   }) => {
     if (!isSupabaseConfigured()) throw new Error('Supabase non configuré');
 
-    const { product_id, type, reason, reference_id = null, vendor_id = null } = params;
+    const { product_id, type, reason, reference_id = null, vendor_id = null, stock_type = 'sale' } = params;
     let quantity = params.quantity;
 
-    if (type === 'out' && quantity > 0) {
-      quantity = -quantity;
-    }
-    if (type === 'in' && quantity < 0) {
-      quantity = Math.abs(quantity);
+    const stockColumn = stock_type === 'technical' ? 'stock_technical' : 'stock';
+
+    // Récupérer le stock actuel
+    const { data: product } = await supabase
+      .from('products')
+      .select(`${stockColumn}, stock, stock_technical`)
+      .eq('id', product_id)
+      .single();
+
+    const currentStock = (product as any)?.[stockColumn] ?? 0;
+    let newStock: number;
+
+    if (type === 'adjustment') {
+      // Ajustement = fixer le stock à la valeur indiquée
+      newStock = Math.max(0, quantity);
+      quantity = newStock - currentStock; // delta pour le mouvement
+    } else {
+      if (type === 'out' && quantity > 0) {
+        quantity = -quantity;
+      }
+      if (type === 'in' && quantity < 0) {
+        quantity = Math.abs(quantity);
+      }
+      newStock = Math.max(0, currentStock + quantity);
     }
 
     isSaving.value = true;
@@ -101,22 +129,14 @@ export function useStock() {
         reason,
         reference_id,
         vendor_id,
+        stock_type,
       } as Record<string, unknown>);
 
       if (insertError) throw insertError;
 
-      const { data: product } = await supabase
-        .from('products')
-        .select('stock')
-        .eq('id', product_id)
-        .single();
-
-      const currentStock = (product?.stock as number) ?? 0;
-      const newStock = Math.max(0, currentStock + quantity);
-
       const { error: updateError } = await supabase
         .from('products')
-        .update({ stock: newStock, updated_at: new Date().toISOString() } as Record<string, unknown>)
+        .update({ [stockColumn]: newStock, updated_at: new Date().toISOString() } as Record<string, unknown>)
         .eq('id', product_id);
 
       if (updateError) throw updateError;
@@ -159,6 +179,7 @@ export function useStock() {
     tva_rate?: number;
     size?: string | null;
     stock?: number;
+    stock_technical?: number;
     alert_threshold?: number;
   }) => {
     if (!isSupabaseConfigured()) throw new Error('Supabase non configuré');
@@ -178,6 +199,7 @@ export function useStock() {
         tva_rate: params.tva_rate ?? 0.2,
         size: params.size || null,
         stock: params.stock ?? 0,
+        stock_technical: params.stock_technical ?? 0,
         alert_threshold: params.alert_threshold ?? 5,
         is_active: true,
         display_order: 999,

@@ -17,7 +17,7 @@ import {
 } from 'lucide-vue-next';
 import { useStock } from '../composables/useStock';
 import { useAuth } from '../composables/useAuth';
-import type { Product } from '../types/database';
+import type { Product, StockCategory } from '../types/database';
 import type { StockMovementType } from '../types/database';
 
 const {
@@ -116,12 +116,22 @@ const movementProduct = ref<Product | null>(null);
 const movementType = ref<StockMovementType>('in');
 const movementQuantity = ref<number>(1);
 const movementReason = ref('');
+const movementStockType = ref<StockCategory>('sale');
+
+// Stock actuel du produit selon le type de stock sélectionné
+const currentStockForMovement = computed(() => {
+  if (!movementProduct.value) return 0;
+  return movementStockType.value === 'technical'
+    ? (movementProduct.value.stock_technical ?? 0)
+    : movementProduct.value.stock;
+});
 
 function openMovementModal(product: Product) {
   movementProduct.value = product;
   movementType.value = 'in';
   movementQuantity.value = 1;
   movementReason.value = '';
+  movementStockType.value = 'sale';
   showMovementModal.value = true;
 }
 
@@ -133,16 +143,22 @@ function closeMovementModal() {
 async function submitMovement() {
   if (!movementProduct.value) return;
   const qty = movementQuantity.value;
+  if (movementType.value === 'adjustment' && qty < 0) return;
   if (qty <= 0 && movementType.value !== 'adjustment') return;
-  if (movementType.value === 'adjustment' && qty === 0) return;
 
   try {
+    const defaultReason = movementType.value === 'in'
+      ? 'Entrée stock'
+      : movementType.value === 'out'
+        ? 'Sortie stock'
+        : `Ajustement → ${qty}`;
     await addMovement({
       product_id: movementProduct.value.id,
       type: movementType.value,
       quantity: movementQuantity.value,
-      reason: movementReason.value || (movementType.value === 'in' ? 'Entrée stock' : movementType.value === 'out' ? 'Sortie stock' : 'Ajustement'),
+      reason: movementReason.value || defaultReason,
       vendor_id: currentVendor.value?.id ?? null,
+      stock_type: movementStockType.value,
     });
     closeMovementModal();
   } catch (e) {
@@ -235,6 +251,8 @@ const movementLabel = (type: string, quantity: number) => {
   return quantity >= 0 ? `+${quantity}` : `${quantity}`;
 };
 
+const stockTypeLabel = (st: string) => st === 'technical' ? 'Technique' : 'Vente';
+
 // Grilles de taille par catégorie (slug)
 const SHOE_CATEGORY_SLUGS = ['chaussures', 'boots', 'bottines', 'mocassins', 'souliers', 'tennis', 'baskets'];
 const FRENCH_SIZES = [36, 36.5, 37, 37.5, 38, 38.5, 39, 39.5, 40, 40.5, 41, 41.5, 42, 42.5, 43, 43.5, 44, 44.5, 45, 45.5, 46, 46.5, 47];
@@ -276,6 +294,7 @@ const newProduct = ref({
   price_ttc: 0,
   tva_rate: 0.2,
   stock: 0,
+  stock_technical: 0,
   alert_threshold: 5,
 });
 
@@ -293,6 +312,7 @@ function openAddProductModal() {
     price_ttc: 0,
     tva_rate: 0.2,
     stock: 0,
+    stock_technical: 0,
     alert_threshold: 5,
   };
   selectedSize.value = null;
@@ -352,6 +372,7 @@ async function submitAddProduct() {
       tva_rate: 0.2,
       size: selectedSize.value || null,
       stock: Math.max(0, Number(newProduct.value.stock) || 0),
+      stock_technical: Math.max(0, Number(newProduct.value.stock_technical) || 0),
       alert_threshold: Math.max(0, Number(newProduct.value.alert_threshold) || 5),
     });
     closeAddProductModal();
@@ -547,6 +568,7 @@ onMounted(() => {
               <tr>
                 <th class="px-4 py-3 text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">Date</th>
                 <th class="px-4 py-3 text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">Produit</th>
+                <th class="px-4 py-3 text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">Stock</th>
                 <th class="px-4 py-3 text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">Type</th>
                 <th class="px-4 py-3 text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">Quantité</th>
                 <th class="px-4 py-3 text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">Motif</th>
@@ -561,6 +583,11 @@ onMounted(() => {
                 <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">{{ formatDate(m.created_at) }}</td>
                 <td class="px-4 py-3 text-sm font-medium text-gray-900 dark:text-white">
                   {{ getProductName(m.product_id) }}
+                </td>
+                <td class="px-4 py-3">
+                  <span :class="['inline-flex px-2 py-0.5 rounded text-xs font-medium', m.stock_type === 'technical' ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300' : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300']">
+                    {{ stockTypeLabel(m.stock_type) }}
+                  </span>
                 </td>
                 <td class="px-4 py-3">
                   <span
@@ -594,15 +621,17 @@ onMounted(() => {
           <table class="w-full text-left table-fixed">
             <thead class="bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
               <tr>
-                <th class="px-3 py-3 text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider w-[20%]">Produit</th>
-                <th class="px-3 py-3 text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider w-[6%]">Code</th>
-                <th class="px-3 py-3 text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider w-[12%]">Code-barres</th>
-                <th class="px-3 py-3 text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider w-[9%]">Marque</th>
-                <th class="px-3 py-3 text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider w-[9%]">Modèle</th>
-                <th class="px-3 py-3 text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider w-[10%]">Catégorie</th>
-                <th class="px-3 py-3 text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider text-center w-[6%]">Stock</th>
-                <th class="px-3 py-3 text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider text-center w-[9%]">Seuil alerte</th>
-                <th class="px-3 py-3 text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider w-[19%]">Actions</th>
+                <th class="px-3 py-3 text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider w-[16%]">Produit</th>
+                <th class="px-3 py-3 text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider w-[5%]">Taille</th>
+                <th class="px-3 py-3 text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider w-[5%]">Code</th>
+                <th class="px-3 py-3 text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider w-[10%]">Code-barres</th>
+                <th class="px-3 py-3 text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider w-[8%]">Marque</th>
+                <th class="px-3 py-3 text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider w-[8%]">Modèle</th>
+                <th class="px-3 py-3 text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider w-[8%]">Catégorie</th>
+                <th class="px-3 py-3 text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider text-center w-[5%]" title="Stock de vente">Vente</th>
+                <th class="px-3 py-3 text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider text-center w-[5%]" title="Stock technique">Tech.</th>
+                <th class="px-3 py-3 text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider text-center w-[6%]">Seuil</th>
+                <th class="px-3 py-3 text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider w-[24%]">Actions</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
@@ -612,7 +641,7 @@ onMounted(() => {
                 class="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                 :class="{ 'bg-amber-50 dark:bg-amber-900/20': product.stock <= product.alert_threshold }"
               >
-                <td class="px-3 py-3 w-[20%]">
+                <td class="px-3 py-3 w-[16%]">
                   <div class="flex items-center gap-2 min-w-0">
                     <span class="font-medium text-gray-900 dark:text-white truncate" :title="product.name">{{ product.name }}</span>
                     <AlertTriangle
@@ -621,8 +650,9 @@ onMounted(() => {
                     />
                   </div>
                 </td>
-                <td class="px-3 py-3 text-sm text-gray-500 dark:text-gray-400 w-[6%]">{{ product.code || '—' }}</td>
-                <td class="px-3 py-3 text-sm w-[12%] min-w-0">
+                <td class="px-3 py-3 text-sm text-gray-600 dark:text-gray-300 w-[5%]">{{ (product as any).size || '—' }}</td>
+                <td class="px-3 py-3 text-sm text-gray-500 dark:text-gray-400 w-[5%]">{{ product.code || '—' }}</td>
+                <td class="px-3 py-3 text-sm w-[10%] min-w-0">
                   <template v-if="editingBarcode === product.id">
                     <input
                       v-model="barcodeValue"
@@ -649,13 +679,16 @@ onMounted(() => {
                     </button>
                   </template>
                 </td>
-                <td class="px-3 py-3 text-sm text-gray-600 dark:text-gray-300 w-[9%] truncate" :title="product.brand || ''">{{ product.brand || '—' }}</td>
-                <td class="px-3 py-3 text-sm text-gray-600 dark:text-gray-300 w-[9%] truncate" :title="product.model || ''">{{ product.model || '—' }}</td>
-                <td class="px-3 py-3 text-sm text-gray-500 dark:text-gray-400 w-[10%] truncate" :title="product.category?.name || ''">{{ product.category?.name || '—' }}</td>
-                <td class="px-3 py-3 text-center font-semibold w-[6%]" :class="product.stock <= product.alert_threshold ? 'text-amber-600 dark:text-amber-400' : 'text-gray-900 dark:text-white'">
+                <td class="px-3 py-3 text-sm text-gray-600 dark:text-gray-300 w-[8%] truncate" :title="product.brand || ''">{{ product.brand || '—' }}</td>
+                <td class="px-3 py-3 text-sm text-gray-600 dark:text-gray-300 w-[8%] truncate" :title="product.model || ''">{{ product.model || '—' }}</td>
+                <td class="px-3 py-3 text-sm text-gray-500 dark:text-gray-400 w-[8%] truncate" :title="product.category?.name || ''">{{ product.category?.name || '—' }}</td>
+                <td class="px-3 py-3 text-center font-semibold w-[5%]" :class="product.stock <= product.alert_threshold ? 'text-amber-600 dark:text-amber-400' : 'text-gray-900 dark:text-white'">
                   {{ product.stock }}
                 </td>
-                <td class="px-3 py-3 text-center w-[9%]">
+                <td class="px-3 py-3 text-center font-semibold w-[5%] text-blue-600 dark:text-blue-400">
+                  {{ product.stock_technical ?? 0 }}
+                </td>
+                <td class="px-3 py-3 text-center w-[6%]">
                   <template v-if="editingThreshold === product.id">
                     <div class="flex items-center justify-center gap-2">
                       <input
@@ -680,7 +713,7 @@ onMounted(() => {
                     </button>
                   </template>
                 </td>
-                <td class="px-3 py-3 w-[19%]">
+                <td class="px-3 py-3 w-[24%]">
                   <div class="flex items-center gap-2 flex-wrap">
                     <button
                       @click="openMovementModal(product)"
@@ -807,9 +840,27 @@ onMounted(() => {
                 <X class="w-5 h-5" />
               </button>
             </div>
-            <p class="text-sm text-gray-600 dark:text-gray-300 mb-4">{{ movementProduct.name }} (stock actuel : {{ movementProduct.stock }})</p>
+            <p class="text-sm text-gray-600 dark:text-gray-300 mb-4">
+              {{ movementProduct.name }}
+              — Stock {{ movementStockType === 'technical' ? 'technique' : 'vente' }} actuel : <strong>{{ currentStockForMovement }}</strong>
+            </p>
 
             <div class="space-y-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Type de stock</label>
+                <div class="flex rounded-xl border border-gray-200 dark:border-gray-600 overflow-hidden">
+                  <button
+                    type="button"
+                    @click="movementStockType = 'sale'"
+                    :class="['flex-1 px-4 py-2 text-sm font-medium transition-colors', movementStockType === 'sale' ? 'bg-gray-900 dark:bg-emerald-600 text-white' : 'bg-gray-50 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600']"
+                  >Vente</button>
+                  <button
+                    type="button"
+                    @click="movementStockType = 'technical'"
+                    :class="['flex-1 px-4 py-2 text-sm font-medium transition-colors', movementStockType === 'technical' ? 'bg-blue-600 text-white' : 'bg-gray-50 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600']"
+                  >Technique</button>
+                </div>
+              </div>
               <div>
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Type</label>
                 <select
@@ -818,17 +869,19 @@ onMounted(() => {
                 >
                   <option value="in">Entrée</option>
                   <option value="out">Sortie</option>
-                  <option value="adjustment">Ajustement (+/-)</option>
+                  <option value="adjustment">Fixer le stock</option>
                 </select>
               </div>
               <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Quantité</label>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  {{ movementType === 'adjustment' ? 'Nouvelle valeur du stock' : 'Quantité' }}
+                </label>
                 <input
                   v-model.number="movementQuantity"
                   type="number"
-                  :min="movementType === 'out' ? 1 : movementType === 'adjustment' ? undefined : 1"
+                  :min="movementType === 'adjustment' ? 0 : 1"
                   class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:placeholder-gray-400 rounded-xl focus:ring-2 focus:ring-gray-900 dark:focus:ring-emerald-500 focus:border-transparent"
-                  :placeholder="movementType === 'adjustment' ? 'Ex. -2 ou +5' : ''"
+                  :placeholder="movementType === 'adjustment' ? `Actuellement : ${currentStockForMovement}` : ''"
                 />
               </div>
               <div>
@@ -851,7 +904,7 @@ onMounted(() => {
               </button>
               <button
                 @click="submitMovement"
-                :disabled="isSaving || (movementQuantity <= 0 && movementType !== 'adjustment') || (movementType === 'adjustment' && movementQuantity === 0)"
+                :disabled="isSaving || (movementType !== 'adjustment' && movementQuantity <= 0) || (movementType === 'adjustment' && movementQuantity < 0)"
                 class="flex-1 px-4 py-2 bg-gray-900 dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white rounded-xl hover:bg-gray-800 disabled:opacity-50"
               >
                 {{ isSaving ? 'Enregistrement...' : 'Enregistrer' }}
@@ -1064,11 +1117,20 @@ onMounted(() => {
                   />
                 </div>
               </div>
-              <div class="grid grid-cols-2 gap-4">
+              <div class="grid grid-cols-3 gap-4">
                 <div>
-                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Stock initial</label>
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Stock vente</label>
                   <input
                     v-model.number="newProduct.stock"
+                    type="number"
+                    min="0"
+                    class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-xl focus:ring-2 focus:ring-gray-900 dark:focus:ring-emerald-500 focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Stock technique</label>
+                  <input
+                    v-model.number="newProduct.stock_technical"
                     type="number"
                     min="0"
                     class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-xl focus:ring-2 focus:ring-gray-900 dark:focus:ring-emerald-500 focus:border-transparent"

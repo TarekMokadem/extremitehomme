@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
 import {
   TrendingUp,
   TrendingDown,
@@ -9,9 +10,12 @@ import {
   BarChart3,
   RefreshCw,
   Award,
-  Clock
+  Clock,
+  ExternalLink,
 } from 'lucide-vue-next';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
+
+const router = useRouter();
 
 // Types
 interface DailyStat {
@@ -521,25 +525,29 @@ onMounted(loadStats);
           </div>
 
           <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            <div
+            <button
               v-for="vendor in vendorStats"
               :key="vendor.id"
-              class="flex items-center gap-4 p-4 bg-gray-50 dark:bg-gray-700 rounded-xl"
+              @click="router.push({ name: 'stats-employe', query: { vendorId: vendor.id } })"
+              class="flex items-center gap-4 p-4 bg-gray-50 dark:bg-gray-700 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors text-left group cursor-pointer"
             >
               <div 
                 :style="{ backgroundColor: vendor.color }"
-                class="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold"
+                class="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold shrink-0"
               >
                 {{ vendor.initials }}
               </div>
               <div class="flex-1 min-w-0">
-                <p class="font-semibold text-gray-900 dark:text-white truncate">{{ vendor.name }}</p>
+                <p class="font-semibold text-gray-900 dark:text-white truncate flex items-center gap-1">
+                  {{ vendor.name }}
+                  <ExternalLink class="w-3.5 h-3.5 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                </p>
                 <p class="text-sm text-gray-500 dark:text-gray-400">{{ vendor.count }} ventes</p>
               </div>
-              <div class="text-right">
+              <div class="text-right shrink-0">
                 <p class="text-lg font-bold text-gray-900 dark:text-white">{{ formatPrice(vendor.total) }}€</p>
               </div>
-            </div>
+            </button>
           </div>
         </div>
 

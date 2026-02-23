@@ -40,6 +40,24 @@ const router = createRouter({
       meta: { title: 'Statistiques' }
     },
     {
+      path: '/stats/employe',
+      name: 'stats-employe',
+      component: () => import('../pages/StatsEmployePage.vue'),
+      meta: { title: 'Stats employé' }
+    },
+    {
+      path: '/stats/ca',
+      name: 'stats-ca',
+      component: () => import('../pages/ChiffreAffairePage.vue'),
+      meta: { title: 'Chiffre d\'affaires' }
+    },
+    {
+      path: '/stats/recap',
+      name: 'stats-recap',
+      component: () => import('../pages/RecapMensuelPage.vue'),
+      meta: { title: 'Récap mensuel' }
+    },
+    {
       path: '/parametres',
       name: 'parametres',
       component: () => import('../pages/ParametresPage.vue'),
@@ -60,7 +78,6 @@ const router = createRouter({
   ],
 });
 
-// Mettre à jour le titre de la page
 router.beforeEach((to) => {
   document.title = `${to.meta.title || 'Caisse'} - Extrémités Homme`;
 });

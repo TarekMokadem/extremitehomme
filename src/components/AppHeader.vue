@@ -1,13 +1,11 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue';
-import { useRouter, useRoute } from 'vue-router';
-import { Scissors, ChevronDown, LayoutGrid, History, Users, Wallet, BarChart3, Settings, Package, ClipboardList, Sun, Moon, FileText } from 'lucide-vue-next';
+import { useRoute } from 'vue-router';
+import { Scissors, ChevronDown, LayoutGrid, History, Users, Wallet, BarChart3, Settings, Package, ClipboardList, Sun, Moon, FileText, UserCheck, Euro, CalendarDays } from 'lucide-vue-next';
 import { useAuth } from '../composables/useAuth';
 import type { Vendor } from '../types/database';
 import { useTheme } from '../composables/useTheme';
 
-// Router
-const router = useRouter();
 const route = useRoute();
 
 // Composables
@@ -30,12 +28,22 @@ const navItems = [
       { path: '/fin-de-journee', name: 'fin-de-journee', label: 'Fin de journée', icon: FileText },
     ],
   },
-  { path: '/stats', name: 'stats', label: 'Stats', icon: BarChart3 },
+  {
+    group: 'stats',
+    label: 'Stats',
+    icon: BarChart3,
+    items: [
+      { path: '/stats', name: 'stats', label: 'Statistiques générales', icon: BarChart3 },
+      { path: '/stats/employe', name: 'stats-employe', label: 'Stats par employé', icon: UserCheck },
+      { path: '/stats/ca', name: 'stats-ca', label: 'Chiffre d\'affaires', icon: Euro },
+      { path: '/stats/recap', name: 'stats-recap', label: 'Récap mensuel', icon: CalendarDays },
+    ],
+  },
   { path: '/parametres', name: 'parametres', label: 'Paramètres', icon: Settings },
 ];
 
 // State
-const showCaisseMenu = ref(false);
+const openDropdown = ref<string | null>(null);
 const currentDate = ref('');
 const currentTime = ref('');
 const showVendorMenu = ref(false);
@@ -73,8 +81,7 @@ const selectVendor = (vendor: Vendor): void => {
   showVendorMenu.value = false;
 };
 
-// Fermer le menu Caisse quand on clique ailleurs
-const closeCaisseMenu = () => { showCaisseMenu.value = false; };
+const closeDropdowns = () => { openDropdown.value = null; };
 
 // Lifecycle hooks
 onMounted(async () => {
@@ -127,7 +134,7 @@ onUnmounted(() => {
         </router-link>
         <div v-else class="relative">
           <button
-            @click="showCaisseMenu = !showCaisseMenu"
+            @click="openDropdown = openDropdown === item.group ? null : (item.group ?? null)"
             :class="[
               'flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-colors',
               item.items?.some((i: any) => route.path === i.path)
@@ -148,14 +155,14 @@ onUnmounted(() => {
             leave-to-class="opacity-0 scale-95"
           >
             <div
-              v-if="showCaisseMenu"
-              class="absolute left-0 top-full mt-1 w-48 bg-gray-800 rounded-xl shadow-xl border border-gray-700 py-2 z-50"
+              v-if="openDropdown === item.group"
+              class="absolute left-0 top-full mt-1 w-56 bg-gray-800 rounded-xl shadow-xl border border-gray-700 py-2 z-50"
             >
               <router-link
                 v-for="sub in item.items"
                 :key="sub.path"
                 :to="sub.path"
-                @click="showCaisseMenu = false"
+                @click="openDropdown = null"
                 :class="[
                   'flex items-center gap-2 px-4 py-2 text-sm transition-colors',
                   route.path === sub.path
@@ -254,10 +261,10 @@ onUnmounted(() => {
       </div>
     </div>
 
-    <!-- Backdrop menu Caisse -->
+    <!-- Backdrop menus dropdown -->
     <div
-      v-if="showCaisseMenu"
-      @click="closeCaisseMenu"
+      v-if="openDropdown"
+      @click="closeDropdowns"
       class="fixed inset-0 z-30"
     ></div>
   </header>

@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
-import { Search, Package, Plus, X } from 'lucide-vue-next';
+import { Search, Package, Plus, X, ShoppingBag, Wrench } from 'lucide-vue-next';
 import { useProducts } from '../composables/useProducts';
 import { useSales } from '../composables/useSales';
-import type { Product } from '../types/database';
+import type { Product, StockCategory } from '../types/database';
 
 const props = defineProps<{
   modelValue: boolean;
@@ -17,16 +17,17 @@ const { physicalProducts, loadProducts } = useProducts();
 const { addToCart } = useSales();
 
 const searchQuery = ref('');
+const stockMode = ref<StockCategory>('sale');
 const isOpen = computed({
   get: () => props.modelValue,
   set: (v) => emit('update:modelValue', v),
 });
 
-// Charger les produits et gérer Escape à l'ouverture
 watch(isOpen, (open) => {
   if (open) {
     loadProducts();
     searchQuery.value = '';
+    stockMode.value = 'sale';
     const handler = (e: KeyboardEvent) => {
       if (e.key === 'Escape') close();
     };
@@ -35,7 +36,6 @@ watch(isOpen, (open) => {
   }
 });
 
-// Produits filtrés par recherche
 const filteredProducts = computed(() => {
   const q = searchQuery.value.trim().toLowerCase();
   let list = physicalProducts.value;
@@ -52,23 +52,20 @@ const filteredProducts = computed(() => {
   return list;
 });
 
-// Grouper par marque, puis par produit (name+model) pour les variantes taille
-interface ProductGroup {
-  brand: string;
-  items: Product[]; // Tous les produits de cette marque (filtrés)
-}
-
-// Sous-groupe : même produit, différentes tailles
 interface SizeVariant {
   product: Product;
   size: string | null;
-  stock: number;
+  stockSale: number;
+  stockTech: number;
 }
 
 interface ProductModel {
   displayName: string;
   variants: SizeVariant[];
 }
+
+const getStockForMode = (p: Product) =>
+  stockMode.value === 'technical' ? (p.stock_technical ?? 0) : p.stock;
 
 const productsByBrand = computed(() => {
   const byBrand = new Map<string, Product[]>();
@@ -80,7 +77,6 @@ const productsByBrand = computed(() => {
 
   const result: { brand: string; models: ProductModel[] }[] = [];
   for (const [brand, products] of byBrand) {
-    // Grouper par (name, model) pour regrouper les tailles
     const byModel = new Map<string, Product[]>();
     for (const p of products) {
       const key = `${p.name}|${p.model ?? ''}`;
@@ -98,7 +94,8 @@ const productsByBrand = computed(() => {
         variants: variants.map((p) => ({
           product: p,
           size: p.size ?? null,
-          stock: p.stock ?? 0,
+          stockSale: p.stock ?? 0,
+          stockTech: p.stock_technical ?? 0,
         })),
       });
     }
@@ -110,8 +107,9 @@ const productsByBrand = computed(() => {
 });
 
 const addProductToCart = (product: Product) => {
-  if ((product.stock ?? 0) <= 0) return;
-  addToCart(product, 1);
+  const stock = getStockForMode(product);
+  if (stock <= 0) return;
+  addToCart(product, 1, undefined, stockMode.value);
 };
 
 const close = () => {
@@ -155,8 +153,36 @@ const close = () => {
             </button>
           </div>
 
-          <!-- Barre de recherche -->
+          <!-- Toggle Vente / Technique -->
           <div class="px-4 py-3 border-b border-gray-100 dark:border-gray-700 shrink-0">
+            <div class="flex rounded-xl border border-gray-200 dark:border-gray-600 overflow-hidden mb-3">
+              <button
+                @click="stockMode = 'sale'"
+                :class="[
+                  'flex-1 px-4 py-2.5 text-sm font-medium transition-colors flex items-center justify-center gap-2',
+                  stockMode === 'sale'
+                    ? 'bg-emerald-600 text-white'
+                    : 'bg-gray-50 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600'
+                ]"
+              >
+                <ShoppingBag class="w-4 h-4" />
+                Produit de vente
+              </button>
+              <button
+                @click="stockMode = 'technical'"
+                :class="[
+                  'flex-1 px-4 py-2.5 text-sm font-medium transition-colors flex items-center justify-center gap-2',
+                  stockMode === 'technical'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-50 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600'
+                ]"
+              >
+                <Wrench class="w-4 h-4" />
+                Utilisation technique
+              </button>
+            </div>
+
+            <!-- Barre de recherche -->
             <div class="relative">
               <Search class="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500 pointer-events-none" />
               <input
@@ -198,37 +224,40 @@ const close = () => {
                         </div>
                       </div>
 
-                      <!-- Variantes taille ou produit unique -->
                       <div class="px-3 pb-3 flex flex-wrap gap-2">
                         <template v-for="v in model.variants" :key="v.product.id">
                           <button
                             v-if="v.size"
                             @click="addProductToCart(v.product)"
-                            :disabled="v.stock <= 0"
+                            :disabled="(stockMode === 'sale' ? v.stockSale : v.stockTech) <= 0"
                             :class="[
                               'inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
-                              v.stock > 0
-                                ? 'bg-emerald-600 text-white hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-600 cursor-pointer'
+                              (stockMode === 'sale' ? v.stockSale : v.stockTech) > 0
+                                ? (stockMode === 'sale'
+                                  ? 'bg-emerald-600 text-white hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-600'
+                                  : 'bg-blue-600 text-white hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600')
                                 : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400 cursor-not-allowed'
                             ]"
                           >
                             <span>{{ v.size }}</span>
-                            <span class="text-xs opacity-90">({{ v.stock }})</span>
+                            <span class="text-xs opacity-90">({{ stockMode === 'sale' ? v.stockSale : v.stockTech }})</span>
                           </button>
                           <button
                             v-else
                             @click="addProductToCart(v.product)"
-                            :disabled="v.stock <= 0"
+                            :disabled="(stockMode === 'sale' ? v.stockSale : v.stockTech) <= 0"
                             :class="[
                               'inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
-                              v.stock > 0
-                                ? 'bg-emerald-600 text-white hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-600 cursor-pointer'
+                              (stockMode === 'sale' ? v.stockSale : v.stockTech) > 0
+                                ? (stockMode === 'sale'
+                                  ? 'bg-emerald-600 text-white hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-600'
+                                  : 'bg-blue-600 text-white hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600')
                                 : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400 cursor-not-allowed'
                             ]"
                           >
                             <Plus class="w-4 h-4" />
                             <span>Ajouter</span>
-                            <span class="text-xs opacity-90">({{ v.stock }})</span>
+                            <span class="text-xs opacity-90">({{ stockMode === 'sale' ? v.stockSale : v.stockTech }})</span>
                           </button>
                         </template>
                       </div>

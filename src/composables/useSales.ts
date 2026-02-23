@@ -9,6 +9,7 @@ import type {
   PaymentMethod,
   DiscountType,
   Vendor,
+  StockCategory,
 } from '../types/database';
 
 // State global du panier
@@ -40,15 +41,18 @@ export function useSales() {
   };
 
   // Stock disponible pour ajout au panier (produits uniquement ; services = illimité)
-  const getAvailableStock = (product: Product, excludeLineId?: string) => {
+  const getAvailableStock = (product: Product, excludeLineId?: string, stockCat?: StockCategory) => {
     if (product.type !== 'product') return Infinity;
-    const inCart = getCartQuantityForProduct(product.id, excludeLineId);
-    return Math.max(0, (product.stock ?? 0) - inCart);
+    const inCart = cartItems.value
+      .filter((i) => i.product.id === product.id && i.lineId !== excludeLineId && (i.stockCategory ?? 'sale') === (stockCat ?? 'sale'))
+      .reduce((sum, i) => sum + i.quantity, 0);
+    const totalStock = (stockCat === 'technical') ? (product.stock_technical ?? 0) : (product.stock ?? 0);
+    return Math.max(0, totalStock - inCart);
   };
 
-  // Ajouter un produit au panier (chaque ajout crée une nouvelle ligne, pas de regroupement)
-  const addToCart = (product: Product, quantity: number = 1, vendor?: Vendor) => {
-    const maxQty = getAvailableStock(product);
+  // Ajouter un produit au panier
+  const addToCart = (product: Product, quantity: number = 1, vendor?: Vendor, stockCategory: StockCategory = 'sale') => {
+    const maxQty = getAvailableStock(product, undefined, stockCategory);
     const qty = product.type === 'product' ? Math.min(quantity, maxQty) : quantity;
     if (qty <= 0) return;
 
@@ -59,6 +63,7 @@ export function useSales() {
       quantity: qty,
       vendor_id: vendor?.id,
       vendor: vendor,
+      stockCategory,
       price_ht: product.price_ht,
       tva_rate: product.tva_rate || DEFAULT_TVA_RATE,
       subtotal_ht: 0,
@@ -287,32 +292,39 @@ export function useSales() {
     console.log('Validation vente - vendorId:', vendorId, 'clientId:', clientId);
 
     try {
-      // VÉRIFIER LE STOCK AVANT TOUTE CRÉATION (éviter de valider une vente avec stock insuffisant)
+      // VÉRIFIER LE STOCK AVANT TOUTE CRÉATION (vente + technique séparément)
       if (isSupabaseConfigured()) {
-        const qtyByProduct = new Map<string, number>();
+        // Clé = productId|stockCategory
+        const qtyByKey = new Map<string, { qty: number; name: string; stockCat: string }>();
         for (const item of cartItems.value) {
           if (item.product.type === 'product') {
-            const prev = qtyByProduct.get(item.product.id) ?? 0;
-            qtyByProduct.set(item.product.id, prev + item.quantity);
+            const cat = item.stockCategory ?? 'sale';
+            const key = `${item.product.id}|${cat}`;
+            const prev = qtyByKey.get(key);
+            if (prev) {
+              prev.qty += item.quantity;
+            } else {
+              qtyByKey.set(key, { qty: item.quantity, name: item.product.name, stockCat: cat });
+            }
           }
         }
-        for (const [productId, totalQty] of qtyByProduct) {
-          const item = cartItems.value.find((i) => i.product.id === productId);
-          if (!item) continue;
+        for (const [key, { qty: totalQty, name, stockCat }] of qtyByKey) {
+          const productId = key.split('|')[0];
+          const stockColumn = stockCat === 'technical' ? 'stock_technical' : 'stock';
           const { data: productRow, error: fetchErr } = await supabase
             .from('products')
-            .select('stock')
+            .select(`${stockColumn}`)
             .eq('id', productId)
             .single();
 
           if (fetchErr || !productRow) {
-            throw new Error(`Produit ${item.product.name} introuvable`);
+            throw new Error(`Produit ${name} introuvable`);
           }
 
-          const currentStock = (productRow as { stock: number }).stock ?? 0;
+          const currentStock = (productRow as Record<string, number>)[stockColumn] ?? 0;
           if (currentStock < totalQty) {
             throw new Error(
-              `Stock insuffisant pour "${item.product.name}" : ${currentStock} en stock, ${totalQty} demandé`
+              `Stock insuffisant pour "${name}" (${stockCat === 'technical' ? 'technique' : 'vente'}) : ${currentStock} en stock, ${totalQty} demandé`
             );
           }
         }
@@ -419,9 +431,12 @@ export function useSales() {
       // 4. Mettre à jour le stock (produits physiques uniquement)
       for (const item of cartItems.value) {
         if (item.product.type === 'product') {
+          const stockCat = item.stockCategory ?? 'sale';
+          const stockColumn = stockCat === 'technical' ? 'stock_technical' : 'stock';
+
           const { data: productRow, error: fetchErr } = await supabase
             .from('products')
-            .select('stock')
+            .select(`${stockColumn}`)
             .eq('id', item.product.id)
             .single();
 
@@ -429,17 +444,17 @@ export function useSales() {
             throw new Error(`Produit ${item.product.name} introuvable`);
           }
 
-          const currentStock = (productRow as { stock: number }).stock ?? 0;
+          const currentStock = (productRow as Record<string, number>)[stockColumn] ?? 0;
           if (currentStock < item.quantity) {
             throw new Error(
-              `Stock insuffisant pour "${item.product.name}" : ${currentStock} en stock, ${item.quantity} demandé`
+              `Stock insuffisant pour "${item.product.name}" (${stockCat === 'technical' ? 'technique' : 'vente'}) : ${currentStock} en stock, ${item.quantity} demandé`
             );
           }
 
           const newStock = currentStock - item.quantity;
           const { error: updateErr } = await supabase
             .from('products')
-            .update({ stock: newStock, updated_at: new Date().toISOString() })
+            .update({ [stockColumn]: newStock, updated_at: new Date().toISOString() } as Record<string, unknown>)
             .eq('id', item.product.id);
 
           if (updateErr) throw updateErr;
@@ -449,10 +464,11 @@ export function useSales() {
             variant_id: item.variant?.id || null,
             type: 'out',
             quantity: -item.quantity,
-            reason: 'Vente',
+            reason: stockCat === 'technical' ? 'Utilisation technique' : 'Vente',
             reference_id: sale.id,
             vendor_id: vendorId,
-          });
+            stock_type: stockCat,
+          } as Record<string, unknown>);
 
           if (moveErr) throw moveErr;
         }
@@ -589,7 +605,7 @@ export function useSales() {
   // Quantité max pour une ligne (pour désactiver le bouton +)
   const getMaxQuantityForItem = (item: CartItem) => {
     if (item.product.type !== 'product') return Infinity;
-    return getAvailableStock(item.product, item.lineId) + item.quantity;
+    return getAvailableStock(item.product, item.lineId, item.stockCategory) + item.quantity;
   };
 
   return {

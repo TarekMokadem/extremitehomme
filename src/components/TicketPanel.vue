@@ -187,9 +187,12 @@ const subtotal = computed(() => subtotalTTC.value);
               <p class="font-medium text-gray-900 dark:text-gray-100 line-clamp-2 text-xs md:text-sm leading-snug">
                 {{ item.product.name }}
               </p>
-              <p v-if="item.vendor" class="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">
-                par {{ item.vendor.initials || `${item.vendor.first_name} ${item.vendor.last_name}` }}
-              </p>
+              <div class="flex items-center gap-1.5 mt-0.5">
+                <span v-if="item.stockCategory === 'technical'" class="inline-flex px-1.5 py-0.5 rounded text-[9px] font-semibold bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300">TECH</span>
+                <p v-if="item.vendor" class="text-[10px] text-gray-500 dark:text-gray-400">
+                  par {{ item.vendor.initials || `${item.vendor.first_name} ${item.vendor.last_name}` }}
+                </p>
+              </div>
             </div>
             <p class="font-bold text-gray-900 dark:text-gray-100 whitespace-nowrap text-sm md:text-base tabular-nums">
               {{ formatPrice(item.subtotal_ttc) }}€
