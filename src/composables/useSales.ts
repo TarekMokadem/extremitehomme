@@ -1,5 +1,6 @@
 import { ref, computed } from 'vue';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import { computeSaleHash, computeAuditHash } from '../lib/nf525';
 import type { 
   Product, 
   CartItem, 
@@ -334,14 +335,35 @@ export function useSales() {
       let ticketNumber: string;
       
       if (isSupabaseConfigured()) {
-        // Utiliser la fonction Supabase
         const { data: ticketData } = await supabase.rpc('generate_ticket_number');
         ticketNumber = ticketData || generateTicketNumber();
       } else {
         ticketNumber = generateTicketNumber();
       }
 
-      // Créer l'objet vente
+      // ── NF525 : chaînage SHA-256 ──
+      const createdAt = new Date().toISOString();
+      let previousHash: string | null = null;
+
+      if (isSupabaseConfigured()) {
+        const { data: lastSale } = await supabase
+          .from('sales')
+          .select('hash')
+          .eq('status', 'completed')
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        previousHash = lastSale?.hash ?? null;
+      }
+
+      const saleHash = await computeSaleHash(
+        ticketNumber,
+        createdAt,
+        total.value,
+        previousHash,
+      );
+
+      // Créer l'objet vente (avec hash NF525)
       const saleData = {
         ticket_number: ticketNumber,
         vendor_id: vendorId,
@@ -354,6 +376,9 @@ export function useSales() {
         discount_amount: discountAmount.value,
         total: total.value,
         status: 'completed' as const,
+        hash: saleHash,
+        previous_hash: previousHash,
+        created_at: createdAt,
       };
 
       // Créer les lignes de vente (avec vendeur par article si spécifié)
@@ -377,15 +402,11 @@ export function useSales() {
       }));
 
       if (!isSupabaseConfigured()) {
-        // Mode démo : simuler la vente
         const mockSale: Sale = {
           id: String(Date.now()),
           ...saleData,
           notes: null,
-          hash: null,
-          previous_hash: null,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
+          updated_at: createdAt,
         };
         
         recentSales.value.unshift(mockSale);
@@ -474,7 +495,61 @@ export function useSales() {
         }
       }
 
-      // 5. Mettre à jour les stats client si applicable
+      // 5. NF525 : mettre à jour le Grand Total (GT) — compteur perpétuel
+      try {
+        const { data: gtRow } = await supabase
+          .from('settings')
+          .select('value')
+          .eq('key', 'grand_total')
+          .maybeSingle();
+
+        const currentGT = typeof gtRow?.value === 'number' ? gtRow.value : 0;
+        const newGT = currentGT + total.value;
+
+        await supabase
+          .from('settings')
+          .upsert(
+            { key: 'grand_total', value: newGT, updated_at: new Date().toISOString() } as Record<string, unknown>,
+            { onConflict: 'key' },
+          );
+      } catch (gtErr) {
+        console.warn('NF525: erreur mise à jour GT —', gtErr);
+      }
+
+      // 6. NF525 : audit log avec hash chaîné
+      try {
+        const { data: lastAudit } = await supabase
+          .from('audit_logs')
+          .select('hash')
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        const auditTimestamp = new Date().toISOString();
+        const auditHash = await computeAuditHash(
+          auditTimestamp,
+          'sale_created',
+          'sales',
+          sale.id,
+          lastAudit?.hash ?? null,
+        );
+
+        await supabase.from('audit_logs').insert({
+          timestamp: auditTimestamp,
+          event_type: 'sale_created',
+          table_name: 'sales',
+          record_id: sale.id,
+          old_data: null,
+          new_data: { ticket_number: ticketNumber, total: total.value } as any,
+          vendor_id: vendorId,
+          hash: auditHash,
+          previous_hash: lastAudit?.hash ?? null,
+        } as Record<string, unknown>);
+      } catch (auditErr) {
+        console.warn('NF525: erreur audit log —', auditErr);
+      }
+
+      // 7. Mettre à jour les stats client si applicable
       if (clientId) {
         const { data: client } = await supabase
           .from('clients')
@@ -592,8 +667,38 @@ export function useSales() {
 
       if (updateError) throw updateError;
 
-      // TODO: Remettre le stock si produits physiques
-      // TODO: Créer entrée audit log
+      // NF525 : audit log pour annulation
+      try {
+        const { data: lastAudit } = await supabase
+          .from('audit_logs')
+          .select('hash')
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        const auditTimestamp = new Date().toISOString();
+        const auditHash = await computeAuditHash(
+          auditTimestamp,
+          'sale_cancelled',
+          'sales',
+          saleId,
+          lastAudit?.hash ?? null,
+        );
+
+        await supabase.from('audit_logs').insert({
+          timestamp: auditTimestamp,
+          event_type: 'sale_cancelled',
+          table_name: 'sales',
+          record_id: saleId,
+          old_data: { status: 'completed' } as any,
+          new_data: { status: 'cancelled', reason } as any,
+          vendor_id: null,
+          hash: auditHash,
+          previous_hash: lastAudit?.hash ?? null,
+        } as Record<string, unknown>);
+      } catch (auditErr) {
+        console.warn('NF525: erreur audit annulation —', auditErr);
+      }
 
       return true;
     } catch (err) {
