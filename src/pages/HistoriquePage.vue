@@ -332,15 +332,38 @@ const saveEditPayment = async () => {
   if (!sale || !isSupabaseConfigured()) return;
 
   isSavingPayment.value = true;
-  try {
-    await supabase.from('payments').delete().eq('sale_id', sale.id);
-    const { error } = await supabase.from('payments').insert({
-      sale_id: sale.id,
-      method: editPaymentMethod.value,
-      amount: sale.total,
-    } as any);
+  const needsStatusToggle = sale.status === 'completed';
 
-    if (error) throw error;
+  try {
+    if (needsStatusToggle) {
+      const { error: statusErr } = await (supabase as any)
+        .from('sales')
+        .update({ status: 'pending' })
+        .eq('id', sale.id);
+      if (statusErr) throw statusErr;
+    }
+
+    try {
+      const { error: deleteError } = await supabase
+        .from('payments')
+        .delete()
+        .eq('sale_id', sale.id);
+      if (deleteError) throw deleteError;
+
+      const { error: insertError } = await supabase.from('payments').insert({
+        sale_id: sale.id,
+        method: editPaymentMethod.value,
+        amount: sale.total,
+      } as any);
+      if (insertError) throw insertError;
+    } finally {
+      if (needsStatusToggle) {
+        await (supabase as any)
+          .from('sales')
+          .update({ status: 'completed' })
+          .eq('id', sale.id);
+      }
+    }
 
     sale.payments = [{ method: editPaymentMethod.value, amount: sale.total }];
     closeEditPayment();

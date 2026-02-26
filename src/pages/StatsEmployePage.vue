@@ -13,6 +13,7 @@ import {
   Scissors,
   Package,
   ChevronDown,
+  FileDown,
 } from 'lucide-vue-next';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 
@@ -27,16 +28,20 @@ interface VendorOption {
   color: string;
 }
 
+const TVA_RATE = 0.20;
+
 interface CategoryStat {
   name: string;
   count: number;
   amount: number;
+  amountHT: number;
 }
 
 interface ServiceStat {
   name: string;
   count: number;
   amount: number;
+  amountHT: number;
 }
 
 interface DailyStat {
@@ -121,6 +126,50 @@ const totalCategoryCount = computed(() =>
 const totalCategoryAmount = computed(() =>
   categoryStats.value.reduce((s, c) => s + c.amount, 0)
 );
+const totalCategoryAmountHT = computed(() =>
+  categoryStats.value.reduce((s, c) => s + c.amountHT, 0)
+);
+const totalServiceAmountHT = computed(() =>
+  serviceStats.value.reduce((s, c) => s + c.amountHT, 0)
+);
+
+const vendorLabel = computed(() => {
+  if (selectedVendorId.value === '__all__') return 'Tout le monde';
+  const v = selectedVendor.value;
+  return v ? `${v.first_name} ${v.last_name}` : '';
+});
+
+const handlePdfDownload = () => {
+  const perfSection = document.querySelector('[data-print-content]');
+  if (!perfSection) return;
+  const win = window.open('', '_blank');
+  if (!win) { alert('Autorisez les pop-ups pour télécharger le PDF.'); return; }
+  const periodText = selectedMonth.value !== null
+    ? `${MONTH_LABELS[selectedMonth.value]} ${selectedYear.value}`
+    : customStart.value && customEnd.value
+      ? `${customStart.value} au ${customEnd.value}`
+      : `${selectedYear.value}`;
+  win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Stats Employé - ${vendorLabel.value}</title>
+<style>
+  @page { size: A4 portrait; margin: 10mm; }
+  * { margin: 0; padding: 0; box-sizing: border-box; font-family: Arial, sans-serif; color: #000; }
+  body { padding: 10mm; }
+  h1 { font-size: 16px; margin-bottom: 6px; text-align: center; }
+  h2 { font-size: 13px; margin: 12px 0 6px; }
+  table { width: 100%; border-collapse: collapse; font-size: 10px; margin-bottom: 12px; }
+  th, td { border: 1px solid #ccc; padding: 3px 6px; text-align: right; }
+  th { background: #f3f4f6; font-weight: 600; }
+  td:first-child, th:first-child { text-align: left; }
+  tfoot td { font-weight: bold; background: #f9fafb; }
+</style></head><body>
+<h1>Statistiques Employé — ${vendorLabel.value}</h1>
+<h2 style="text-align:center;font-weight:normal;color:#666">${periodText}</h2>
+${perfSection.innerHTML}
+</body></html>`);
+  win.document.close();
+  win.focus();
+  setTimeout(() => { win.print(); }, 400);
+};
 
 const maxDailyTotal = computed(() =>
   Math.max(...dailyData.value.map(d => d.total), 1)
@@ -203,8 +252,9 @@ const loadData = async () => {
 
   try {
     const { start, end } = dateRange.value;
+    const isAll = selectedVendorId.value === '__all__';
 
-    const { data: sales, error: salesError } = await supabase
+    let query = supabase
       .from('sales')
       .select(`
         id,
@@ -213,10 +263,15 @@ const loadData = async () => {
         items:sale_items(id, product_name, quantity, subtotal_ttc, product_id),
         payments:payments(method, amount)
       `)
-      .eq('vendor_id', selectedVendorId.value)
       .gte('created_at', `${start}T00:00:00`)
       .lte('created_at', `${end}T23:59:59.999`)
       .eq('status', 'completed');
+
+    if (!isAll) {
+      query = query.eq('vendor_id', selectedVendorId.value);
+    }
+
+    const { data: sales, error: salesError } = await query;
 
     if (salesError) {
       console.error('Erreur Supabase stats employé:', salesError);
@@ -254,7 +309,7 @@ const loadData = async () => {
 
     const catMap = new Map<string, CategoryStat>();
     for (const cat of CATEGORY_ORDER) {
-      catMap.set(cat, { name: cat, count: 0, amount: 0 });
+      catMap.set(cat, { name: cat, count: 0, amount: 0, amountHT: 0 });
     }
 
     const svcMap = new Map<string, ServiceStat>();
@@ -270,22 +325,24 @@ const loadData = async () => {
         const type = productInfo?.type ?? 'product';
 
         if (!catMap.has(catName)) {
-          catMap.set(catName, { name: catName, count: 0, amount: 0 });
+          catMap.set(catName, { name: catName, count: 0, amount: 0, amountHT: 0 });
         }
         const stat = catMap.get(catName)!;
         stat.count += item.quantity;
         stat.amount += item.subtotal_ttc;
+        stat.amountHT += item.subtotal_ttc / (1 + TVA_RATE);
 
         if (type === 'service') {
           svcCount += item.quantity;
           svcAmount += item.subtotal_ttc;
           const svcName = item.product_name || productInfo?.name || 'Service';
           if (!svcMap.has(svcName)) {
-            svcMap.set(svcName, { name: svcName, count: 0, amount: 0 });
+            svcMap.set(svcName, { name: svcName, count: 0, amount: 0, amountHT: 0 });
           }
           const svc = svcMap.get(svcName)!;
           svc.count += item.quantity;
           svc.amount += item.subtotal_ttc;
+          svc.amountHT += item.subtotal_ttc / (1 + TVA_RATE);
         } else {
           prodCount += item.quantity;
           prodAmount += item.subtotal_ttc;
@@ -346,8 +403,12 @@ const loadData = async () => {
 };
 
 watch(selectedVendorId, (id) => {
-  if (id) {
+  if (id && id !== '__all__') {
     router.replace({ query: { ...route.query, vendorId: id } });
+  } else if (id === '__all__') {
+    const q = { ...route.query };
+    delete q.vendorId;
+    router.replace({ query: q });
   }
 });
 
@@ -363,6 +424,14 @@ onMounted(loadVendors);
           <h1 class="text-xl lg:text-2xl font-bold text-gray-900 dark:text-white">Statistiques Employé</h1>
           <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Performance individuelle par période</p>
         </div>
+        <button
+          v-if="hasLoaded && !isLoading"
+          @click="handlePdfDownload"
+          class="inline-flex items-center gap-2 px-4 py-2 bg-amber-600 text-white rounded-xl hover:bg-amber-700 transition-colors"
+        >
+          <FileDown class="w-4 h-4" />
+          Télécharger PDF
+        </button>
       </div>
 
       <!-- Vendor selector -->
@@ -379,7 +448,11 @@ onMounted(loadVendors);
             @click="vendorDropdownOpen = !vendorDropdownOpen"
             class="w-full sm:w-96 flex items-center gap-3 px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-xl text-left hover:border-emerald-400 dark:hover:border-emerald-500 transition-colors"
           >
-            <template v-if="selectedVendor">
+            <template v-if="selectedVendorId === '__all__'">
+              <Users class="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+              <span class="text-sm font-medium text-gray-900 dark:text-white">Tout le monde</span>
+            </template>
+            <template v-else-if="selectedVendor">
               <div
                 :style="{ backgroundColor: selectedVendor.color }"
                 class="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0"
@@ -401,6 +474,17 @@ onMounted(loadVendors);
             v-if="vendorDropdownOpen"
             class="absolute z-20 mt-2 w-full sm:w-96 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl overflow-hidden"
           >
+            <button
+              type="button"
+              @click="selectedVendorId = '__all__'; vendorDropdownOpen = false"
+              :class="[
+                'w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors border-b border-gray-200 dark:border-gray-700',
+                selectedVendorId === '__all__' && 'bg-emerald-50 dark:bg-emerald-900/20'
+              ]"
+            >
+              <Users class="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+              <span class="text-sm font-medium text-gray-900 dark:text-white">Tout le monde</span>
+            </button>
             <button
               v-for="vendor in vendors"
               :key="vendor.id"
@@ -531,11 +615,12 @@ onMounted(loadVendors);
 
         <!-- PERFORMANCE TAB -->
         <template v-if="activeTab === 'performance'">
+          <div data-print-content>
           <!-- Totaux table -->
-          <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+          <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden mb-6">
             <div class="px-5 py-3 bg-gray-100 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
               <h2 class="text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wider">
-                Totaux — {{ selectedVendor?.first_name }} {{ selectedVendor?.last_name }}
+                Totaux — {{ vendorLabel }}
               </h2>
             </div>
             <div class="overflow-x-auto">
@@ -544,6 +629,8 @@ onMounted(loadVendors);
                   <tr class="border-b border-gray-200 dark:border-gray-600">
                     <th class="px-4 py-2.5 text-left font-semibold text-gray-700 dark:text-gray-300">Catégorie</th>
                     <th class="px-4 py-2.5 text-right font-semibold text-gray-700 dark:text-gray-300">Nb</th>
+                    <th class="px-4 py-2.5 text-right font-semibold text-gray-700 dark:text-gray-300">Prix HT</th>
+                    <th class="px-4 py-2.5 text-right font-semibold text-gray-700 dark:text-gray-300">Prix TTC</th>
                     <th class="px-4 py-2.5 text-right font-semibold text-gray-700 dark:text-gray-300">Montant</th>
                   </tr>
                 </thead>
@@ -558,13 +645,17 @@ onMounted(loadVendors);
                   >
                     <td class="px-4 py-2">{{ cat.name }}</td>
                     <td class="px-4 py-2 text-right tabular-nums">{{ cat.count }}</td>
+                    <td class="px-4 py-2 text-right tabular-nums">{{ formatPrice(cat.amountHT) }} €</td>
                     <td class="px-4 py-2 text-right tabular-nums">{{ formatPrice(cat.amount) }} €</td>
+                    <td class="px-4 py-2 text-right tabular-nums font-semibold">{{ formatPrice(cat.amount) }} €</td>
                   </tr>
                 </tbody>
                 <tfoot>
                   <tr class="font-bold bg-gray-50 dark:bg-gray-700/50 border-t-2 border-gray-300 dark:border-gray-600">
                     <td class="px-4 py-2.5">Total</td>
                     <td class="px-4 py-2.5 text-right tabular-nums">{{ totalCategoryCount }}</td>
+                    <td class="px-4 py-2.5 text-right tabular-nums">{{ formatPrice(totalCategoryAmountHT) }} €</td>
+                    <td class="px-4 py-2.5 text-right tabular-nums">{{ formatPrice(totalCategoryAmount) }} €</td>
                     <td class="px-4 py-2.5 text-right tabular-nums">{{ formatPrice(totalCategoryAmount) }} €</td>
                   </tr>
                 </tfoot>
@@ -586,6 +677,8 @@ onMounted(loadVendors);
                   <tr class="border-b border-gray-200 dark:border-gray-600">
                     <th class="px-4 py-2.5 text-left font-semibold text-gray-700 dark:text-gray-300">Service</th>
                     <th class="px-4 py-2.5 text-right font-semibold text-gray-700 dark:text-gray-300">Nb</th>
+                    <th class="px-4 py-2.5 text-right font-semibold text-gray-700 dark:text-gray-300">Prix HT</th>
+                    <th class="px-4 py-2.5 text-right font-semibold text-gray-700 dark:text-gray-300">Prix TTC</th>
                     <th class="px-4 py-2.5 text-right font-semibold text-gray-700 dark:text-gray-300">Montant</th>
                   </tr>
                 </thead>
@@ -593,18 +686,23 @@ onMounted(loadVendors);
                   <tr v-for="svc in serviceStats" :key="svc.name" class="text-gray-900 dark:text-gray-100">
                     <td class="px-4 py-2">{{ svc.name }}</td>
                     <td class="px-4 py-2 text-right tabular-nums">{{ svc.count }}</td>
+                    <td class="px-4 py-2 text-right tabular-nums">{{ formatPrice(svc.amountHT) }} €</td>
                     <td class="px-4 py-2 text-right tabular-nums">{{ formatPrice(svc.amount) }} €</td>
+                    <td class="px-4 py-2 text-right tabular-nums font-semibold">{{ formatPrice(svc.amount) }} €</td>
                   </tr>
                 </tbody>
                 <tfoot>
                   <tr class="font-bold bg-purple-50/50 dark:bg-purple-900/10 border-t-2 border-gray-300 dark:border-gray-600">
                     <td class="px-4 py-2.5">Total Prestations</td>
                     <td class="px-4 py-2.5 text-right tabular-nums">{{ totalServices }}</td>
+                    <td class="px-4 py-2.5 text-right tabular-nums">{{ formatPrice(totalServiceAmountHT) }} €</td>
+                    <td class="px-4 py-2.5 text-right tabular-nums">{{ formatPrice(servicesCA) }} €</td>
                     <td class="px-4 py-2.5 text-right tabular-nums">{{ formatPrice(servicesCA) }} €</td>
                   </tr>
                 </tfoot>
               </table>
             </div>
+          </div>
           </div>
         </template>
 

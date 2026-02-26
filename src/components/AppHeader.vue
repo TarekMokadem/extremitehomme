@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue';
 import { useRoute } from 'vue-router';
-import { Scissors, ChevronDown, LayoutGrid, History, Users, Wallet, BarChart3, Settings, Package, ClipboardList, Sun, Moon, FileText, UserCheck, Euro, CalendarDays } from 'lucide-vue-next';
+import { Scissors, ChevronDown, LayoutGrid, History, Users, Wallet, BarChart3, Settings, Package, Sun, Moon, FileText, UserCheck, Euro, CalendarDays, Calculator } from 'lucide-vue-next';
 import { useAuth } from '../composables/useAuth';
 import type { Vendor } from '../types/database';
 import { useTheme } from '../composables/useTheme';
@@ -18,7 +18,6 @@ const navItems = [
   { path: '/historique', name: 'historique', label: 'Historique', icon: History },
   { path: '/clients', name: 'clients', label: 'Clients', icon: Users },
   { path: '/stock', name: 'stock', label: 'Stock', icon: Package },
-  { path: '/commande', name: 'commande', label: 'Commande', icon: ClipboardList },
   {
     group: 'caisse',
     label: 'Caisse',
@@ -37,6 +36,7 @@ const navItems = [
       { path: '/stats/employe', name: 'stats-employe', label: 'Stats par employé', icon: UserCheck },
       { path: '/stats/ca', name: 'stats-ca', label: 'Chiffre d\'affaires', icon: Euro },
       { path: '/stats/recap', name: 'stats-recap', label: 'Récap mensuel', icon: CalendarDays },
+      { path: '/valeur-theorique', name: 'valeur-theorique', label: 'Valeur théorique', icon: Calculator },
     ],
   },
   { path: '/parametres', name: 'parametres', label: 'Paramètres', icon: Settings },
@@ -100,7 +100,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <header class="bg-gray-900 text-white px-4 py-3 md:px-6 md:py-4 lg:px-8 flex items-center justify-between flex-shrink-0 shadow-xl">
+  <header class="bg-gray-900 text-white px-4 py-2 md:px-6 md:py-2.5 lg:px-8 flex items-center justify-between flex-shrink-0 shadow-xl">
     <!-- Logo & Nom -->
     <div class="flex items-center gap-2 md:gap-4">
       <router-link to="/" class="flex items-center gap-2 md:gap-4 hover:opacity-80 transition-opacity">

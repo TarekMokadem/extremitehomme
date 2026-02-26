@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
-import { RefreshCw, Printer, Calculator } from 'lucide-vue-next';
+import { RefreshCw, Printer, Calculator, Mail, FileDown } from 'lucide-vue-next';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import type { PaymentMethod } from '../types/database';
 
@@ -265,6 +265,61 @@ const selectMonth = (m: number) => {
 
 const handlePrint = () => window.print();
 
+const periodLabel = computed(() => {
+  if (periodMode.value === 'month') {
+    return `${MONTH_NAMES[selectedMonth.value]} ${selectedYear.value}`;
+  }
+  return `${customFrom.value} au ${customTo.value}`;
+});
+
+const buildPlainText = () => {
+  const lines: string[] = [`Chiffre d'affaires - ${periodLabel.value}`, ''];
+  lines.push('Date | Amex € | CB € | Chèque € | Espèces € | Sans contact € | CA € | Chq. cadeau € | Gratuit € | Fond caisse | Dépenses | Remise');
+  lines.push('-'.repeat(120));
+  for (const r of rows.value) {
+    lines.push(
+      `${formatDateFr(r.date)} | ${formatPrice(r.amex.montant)} | ${formatPrice(r.cb.montant)} | ${formatPrice(r.cheque.montant)} | ${formatPrice(r.especes.montant)} | ${formatPrice(r.sansContact.montant)} | ${formatPrice(r.ca.montant)} | ${formatPrice(r.chequesCadeau.montant)} | ${formatPrice(r.gratuit.montant)} | ${formatPrice(r.fondCaisse)} | ${formatPrice(r.depenses)} | ${r.remiseMontant ? formatPrice(r.remiseMontant) + ' (' + r.remisePct.toFixed(1) + '%)' : ''}`
+    );
+  }
+  lines.push('-'.repeat(120));
+  const t = totals.value;
+  lines.push(
+    `Totaux | ${formatPrice(t.amex.montant)} | ${formatPrice(t.cb.montant)} | ${formatPrice(t.cheque.montant)} | ${formatPrice(t.especes.montant)} | ${formatPrice(t.sansContact.montant)} | ${formatPrice(t.ca.montant)} | ${formatPrice(t.chequesCadeau.montant)} | ${formatPrice(t.gratuit.montant)} | ${formatPrice(t.fondCaisse)} | ${formatPrice(t.depenses)} | ${t.remiseMontant ? formatPrice(t.remiseMontant) + ' (' + t.remisePct.toFixed(1) + '%)' : ''}`
+  );
+  return lines.join('\n');
+};
+
+const handleEmail = () => {
+  const subject = encodeURIComponent(`Chiffre d'affaires - ${periodLabel.value}`);
+  const body = encodeURIComponent(buildPlainText());
+  window.open(`mailto:?subject=${subject}&body=${body}`, '_self');
+};
+
+const handlePdfDownload = () => {
+  const tableEl = document.querySelector('.print-thermal-compact');
+  if (!tableEl) return;
+  const win = window.open('', '_blank');
+  if (!win) { alert('Autorisez les pop-ups pour télécharger le PDF.'); return; }
+  win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Chiffre d'affaires - ${periodLabel.value}</title>
+<style>
+  @page { size: A4 landscape; margin: 10mm; }
+  * { margin: 0; padding: 0; box-sizing: border-box; font-family: Arial, sans-serif; color: #000; }
+  body { padding: 10mm; }
+  h1 { font-size: 16px; margin-bottom: 12px; text-align: center; }
+  table { width: 100%; border-collapse: collapse; font-size: 9px; }
+  th, td { border: 1px solid #ccc; padding: 3px 5px; text-align: right; }
+  th { background: #f3f4f6; font-weight: 600; }
+  td:first-child, th:first-child { text-align: left; }
+  tfoot td { font-weight: bold; background: #f9fafb; }
+</style></head><body>
+<h1>Chiffre d'affaires — ${periodLabel.value}</h1>
+${tableEl.innerHTML}
+</body></html>`);
+  win.document.close();
+  win.focus();
+  setTimeout(() => { win.print(); }, 400);
+};
+
 onMounted(loadData);
 </script>
 
@@ -277,13 +332,31 @@ onMounted(loadData);
           <h1 class="text-xl lg:text-2xl font-bold text-gray-900 dark:text-white">Chiffre d'affaires</h1>
           <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Tableau récapitulatif par jour et mode de règlement</p>
         </div>
-        <button
-          @click="handlePrint"
-          class="inline-flex items-center gap-2 px-4 py-2 bg-gray-900 dark:bg-emerald-600 text-white rounded-xl hover:bg-gray-800 dark:hover:bg-emerald-500 transition-colors"
-        >
-          <Printer class="w-4 h-4" />
-          Imprimer
-        </button>
+        <div class="flex items-center gap-2">
+          <button
+            @click="handleEmail"
+            :disabled="rows.length === 0"
+            class="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Mail class="w-4 h-4" />
+            Envoyer par mail
+          </button>
+          <button
+            @click="handlePdfDownload"
+            :disabled="rows.length === 0"
+            class="inline-flex items-center gap-2 px-4 py-2 bg-amber-600 text-white rounded-xl hover:bg-amber-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <FileDown class="w-4 h-4" />
+            Télécharger PDF
+          </button>
+          <button
+            @click="handlePrint"
+            class="inline-flex items-center gap-2 px-4 py-2 bg-gray-900 dark:bg-emerald-600 text-white rounded-xl hover:bg-gray-800 dark:hover:bg-emerald-500 transition-colors"
+          >
+            <Printer class="w-4 h-4" />
+            Imprimer
+          </button>
+        </div>
       </div>
 
       <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 space-y-4 print:hidden">
@@ -369,7 +442,7 @@ onMounted(loadData);
       </div>
 
       <div v-else class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden print:rounded-none print:border print:shadow-none">
-        <div class="overflow-x-auto">
+        <div class="overflow-x-auto print-thermal-compact">
           <table class="w-full text-xs whitespace-nowrap">
             <thead>
               <tr class="bg-gray-100 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">

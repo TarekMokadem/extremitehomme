@@ -7,7 +7,6 @@ import {
   FileText, 
   Gift,
   HandCoins,
-  Wrench,
   Minus,
   Plus,
   Trash2,
@@ -23,6 +22,8 @@ import { useAuth } from '../composables/useAuth';
 import { useClients } from '../composables/useClients';
 import { useLoyalty } from '../composables/useLoyalty';
 import { useProducts } from '../composables/useProducts';
+import { useSettings } from '../composables/useSettings';
+import { printReceipt } from '../lib/thermalPrint';
 import type { PaymentMethod } from '../types/database';
 
 const { 
@@ -53,6 +54,7 @@ const { vendor } = useAuth();
 const { selectedClient } = useClients();
 const { loadProducts } = useProducts();
 const { saveStamps, loadClientStamps } = useLoyalty();
+const { salonInfo, ticketHeader, ticketFooter } = useSettings();
 
 // Pour le mode de réduction
 const localDiscountType = ref<'euro' | 'percent'>('euro');
@@ -62,15 +64,14 @@ const localDiscount = ref(0);
 const selectedPaymentMethod = ref<PaymentMethod>('card');
 
 // Configuration des moyens de paiement
-const paymentMethods: { id: PaymentMethod; label: string; icon: typeof Banknote }[] = [
-  { id: 'cash', label: 'Espèces', icon: Banknote },
-  { id: 'card', label: 'CB', icon: CreditCard },
-  { id: 'contactless', label: 'Sans contact', icon: Smartphone },
-  { id: 'amex', label: 'American Express', icon: CreditCard },
-  { id: 'check', label: 'Chèque', icon: FileText },
-  { id: 'gift_card', label: 'Chèque Cadeau', icon: Gift },
-  { id: 'free', label: 'Gratuit', icon: HandCoins },
-  { id: 'technical', label: 'Utilisation technique', icon: Wrench },
+const paymentMethods: { id: PaymentMethod; label: string; icon: typeof Banknote; color: string }[] = [
+  { id: 'cash', label: 'Espèces', icon: Banknote, color: 'bg-green-600 border-green-600 text-white' },
+  { id: 'card', label: 'CB', icon: CreditCard, color: 'bg-blue-600 border-blue-600 text-white' },
+  { id: 'contactless', label: 'Sans contact', icon: Smartphone, color: 'bg-violet-600 border-violet-600 text-white' },
+  { id: 'amex', label: 'American Express', icon: CreditCard, color: 'bg-red-600 border-red-600 text-white' },
+  { id: 'check', label: 'Chèque', icon: FileText, color: 'bg-gray-600 border-gray-600 text-white' },
+  { id: 'gift_card', label: 'Chèque Cadeau', icon: Gift, color: 'bg-yellow-500 border-yellow-500 text-black' },
+  { id: 'free', label: 'Gratuit', icon: HandCoins, color: 'bg-orange-500 border-orange-500 text-white' },
 ];
 
 // Formatage du prix
@@ -156,26 +157,107 @@ const maxDiscount = computed(() => {
 
 // Sous-total pour compatibilité
 const subtotal = computed(() => subtotalTTC.value);
+
+// Envoi par email (mailto)
+const handleEmail = () => {
+  if (cartItems.value.length === 0) return;
+
+  const now = new Date();
+  const dateStr = now.toLocaleDateString('fr-FR');
+  const salonName = salonInfo.value.name || 'Extrémités Homme';
+
+  const subject = `Facture ${dateStr} - ${salonName}`;
+
+  const lines: string[] = [];
+  lines.push(salonName);
+  lines.push('─'.repeat(30));
+  lines.push(`Date : ${dateStr}`);
+  lines.push('');
+  lines.push('Articles :');
+  for (const item of cartItems.value) {
+    const vendorLabel = item.vendor
+      ? ` (${item.vendor.initials || `${item.vendor.first_name?.[0] ?? ''}${item.vendor.last_name?.[0] ?? ''}`})`
+      : '';
+    lines.push(`  ${item.product.name}${vendorLabel}`);
+    lines.push(`    ${item.quantity} x ${formatPrice(item.subtotal_ttc / item.quantity)}€ = ${formatPrice(item.subtotal_ttc)}€`);
+  }
+  lines.push('');
+  lines.push(`Sous-total HT : ${formatPrice(subtotalHT.value)}€`);
+  lines.push(`TVA (20%) : ${formatPrice(totalTVA.value)}€`);
+  lines.push(`Sous-total TTC : ${formatPrice(subtotalTTC.value)}€`);
+  if (discountAmount.value > 0) {
+    lines.push(`Réduction : -${formatPrice(discountAmount.value)}€`);
+  }
+  lines.push('─'.repeat(30));
+  lines.push(`TOTAL : ${formatPrice(total.value)}€`);
+  lines.push('');
+
+  const currentMethod = paymentMethods.find(m => m.id === selectedPaymentMethod.value);
+  lines.push(`Règlement : ${currentMethod?.label || selectedPaymentMethod.value}`);
+
+  if (selectedClient.value) {
+    lines.push('');
+    lines.push(`Client : ${selectedClient.value.first_name} ${selectedClient.value.last_name}`);
+  }
+
+  lines.push('');
+  lines.push('Merci de votre visite !');
+
+  const body = lines.join('\n');
+  const to = selectedClient.value?.email || '';
+  const mailto = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  window.location.href = mailto;
+};
+
+// Impression ticket thermique (format 80mm HOP-E801)
+const handlePrintTicket = () => {
+  if (cartItems.value.length === 0) return;
+  const now = new Date();
+  const dateStr = now.toISOString().slice(0, 10);
+  const timeStr = now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  const items = cartItems.value.map((item) => {
+    const v = item.vendor;
+    const vendorName = v ? `${v.first_name ?? ''} ${v.last_name ?? ''}`.trim() : undefined;
+    return {
+      label: item.product.name,
+      vendorName: vendorName || undefined,
+      amount: item.subtotal_ttc,
+    };
+  });
+  printReceipt({
+    header: {
+      name: ticketHeader.value.line1 || salonInfo.value.name,
+      address: salonInfo.value.address,
+      phone: salonInfo.value.phone,
+    },
+    dateTime: `${dateStr} ${timeStr}`,
+    items,
+    subtotal: subtotalTTC.value,
+    discount: discountAmount.value > 0 ? discountAmount.value : undefined,
+    total: total.value,
+    footer: ticketFooter.value.line1 || 'Merci de votre visite',
+  });
+};
 </script>
 
 <template>
   <div class="card h-full flex flex-col overflow-hidden">
     <!-- En-tête avec date -->
-    <div class="p-4 md:p-5 border-b border-gray-200 bg-gray-50 dark:bg-gray-800 dark:border-gray-700">
+    <div class="px-3 py-2 md:px-4 md:py-2.5 border-b border-gray-200 bg-gray-50 dark:bg-gray-800 dark:border-gray-700">
       <div class="flex items-center justify-between">
         <div>
-          <p class="text-[10px] md:text-[11px] text-gray-500 uppercase tracking-wider font-semibold mb-1 dark:text-gray-400">Date</p>
-          <p class="text-xs md:text-sm font-semibold text-gray-900 dark:text-gray-100">{{ ticketDate }}</p>
+          <p class="text-[9px] md:text-[10px] text-gray-500 uppercase tracking-wider font-semibold dark:text-gray-400">Date</p>
+          <p class="text-[11px] md:text-xs font-semibold text-gray-900 dark:text-gray-100">{{ ticketDate }}</p>
         </div>
         <div class="text-right">
-          <p class="text-[10px] md:text-[11px] text-gray-500 uppercase tracking-wider font-semibold mb-1 dark:text-gray-400">Ticket</p>
-          <p class="text-xs md:text-sm font-semibold text-gray-900 dark:text-gray-100">#001</p>
+          <p class="text-[9px] md:text-[10px] text-gray-500 uppercase tracking-wider font-semibold dark:text-gray-400">Ticket</p>
+          <p class="text-[11px] md:text-xs font-semibold text-gray-900 dark:text-gray-100">#001</p>
         </div>
       </div>
     </div>
 
     <!-- Liste des articles -->
-    <div class="flex-1 overflow-y-auto p-4 md:p-5 space-y-2 md:space-y-3 min-h-0">
+    <div class="flex-1 overflow-y-auto p-3 md:p-4 space-y-1.5 md:space-y-2 min-h-0">
       <template v-if="cartItems.length > 0">
         <div
           v-for="item in cartItems"
@@ -190,7 +272,7 @@ const subtotal = computed(() => subtotalTTC.value);
               <div class="flex items-center gap-1.5 mt-0.5">
                 <span v-if="item.stockCategory === 'technical'" class="inline-flex px-1.5 py-0.5 rounded text-[9px] font-semibold bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300">TECH</span>
                 <p v-if="item.vendor" class="text-[10px] text-gray-500 dark:text-gray-400">
-                  par {{ item.vendor.initials || `${item.vendor.first_name} ${item.vendor.last_name}` }}
+                  par <span class="font-semibold text-gray-600 dark:text-gray-300">{{ item.vendor.initials || `${item.vendor.first_name?.[0]}${item.vendor.last_name?.[0]}` }}</span>
                 </p>
               </div>
             </div>
@@ -247,10 +329,10 @@ const subtotal = computed(() => subtotalTTC.value);
     </div>
 
     <!-- Réduction avec sélecteur élégant € / % -->
-    <div class="px-4 py-3 md:px-5 md:py-4 border-t border-gray-100 dark:border-gray-700">
-      <div class="flex flex-col gap-2 md:gap-3">
+    <div class="px-3 py-2 md:px-4 md:py-2.5 border-t border-gray-100 dark:border-gray-700">
+      <div class="flex flex-col gap-1.5 md:gap-2">
         <div class="flex items-center justify-between gap-2">
-          <label class="text-xs md:text-sm text-gray-600 dark:text-gray-400 font-medium">Réduction</label>
+          <label class="text-[11px] md:text-xs text-gray-600 dark:text-gray-400 font-medium">Réduction</label>
 
           <!-- Segmented control moderne -->
           <div class="inline-flex items-center bg-gray-100 dark:bg-gray-700 rounded-full p-0.5 shadow-inner border border-gray-200 dark:border-gray-600">
@@ -301,9 +383,9 @@ const subtotal = computed(() => subtotalTTC.value);
     </div>
 
     <!-- Fixer le prix -->
-    <div class="px-4 py-3 md:px-5 md:py-4 border-t border-gray-100 dark:border-gray-700">
-      <div class="flex flex-col gap-2">
-        <label class="text-xs md:text-sm text-gray-600 dark:text-gray-400 font-medium">Fixer le prix total (€)</label>
+    <div class="px-3 py-2 md:px-4 md:py-2.5 border-t border-gray-100 dark:border-gray-700">
+      <div class="flex flex-col gap-1.5">
+        <label class="text-[11px] md:text-xs text-gray-600 dark:text-gray-400 font-medium">Fixer le prix total (€)</label>
         <div class="flex items-center gap-2">
           <input
             type="number"
@@ -328,16 +410,16 @@ const subtotal = computed(() => subtotalTTC.value);
     </div>
 
     <!-- Moyens de paiement -->
-    <div class="px-4 py-3 md:px-5 md:py-4 border-t border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
-      <p class="text-[10px] md:text-[11px] text-gray-600 dark:text-gray-400 uppercase tracking-wider font-semibold mb-2 md:mb-3">Règlement</p>
-      <div class="grid grid-cols-3 md:grid-cols-2 gap-1.5 md:gap-2">
+    <div class="px-3 py-2 md:px-4 md:py-2.5 border-t border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+      <p class="text-[9px] md:text-[10px] text-gray-600 dark:text-gray-400 uppercase tracking-wider font-semibold mb-1.5 md:mb-2">Règlement</p>
+      <div class="grid grid-cols-4 md:grid-cols-4 gap-1 md:gap-1.5">
         <button
           v-for="method in paymentMethods"
           :key="method.id"
           @click="selectPaymentMethod(method.id)"
           :class="[
             'payment-btn text-[10px] md:text-xs',
-            selectedPaymentMethod === method.id && 'active'
+            selectedPaymentMethod === method.id && method.color
           ]"
         >
           <component :is="method.icon" class="w-3.5 h-3.5 md:w-4 md:h-4" />
@@ -347,8 +429,8 @@ const subtotal = computed(() => subtotalTTC.value);
     </div>
 
     <!-- Total -->
-    <div class="p-4 md:p-5 border-t-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
-      <div class="space-y-2 md:space-y-2.5 mb-3 md:mb-4">
+    <div class="p-3 md:p-4 border-t-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+      <div class="space-y-1 md:space-y-1.5 mb-2 md:mb-3">
         <!-- Sous-total HT -->
         <div class="flex justify-between text-xs md:text-sm">
           <span class="text-gray-500 dark:text-gray-400">Sous-total HT</span>
@@ -381,10 +463,24 @@ const subtotal = computed(() => subtotalTTC.value);
 
       <!-- Boutons d'action -->
       <div class="grid grid-cols-4 gap-1.5 md:gap-2">
-        <button class="btn-icon-sm p-2 md:p-3" title="Imprimer" aria-label="Imprimer">
+        <button
+          type="button"
+          @click="handlePrintTicket"
+          :disabled="cartItems.length === 0"
+          class="btn-icon-sm p-2 md:p-3 disabled:opacity-50 disabled:cursor-not-allowed"
+          title="Imprimer le ticket"
+          aria-label="Imprimer le ticket"
+        >
           <Printer class="w-3.5 h-3.5 md:w-4 md:h-4" />
         </button>
-        <button class="btn-icon-sm p-2 md:p-3" title="Email" aria-label="Envoyer par email">
+        <button
+          type="button"
+          @click="handleEmail"
+          :disabled="cartItems.length === 0"
+          class="btn-icon-sm p-2 md:p-3 disabled:opacity-50 disabled:cursor-not-allowed"
+          title="Email"
+          aria-label="Envoyer par email"
+        >
           <Mail class="w-3.5 h-3.5 md:w-4 md:h-4" />
         </button>
         <button 

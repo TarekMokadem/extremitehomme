@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue';
-import { Search, Zap, Barcode, Package } from 'lucide-vue-next';
+import { ref, computed, watch, nextTick } from 'vue';
+import { Search, Zap, Barcode, Package, CheckCircle } from 'lucide-vue-next';
 import ServiceCard from './ServiceCard.vue';
 import LoyaltyCard from './LoyaltyCard.vue';
 import { useProducts } from '../composables/useProducts';
@@ -44,6 +44,8 @@ const shortcutCode = ref<string>('');
 const shortcutError = ref<string>('');
 const barcodeInput = ref<string>('');
 const barcodeError = ref<string>('');
+const barcodeInputRef = ref<HTMLInputElement | null>(null);
+const barcodeSuccess = ref<string>('');
 
 // Services affichés : is_active = true, type = service, tri par code croissant
 const displayedServices = computed(() => {
@@ -72,10 +74,8 @@ const handleSearchInput = async (event: Event): Promise<void> => {
   searchQuery.value = target.value;
   
   if (target.value.trim().length >= 2) {
-    // Rechercher les produits
     const results = await searchProducts(target.value);
-    // Ne proposer que les services dans les suggestions
-    autocompleteResults.value = (results || []).filter(p => p.type === 'service');
+    autocompleteResults.value = results || [];
     showAutocomplete.value = autocompleteResults.value.length > 0;
   } else {
     autocompleteResults.value = [];
@@ -96,7 +96,9 @@ const handleSearchBlur = (): void => {
 };
 
 const selectService = (product: Product): void => {
-  searchQuery.value = product.name;
+  addToCart(product, 1, undefined, 'sale');
+  searchQuery.value = '';
+  autocompleteResults.value = [];
   showAutocomplete.value = false;
 };
 
@@ -105,7 +107,7 @@ const handleSearchKeydown = (event: KeyboardEvent): void => {
   if (event.key === 'Enter' && autocompleteResults.value.length > 0) {
     event.preventDefault();
     const firstResult = autocompleteResults.value[0];
-    addToCart(firstResult);
+    addToCart(firstResult, 1, undefined, 'sale');
     searchQuery.value = '';
     autocompleteResults.value = [];
     showAutocomplete.value = false;
@@ -117,14 +119,24 @@ const handleBarcodeSubmit = async (): Promise<void> => {
   const code = barcodeInput.value.trim();
   if (!code) return;
   barcodeError.value = '';
+  barcodeSuccess.value = '';
   const product = await findByBarcode(code);
   if (product) {
-    addToCart(product, 1);
+    if (product.type === 'product' && (product.stock ?? 0) <= 0) {
+      barcodeError.value = 'Stock de vente vide pour ce produit';
+      setTimeout(() => { barcodeError.value = ''; }, 3000);
+    } else {
+      addToCart(product, 1);
+      barcodeSuccess.value = `${product.name} ajouté au panier`;
+      setTimeout(() => { barcodeSuccess.value = ''; }, 2500);
+    }
     barcodeInput.value = '';
   } else {
     barcodeError.value = 'Produit non trouvé ou sans code-barres';
     setTimeout(() => { barcodeError.value = ''; }, 3000);
   }
+  await nextTick();
+  barcodeInputRef.value?.focus();
 };
 
 watch(searchQuery, (newVal) => {
@@ -252,6 +264,7 @@ const processShortcut = (): void => {
           <div class="relative flex-1">
             <Barcode class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500 pointer-events-none" />
             <input
+              ref="barcodeInputRef"
               v-model="barcodeInput"
               type="text"
               placeholder="Scannez le code-barres du produit..."
@@ -268,6 +281,19 @@ const processShortcut = (): void => {
             Ajouter
           </button>
         </div>
+        <Transition
+          enter-active-class="transition ease-out duration-200"
+          enter-from-class="opacity-0 -translate-y-1"
+          enter-to-class="opacity-100 translate-y-0"
+          leave-active-class="transition ease-in duration-150"
+          leave-from-class="opacity-100 translate-y-0"
+          leave-to-class="opacity-0 -translate-y-1"
+        >
+          <p v-if="barcodeSuccess" class="flex items-center gap-1.5 text-xs font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 px-3 py-1.5 rounded-lg">
+            <CheckCircle class="w-3.5 h-3.5 shrink-0" />
+            {{ barcodeSuccess }}
+          </p>
+        </Transition>
         <p v-if="barcodeError" class="text-xs text-red-600 dark:text-red-400">{{ barcodeError }}</p>
       </div>
 
@@ -282,7 +308,7 @@ const processShortcut = (): void => {
             @blur="handleSearchBlur"
             @keydown="handleSearchKeydown"
             type="text"
-            placeholder="Rechercher un service..."
+            placeholder="Rechercher un produit..."
             class="w-full pl-11 md:pl-14 pr-4 md:pr-5 py-3 md:py-3.5 bg-gray-50 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 dark:placeholder-gray-400 border border-gray-300 rounded-xl text-sm font-medium focus:outline-none focus:border-gray-900 focus:ring-2 focus:ring-gray-900/10 dark:focus:border-emerald-500 dark:focus:ring-emerald-500/30 hover:border-gray-400 transition-all"
             autocomplete="off"
           />
@@ -308,8 +334,16 @@ const processShortcut = (): void => {
               class="w-full px-4 md:px-5 py-2.5 md:py-3 text-left hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors flex items-center justify-between"
             >
               <div class="flex-1 min-w-0">
-                <p class="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{{ product.name }}</p>
-                <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{{ product.code }}</p>
+                <div class="flex items-center gap-1.5">
+                  <p class="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{{ product.name }}</p>
+                  <span v-if="product.type === 'product'" class="inline-flex px-1.5 py-0.5 rounded text-[9px] font-semibold bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 shrink-0">PRODUIT</span>
+                </div>
+                <div class="flex items-center gap-2 mt-0.5">
+                  <p class="text-xs text-gray-500 dark:text-gray-400">{{ product.code }}</p>
+                  <span v-if="product.type === 'product'" class="text-[10px] tabular-nums" :class="(product.stock ?? 0) > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500 dark:text-red-400'">
+                    Stock : {{ product.stock ?? 0 }}
+                  </span>
+                </div>
               </div>
               <div class="flex items-center gap-2 md:gap-3 ml-2 md:ml-3">
                 <span class="text-sm font-bold text-gray-900 dark:text-gray-100 tabular-nums">{{ product.price_ttc?.toFixed(2) }}€</span>

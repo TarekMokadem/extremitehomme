@@ -183,7 +183,7 @@ const handlePrint = () => {
               <ChevronDown v-else class="w-5 h-5" />
             </span>
           </button>
-          <div v-show="journalExpanded" class="journal-content overflow-x-auto">
+          <div v-show="journalExpanded" class="journal-content overflow-x-auto print-thermal-compact">
             <table class="w-full text-sm min-w-[700px]">
               <thead>
                 <tr class="border-b border-gray-200 dark:border-gray-600">
@@ -220,16 +220,47 @@ const handlePrint = () => {
 
 <style scoped>
 @media print {
-  .journal-content { display: block !important; }
+  @page { size: 80mm 297mm; margin: 2mm; }
+  body, html { width: 80mm !important; }
+  main { padding: 0 !important; font-size: 9px !important; }
+
+  * { color: black !important; background: white !important; border-color: #ddd !important; }
+
+  .rounded-xl, .rounded-2xl { border-radius: 0 !important; }
+  .shadow, .shadow-sm, .shadow-lg { box-shadow: none !important; }
+
+  table { font-size: 8px !important; width: 100% !important; }
+  th, td { padding: 1px 2px !important; }
+  table .min-w-\[700px\] { min-width: 0 !important; }
+
+  .journal-content { display: block !important; overflow: visible !important; }
+  .journal-content table { min-width: 0 !important; }
   .print\:hidden { display: none !important; }
   .print\:bg-white { background: white !important; }
   .print\:text-black { color: black !important; }
   .print\:rounded-none { border-radius: 0 !important; }
-  .print\:border { border: 1px solid #e5e7eb !important; }
+  .print\:border { border: 1px solid #ddd !important; }
   .print\:shadow-none { box-shadow: none !important; }
   .print\:max-w-none { max-width: none !important; }
   .print\:flex-row { flex-direction: row !important; }
+
   .print\:grid-cols-2 { grid-template-columns: repeat(2, 1fr) !important; }
   .print\:grid-cols-3 { grid-template-columns: repeat(3, 1fr) !important; }
+
+  .max-w-5xl { max-width: none !important; }
+  .space-y-6 > * + * { margin-top: 4px !important; }
+  .gap-6 { gap: 4px !important; }
+  .gap-4 { gap: 2px !important; }
+
+  h1 { font-size: 11px !important; text-align: center !important; }
+  h2 { font-size: 9px !important; }
+  .px-4 { padding-left: 2px !important; padding-right: 2px !important; }
+  .py-3 { padding-top: 1px !important; padding-bottom: 1px !important; }
+  .py-2 { padding-top: 1px !important; padding-bottom: 1px !important; }
+  .p-4 { padding: 2px !important; }
+
+  .grid-cols-3 .text-xl { font-size: 10px !important; }
+  .grid-cols-3 .text-xs { font-size: 7px !important; }
+  .grid-cols-3 .p-4 { padding: 2px !important; }
 }
 </style>

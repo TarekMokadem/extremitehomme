@@ -3,6 +3,7 @@ import { ref, computed, watch } from 'vue';
 import { Search, Package, Plus, X, ShoppingBag, Wrench } from 'lucide-vue-next';
 import { useProducts } from '../composables/useProducts';
 import { useSales } from '../composables/useSales';
+import { looksLikeBarcode } from '../composables/useBarcodeScanner';
 import type { Product, StockCategory } from '../types/database';
 
 const props = defineProps<{
@@ -13,7 +14,7 @@ const emit = defineEmits<{
   (e: 'update:modelValue', v: boolean): void;
 }>();
 
-const { physicalProducts, loadProducts } = useProducts();
+const { physicalProducts, loadProducts, findByBarcode } = useProducts();
 const { addToCart } = useSales();
 
 const searchQuery = ref('');
@@ -112,6 +113,18 @@ const addProductToCart = (product: Product) => {
   addToCart(product, 1, undefined, stockMode.value);
 };
 
+const handleSearchKeydown = async (e: KeyboardEvent) => {
+  if (e.key !== 'Enter') return;
+  const code = searchQuery.value.trim();
+  if (!code || !looksLikeBarcode(code)) return;
+  e.preventDefault();
+  const product = await findByBarcode(code);
+  if (product) {
+    addProductToCart(product);
+    searchQuery.value = '';
+  }
+};
+
 const close = () => {
   isOpen.value = false;
 };
@@ -182,15 +195,16 @@ const close = () => {
               </button>
             </div>
 
-            <!-- Barre de recherche -->
+            <!-- Barre de recherche (scan code-barres : taper ou scanner puis Entrée) -->
             <div class="relative">
               <Search class="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500 pointer-events-none" />
               <input
                 v-model="searchQuery"
                 type="text"
-                placeholder="Rechercher par nom, marque, code..."
+                placeholder="Rechercher ou scanner le code-barres..."
                 class="w-full pl-11 pr-4 py-2.5 bg-gray-50 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 dark:placeholder-gray-400 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 dark:focus:ring-emerald-500 focus:border-transparent"
                 autofocus
+                @keydown="handleSearchKeydown"
               />
             </div>
           </div>

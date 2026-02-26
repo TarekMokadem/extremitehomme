@@ -43,7 +43,6 @@ const paymentLabels: Record<string, string> = {
   check: 'Chèque',
   gift_card: 'Chèque Cadeau',
   free: 'Gratuit',
-  technical: 'Utilisation technique',
 };
 
 export function useFinDeJournee() {

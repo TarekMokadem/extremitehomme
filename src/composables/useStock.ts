@@ -174,6 +174,7 @@ export function useStock() {
     brand?: string | null;
     model?: string | null;
     barcode?: string | null;
+    location?: string | null;
     price_ht: number;
     price_ttc: number;
     tva_rate?: number;
@@ -189,15 +190,18 @@ export function useStock() {
       const { error } = await supabase.from('products').insert({
         name: params.name,
         code: params.code || null,
+        description: null,
         category_id: params.category_id || null,
         brand: params.brand ?? null,
         model: params.model ?? null,
         barcode: params.barcode?.trim() || null,
+        location: params.location ?? null,
         type: 'product',
         price_ht: params.price_ht,
         price_ttc: params.price_ttc,
         tva_rate: params.tva_rate ?? 0.2,
         size: params.size || null,
+        duration: null,
         stock: params.stock ?? 0,
         stock_technical: params.stock_technical ?? 0,
         alert_threshold: params.alert_threshold ?? 5,
@@ -262,6 +266,7 @@ export function useStock() {
       category_id?: string | null;
       brand?: string | null;
       model?: string | null;
+      location?: string | null;
       price_ht?: number;
       price_ttc?: number;
       tva_rate?: number;

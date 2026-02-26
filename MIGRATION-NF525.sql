@@ -11,7 +11,7 @@ VALUES (
   'grand_total',
   '0',
   'NF525 – Grand Total cumulatif (ne doit jamais être remis à zéro)',
-  now()::text
+  now()
 )
 ON CONFLICT (key) DO NOTHING;
 

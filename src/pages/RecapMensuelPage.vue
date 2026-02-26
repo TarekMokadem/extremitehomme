@@ -333,7 +333,7 @@ function handlePrint() {
             <p class="text-gray-500 dark:text-gray-400 mt-2">Aucune vente pour ce mois</p>
           </div>
 
-          <div v-else class="overflow-x-auto journal-content">
+          <div v-else class="overflow-x-auto journal-content print-thermal-compact">
             <table class="w-full text-sm min-w-[900px]">
               <thead>
                 <tr class="border-b border-gray-200 dark:border-gray-600">

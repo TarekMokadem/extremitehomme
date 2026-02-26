@@ -70,10 +70,16 @@ const router = createRouter({
       meta: { title: 'Stock' }
     },
     {
-      path: '/commande',
-      name: 'commande',
-      component: () => import('../pages/CommandePage.vue'),
-      meta: { title: 'Commande' }
+      path: '/stock/valeur-theorique',
+      name: 'valeur-theorique',
+      component: () => import('../pages/ValeurTheoriquePage.vue'),
+      meta: { title: 'Valeur théorique du stock' }
+    },
+    {
+      path: '/valeur-theorique',
+      name: 'valeur-theorique',
+      component: () => import('../pages/ValeurTheoriquePage.vue'),
+      meta: { title: 'Valeur Théorique' }
     },
   ],
 });

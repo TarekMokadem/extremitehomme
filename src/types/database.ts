@@ -14,7 +14,7 @@ export type UserRole = 'admin' | 'manager' | 'vendor';
 export type ProductType = 'service' | 'product';
 export type DiscountType = 'euro' | 'percent';
 export type SaleStatus = 'pending' | 'completed' | 'cancelled' | 'refunded';
-export type PaymentMethod = 'cash' | 'card' | 'contactless' | 'check' | 'gift_card' | 'amex' | 'free' | 'technical';
+export type PaymentMethod = 'cash' | 'card' | 'contactless' | 'check' | 'gift_card' | 'amex' | 'free';
 export type StockMovementType = 'in' | 'out' | 'adjustment';
 export type StockCategory = 'sale' | 'technical';
 
@@ -87,6 +87,8 @@ export interface Product {
   model?: string | null;
   /** Code-barres pour scan à la caisse (produits physiques) */
   barcode?: string | null;
+  /** Emplacement du produit en magasin */
+  location?: string | null;
   created_at: string;
   updated_at: string;
   // Relations

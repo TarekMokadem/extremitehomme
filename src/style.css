@@ -10,10 +10,20 @@
     zoom: 1;
   }
 
-  /* Dézoom uniquement sur les grands écrans (desktop/caisse) */
+  /* Dézoom sur les grands écrans pour que tout le contenu soit visible sans scroll */
   @media (min-width: 1024px) {
     html {
-      zoom: 0.9;
+      zoom: 0.82;
+    }
+  }
+  @media (min-width: 1400px) {
+    html {
+      zoom: 0.88;
+    }
+  }
+  @media (min-width: 1920px) {
+    html {
+      zoom: 1;
     }
   }
 
@@ -124,7 +134,7 @@
   }
 
   .payment-btn.active {
-    @apply bg-gray-900 text-white border-gray-900 dark:bg-emerald-600 dark:border-emerald-600;
+    @apply text-white;
   }
 
   /* Élément de panier */
@@ -155,5 +165,16 @@
 
   input[type="number"] {
     -moz-appearance: textfield;
+  }
+}
+
+/* Impression thermique (HOP-E801 ESC/POS 58/80mm) */
+@media print {
+  .print-thermal-compact table {
+    font-size: 9px;
+  }
+  .print-thermal-compact th,
+  .print-thermal-compact td {
+    padding: 2px 4px;
   }
 }

@@ -19,12 +19,12 @@ const tabs = [
 <template>
   <!-- Main content -->
   <!-- Desktop: 3 colonnes | Tablette: 2 colonnes | Mobile: 1 colonne avec onglets -->
-  <main class="flex-1 flex flex-col lg:flex-row gap-4 p-4 lg:gap-6 lg:p-6 pb-20 lg:pb-6">
+  <main class="flex-1 flex flex-col lg:flex-row gap-3 p-3 lg:gap-4 lg:p-4 pb-20 lg:pb-4 min-h-0 overflow-hidden">
     
     <!-- Colonne gauche : Ticket (visible sur tablette/desktop, masqué sur mobile sauf si onglet actif) -->
     <aside 
       :class="[
-        'lg:w-80 lg:flex-shrink-0',
+        'lg:w-72 xl:w-80 lg:flex-shrink-0 min-h-0 max-h-full',
         activeTab === 'ticket' ? 'block' : 'hidden lg:block'
       ]"
     >
@@ -34,7 +34,7 @@ const tabs = [
     <!-- Colonne centrale : Services -->
     <section 
       :class="[
-        'flex-1 min-w-0',
+        'flex-1 min-w-0 min-h-0 max-h-full',
         activeTab === 'services' ? 'block' : 'hidden lg:block'
       ]"
     >
@@ -44,7 +44,7 @@ const tabs = [
     <!-- Colonne droite : Client (visible sur desktop, masqué sur tablette/mobile sauf si onglet actif) -->
     <aside 
       :class="[
-        'lg:w-80 xl:w-96 lg:flex-shrink-0',
+        'lg:w-72 xl:w-80 lg:flex-shrink-0 min-h-0 max-h-full',
         activeTab === 'client' ? 'block' : 'hidden lg:block'
       ]"
     >
