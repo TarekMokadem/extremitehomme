@@ -1,5 +1,9 @@
 import { ref, computed, onMounted } from 'vue';
-import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import { supabase } from '../lib/supabase';
+import {
+  SESSION_TIMEOUT_MINUTES,
+  LAST_ACTIVITY_KEY,
+} from '../lib/sessionConfig';
 import type { Vendor, AuthUser } from '../types/database';
 
 // State global
@@ -8,29 +12,44 @@ const vendor = ref<Vendor | null>(null);
 const isLoading = ref(true);
 const error = ref<string | null>(null);
 
-// Vendeurs mockés pour le mode démo
-const mockVendors: Vendor[] = [
-  { id: '1', auth_user_id: null, email: 'marie@extremites.fr', first_name: 'Marie', last_name: 'Martin', role: 'vendor', color: '#3B82F6', initials: 'MM', is_active: true, created_at: '', updated_at: '' },
-  { id: '2', auth_user_id: null, email: 'jean@extremites.fr', first_name: 'Jean', last_name: 'Dupont', role: 'vendor', color: '#10B981', initials: 'JD', is_active: true, created_at: '', updated_at: '' },
-  { id: '3', auth_user_id: null, email: 'sophie@extremites.fr', first_name: 'Sophie', last_name: 'Bernard', role: 'vendor', color: '#F59E0B', initials: 'SB', is_active: true, created_at: '', updated_at: '' },
-  { id: '4', auth_user_id: null, email: 'lucas@extremites.fr', first_name: 'Lucas', last_name: 'Petit', role: 'vendor', color: '#8B5CF6', initials: 'LP', is_active: true, created_at: '', updated_at: '' },
-];
+// Session : timeout d'inactivité
+const SESSION_TIMEOUT_MS = SESSION_TIMEOUT_MINUTES * 60 * 1000;
+let activityThrottle: ReturnType<typeof setTimeout> | null = null;
+let expiryCheckInterval: ReturnType<typeof setInterval> | null = null;
+
+function updateLastActivity(): void {
+  try {
+    sessionStorage.setItem(LAST_ACTIVITY_KEY, String(Date.now()));
+  } catch {
+    // sessionStorage indisponible
+  }
+}
+
+function getLastActivity(): number {
+  try {
+    const v = sessionStorage.getItem(LAST_ACTIVITY_KEY);
+    return v ? parseInt(v, 10) : 0;
+  } catch {
+    return 0;
+  }
+}
+
+function isSessionExpired(): boolean {
+  const last = getLastActivity();
+  if (last === 0) return false;
+  return Date.now() - last > SESSION_TIMEOUT_MS;
+}
+
+function clearSessionStorage(): void {
+  try {
+    sessionStorage.removeItem(LAST_ACTIVITY_KEY);
+  } catch {
+    // ignore
+  }
+}
 
 export function useAuth() {
-  // Vérifier la session au démarrage
   const checkSession = async () => {
-    if (!isSupabaseConfigured()) {
-      // Mode démo : utiliser le premier vendeur
-      vendor.value = mockVendors[0];
-      user.value = {
-        id: 'demo',
-        email: mockVendors[0].email,
-        vendor: mockVendors[0],
-      };
-      isLoading.value = false;
-      return;
-    }
-
     try {
       const { data: { session } } = await supabase.auth.getSession();
       
@@ -40,7 +59,6 @@ export function useAuth() {
           email: session.user.email || '',
         };
         
-        // Charger les infos du vendeur
         const { data: vendorData } = await supabase
           .from('vendors')
           .select('*')
@@ -50,28 +68,20 @@ export function useAuth() {
         if (vendorData) {
           vendor.value = vendorData;
           user.value.vendor = vendorData;
-        }
-      } else {
-        // Pas de session auth - charger un vendeur par défaut pour la caisse
-        const { data: defaultVendor } = await supabase
-          .from('vendors')
-          .select('*')
-          .eq('is_active', true)
-          .order('created_at')
-          .limit(1)
-          .single();
-        
-        if (defaultVendor) {
-          vendor.value = defaultVendor;
-          user.value = {
-            id: defaultVendor.id,
-            email: defaultVendor.email,
-            vendor: defaultVendor,
-          };
-          console.log('Vendeur par défaut chargé:', defaultVendor.first_name, defaultVendor.last_name);
         } else {
-          console.warn('Aucun vendeur trouvé dans la BDD - créez-en un dans Supabase');
+          const { data: defaultVendor } = await supabase
+            .from('vendors')
+            .select('*')
+            .eq('is_active', true)
+            .order('created_at')
+            .limit(1)
+            .single();
+          if (defaultVendor) {
+            vendor.value = defaultVendor;
+            user.value.vendor = defaultVendor;
+          }
         }
+        startSessionWatch();
       }
     } catch (err: any) {
       console.error('Erreur vérification session:', err);
@@ -81,19 +91,7 @@ export function useAuth() {
     }
   };
 
-  // Connexion
   const signIn = async (email: string, password: string) => {
-    if (!isSupabaseConfigured()) {
-      // Mode démo : simuler connexion
-      const mockVendor = mockVendors.find(v => v.email === email);
-      if (mockVendor) {
-        vendor.value = mockVendor;
-        user.value = { id: 'demo', email, vendor: mockVendor };
-        return { success: true };
-      }
-      return { success: false, error: 'Email non trouvé (mode démo)' };
-    }
-
     try {
       isLoading.value = true;
       error.value = null;
@@ -123,6 +121,7 @@ export function useAuth() {
           user.value.vendor = vendorData;
         }
 
+        startSessionWatch();
         return { success: true };
       }
 
@@ -135,29 +134,61 @@ export function useAuth() {
     }
   };
 
-  // Déconnexion
   const signOut = async () => {
-    if (!isSupabaseConfigured()) {
-      user.value = null;
-      vendor.value = null;
-      return;
-    }
-
+    stopSessionWatch();
+    clearSessionStorage();
     try {
       await supabase.auth.signOut();
-      user.value = null;
-      vendor.value = null;
     } catch (err: any) {
       console.error('Erreur déconnexion:', err);
     }
+    user.value = null;
+    vendor.value = null;
   };
 
-  // Charger tous les vendeurs (pour sélection)
-  const loadVendors = async (): Promise<Vendor[]> => {
-    if (!isSupabaseConfigured()) {
-      return mockVendors;
-    }
+  const forceSessionExpiry = () => {
+    stopSessionWatch();
+    clearSessionStorage();
+    supabase.auth.signOut().catch(() => {});
+    user.value = null;
+    vendor.value = null;
+  };
 
+  // Suivi d'activité (throttlé) pour le timeout
+  const onActivity = () => {
+    if (activityThrottle) return;
+    activityThrottle = setTimeout(() => {
+      updateLastActivity();
+      activityThrottle = null;
+    }, 60000); // throttle 1 min
+  };
+
+  const startSessionWatch = () => {
+    updateLastActivity();
+    const events = ['mousedown', 'keydown', 'scroll', 'touchstart'];
+    events.forEach((e) => window.addEventListener(e, onActivity));
+    expiryCheckInterval = setInterval(() => {
+      if (isSessionExpired()) {
+        forceSessionExpiry();
+        window.dispatchEvent(new CustomEvent('session-expired'));
+      }
+    }, 60000); // vérifier toutes les minutes
+  };
+
+  const stopSessionWatch = () => {
+    if (expiryCheckInterval) {
+      clearInterval(expiryCheckInterval);
+      expiryCheckInterval = null;
+    }
+    const events = ['mousedown', 'keydown', 'scroll', 'touchstart'];
+    events.forEach((e) => window.removeEventListener(e, onActivity));
+    if (activityThrottle) {
+      clearTimeout(activityThrottle);
+      activityThrottle = null;
+    }
+  };
+
+  const loadVendors = async (): Promise<Vendor[]> => {
     try {
       const { data, error: fetchError } = await supabase
         .from('vendors')
@@ -169,16 +200,13 @@ export function useAuth() {
       return data || [];
     } catch (err) {
       console.error('Erreur chargement vendeurs:', err);
-      return mockVendors;
+      return [];
     }
   };
 
-  // Changer de vendeur actif (sans changer d'auth)
-  const setActiveVendor = (newVendor: Vendor) => {
-    vendor.value = newVendor;
-    if (user.value) {
-      user.value.vendor = newVendor;
-    }
+  // Gardé pour compatibilité (TicketPanel, etc.) - un seul compte, pas de changement
+  const setActiveVendor = (_newVendor: Vendor) => {
+    // Compte unique : pas de changement de vendeur
   };
 
   // Computed
@@ -191,21 +219,18 @@ export function useAuth() {
     vendor.value ? `${vendor.value.first_name} ${vendor.value.last_name}` : ''
   );
 
-  // Écouter les changements d'auth
   onMounted(() => {
-    if (isSupabaseConfigured()) {
-      supabase.auth.onAuthStateChange(async (event, session) => {
-        if (event === 'SIGNED_IN' && session?.user) {
-          user.value = {
-            id: session.user.id,
-            email: session.user.email || '',
-          };
-        } else if (event === 'SIGNED_OUT') {
-          user.value = null;
-          vendor.value = null;
-        }
-      });
-    }
+    supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_IN' && session?.user) {
+        user.value = {
+          id: session.user.id,
+          email: session.user.email || '',
+        };
+      } else if (event === 'SIGNED_OUT') {
+        user.value = null;
+        vendor.value = null;
+      }
+    });
   });
 
   return {

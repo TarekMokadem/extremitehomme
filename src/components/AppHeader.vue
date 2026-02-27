@@ -1,15 +1,15 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue';
-import { useRoute } from 'vue-router';
-import { Scissors, ChevronDown, LayoutGrid, History, Users, Wallet, BarChart3, Settings, Package, Sun, Moon, FileText, UserCheck, Euro, CalendarDays, Calculator } from 'lucide-vue-next';
+import { useRoute, useRouter } from 'vue-router';
+import { Scissors, ChevronDown, LayoutGrid, History, Users, Wallet, BarChart3, Settings, Package, Sun, Moon, FileText, UserCheck, Euro, CalendarDays, Calculator, LogOut } from 'lucide-vue-next';
 import { useAuth } from '../composables/useAuth';
-import type { Vendor } from '../types/database';
 import { useTheme } from '../composables/useTheme';
 
 const route = useRoute();
+const router = useRouter();
 
 // Composables
-const { vendor: currentVendor, loadVendors, setActiveVendor } = useAuth();
+const { user, vendor: currentVendor, signOut } = useAuth();
 const { isDark, toggleTheme } = useTheme();
 
 // Navigation (Tiroir et Fin de journée regroupés dans "Caisse")
@@ -46,8 +46,7 @@ const navItems = [
 const openDropdown = ref<string | null>(null);
 const currentDate = ref('');
 const currentTime = ref('');
-const showVendorMenu = ref(false);
-const vendors = ref<Vendor[]>([]);
+const showUserMenu = ref(false);
 let intervalId: number;
 
 // Formatage de la date
@@ -75,21 +74,18 @@ const updateClock = (): void => {
   currentTime.value = formatTime();
 };
 
-// Sélection vendeur
-const selectVendor = (vendor: Vendor): void => {
-  setActiveVendor(vendor);
-  showVendorMenu.value = false;
-};
-
 const closeDropdowns = () => { openDropdown.value = null; };
 
+async function handleSignOut() {
+  await signOut();
+  showUserMenu.value = false;
+  router.push('/login');
+}
+
 // Lifecycle hooks
-onMounted(async () => {
+onMounted(() => {
   updateClock();
   intervalId = window.setInterval(updateClock, 1000);
-  
-  // Charger les vendeurs
-  vendors.value = await loadVendors();
 });
 
 onUnmounted(() => {
@@ -200,26 +196,26 @@ onUnmounted(() => {
 
       <div class="w-px h-8 md:h-10 bg-gray-700 hidden sm:block"></div>
       
-      <!-- Sélecteur de vendeur -->
+      <!-- Compte utilisateur + déconnexion -->
       <div class="relative">
         <button
-          @click="showVendorMenu = !showVendorMenu"
+          @click="showUserMenu = !showUserMenu"
           class="flex items-center gap-2 md:gap-3 px-2 py-1.5 md:px-4 md:py-2 rounded-xl bg-gray-800 hover:bg-gray-700 transition-colors"
         >
           <div 
-            :style="{ backgroundColor: currentVendor?.color || '#6B7280' }"
+            :style="{ backgroundColor: currentVendor?.color || '#10B981' }"
             class="w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center ring-2 ring-gray-600 font-semibold text-sm md:text-base text-white"
           >
-            {{ currentVendor?.initials || '?' }}
+            {{ currentVendor?.initials || (user?.email?.[0]?.toUpperCase() ?? '?') }}
           </div>
           <div class="text-left hidden md:block">
-            <p class="text-sm font-medium leading-tight">{{ currentVendor?.first_name }} {{ currentVendor?.last_name }}</p>
-            <p class="text-xs text-emerald-400 mt-0.5">● En service</p>
+            <p class="text-sm font-medium leading-tight">{{ currentVendor ? `${currentVendor.first_name} ${currentVendor.last_name}` : user?.email }}</p>
+            <p class="text-xs text-emerald-400 mt-0.5">● Connecté</p>
           </div>
           <ChevronDown class="w-4 h-4 text-gray-400" />
         </button>
 
-        <!-- Menu déroulant -->
+        <!-- Menu déroulant : déconnexion -->
         <Transition
           enter-active-class="transition ease-out duration-100"
           enter-from-class="opacity-0 scale-95"
@@ -229,33 +225,23 @@ onUnmounted(() => {
           leave-to-class="opacity-0 scale-95"
         >
           <div
-            v-if="showVendorMenu"
+            v-if="showUserMenu"
             class="absolute right-0 top-full mt-2 w-56 md:w-64 bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 py-2 z-50"
           >
             <button
-              v-for="vendor in vendors"
-              :key="vendor.id"
-              @click="selectVendor(vendor)"
-              :class="[
-                'w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors',
-                currentVendor?.id === vendor.id && 'bg-gray-50 dark:bg-gray-700'
-              ]"
+              @click="handleSignOut"
+              class="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-red-600 dark:text-red-400"
             >
-              <div 
-                :style="{ backgroundColor: vendor.color || '#6B7280' }"
-                class="w-9 h-9 rounded-full flex items-center justify-center font-semibold text-white"
-              >
-                {{ vendor.initials }}
-              </div>
-              <span class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ vendor.first_name }} {{ vendor.last_name }}</span>
+              <LogOut class="w-5 h-5" />
+              <span class="text-sm font-medium">Se déconnecter</span>
             </button>
           </div>
         </Transition>
 
         <!-- Backdrop pour fermer le menu -->
         <div
-          v-if="showVendorMenu"
-          @click="showVendorMenu = false"
+          v-if="showUserMenu"
+          @click="showUserMenu = false"
           class="fixed inset-0 z-40"
         ></div>
       </div>

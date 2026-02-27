@@ -620,6 +620,14 @@ async function submitEditProduct() {
       alert_threshold: Math.max(0, Number(editForm.value.alert_threshold) || 5),
     };
     if (selectedSizes.value.length > 0) {
+      // Supprimer les variantes dont la taille a été désélectionnée
+      const deselectedProducts = editProducts.value.filter(
+        (p) => !selectedSizes.value.includes((p as Product & { size?: string | null }).size ?? '')
+      );
+      for (const p of deselectedProducts) {
+        await deleteProduct(p.id);
+      }
+      // Mettre à jour ou créer les variantes sélectionnées
       for (const size of selectedSizes.value) {
         const details = sizeDetails.value[size] || { barcode: '', stock: 0 };
         const existing = editProducts.value.find((p) => (p as Product & { size?: string | null }).size === size);

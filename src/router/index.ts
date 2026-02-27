@@ -1,8 +1,15 @@
 import { createRouter, createWebHistory } from 'vue-router';
+import { useAuth } from '../composables/useAuth';
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
+    {
+      path: '/login',
+      name: 'login',
+      component: () => import('../pages/LoginPage.vue'),
+      meta: { title: 'Connexion', requiresAuth: false } as { title: string; requiresAuth: boolean },
+    },
     {
       path: '/',
       name: 'caisse',
@@ -84,8 +91,32 @@ const router = createRouter({
   ],
 });
 
-router.beforeEach((to) => {
+let authChecked = false;
+
+router.beforeEach(async (to) => {
   document.title = `${to.meta.title || 'Caisse'} - Extrémités Homme`;
+
+  const { checkSession, isAuthenticated } = useAuth();
+
+  // Vérifier la session au premier chargement
+  if (!authChecked) {
+    await checkSession();
+    authChecked = true;
+  }
+
+  const requiresAuth = (to.meta.requiresAuth as boolean) !== false;
+  const isLoginPage = to.path === '/login';
+
+  if (isLoginPage) {
+    if (isAuthenticated.value) return { path: '/' };
+    return true;
+  }
+
+  if (requiresAuth && !isAuthenticated.value) {
+    return { path: '/login', query: { redirect: to.fullPath } };
+  }
+
+  return true;
 });
 
 export default router;

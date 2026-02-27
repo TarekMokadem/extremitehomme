@@ -133,7 +133,7 @@ const handleValidate = async (): Promise<void> => {
   setPayment(selectedPaymentMethod.value, total.value);
 
   const sale = await validateSale(
-    vendor.value?.id || 'demo',
+    vendor.value?.id,
     selectedClient.value?.id
   );
   
