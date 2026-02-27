@@ -5,7 +5,7 @@
  */
 
 /** Durée max d'inactivité avant déconnexion (en minutes) */
-export const SESSION_TIMEOUT_MINUTES = 30;
+export const SESSION_TIMEOUT_MINUTES = 600;
 
 /** Clé pour le timestamp de dernière activité */
 export const LAST_ACTIVITY_KEY = 'extremites_last_activity';
