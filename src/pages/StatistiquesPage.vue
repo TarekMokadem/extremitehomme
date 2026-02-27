@@ -261,27 +261,51 @@ const loadVendorStats = async () => {
   const now = new Date();
   const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
-  const stats: VendorStat[] = [];
-  for (const vendor of vendors) {
-    const { data: sales } = await supabase
-      .from('sales')
-      .select('total')
-      .eq('vendor_id', vendor.id)
-      .gte('created_at', `${monthAgo}T00:00:00`)
-      .eq('status', 'completed');
+  // Récupérer les ventes complétées sur la période avec leurs items (vendor_id par article)
+  const { data: sales } = await supabase
+    .from('sales')
+    .select(`
+      id,
+      items:sale_items(subtotal_ttc, vendor_id)
+    `)
+    .gte('created_at', `${monthAgo}T00:00:00`)
+    .eq('status', 'completed');
 
-    const vendorSales = sales || [];
-    stats.push({
-      id: vendor.id,
-      name: `${vendor.first_name} ${vendor.last_name}`,
-      initials: vendor.initials ?? '',
-      color: vendor.color ?? '#6B7280',
-      total: vendorSales.reduce((sum, s) => sum + s.total, 0),
-      count: vendorSales.length,
-    });
+  // Agrégation par vendeur (sale_items.vendor_id)
+  const byVendor = new Map<string, { total: number; saleIds: Set<string> }>();
+  for (const sale of sales || []) {
+    const items = (sale as { items?: { subtotal_ttc: number; vendor_id: string | null }[] }).items || [];
+    for (const item of items) {
+      const vid = item.vendor_id;
+      if (!vid) continue;
+      if (!byVendor.has(vid)) byVendor.set(vid, { total: 0, saleIds: new Set() });
+      const entry = byVendor.get(vid)!;
+      entry.total += item.subtotal_ttc ?? 0;
+      entry.saleIds.add((sale as { id: string }).id);
+    }
   }
 
+  const stats: VendorStat[] = vendors.map((v) => ({
+    id: v.id,
+    name: `${v.first_name} ${v.last_name}`,
+    initials: v.initials ?? '',
+    color: v.color ?? '#6B7280',
+    total: byVendor.get(v.id)?.total ?? 0,
+    count: byVendor.get(v.id)?.saleIds.size ?? 0,
+  }));
+
   vendorStats.value = stats.sort((a, b) => b.total - a.total);
+};
+
+const getSaleVendorSummary = (sale: { items?: { vendor?: { first_name: string; last_name: string } }[]; vendor?: { first_name: string; last_name: string } }) => {
+  const items = sale.items || [];
+  const names = new Set<string>();
+  for (const item of items) {
+    const v = item.vendor;
+    if (v) names.add(`${v.first_name} ${v.last_name}`.trim());
+  }
+  if (names.size > 0) return [...names].join(', ');
+  return sale.vendor ? `${sale.vendor.first_name} ${sale.vendor.last_name}`.trim() : '—';
 };
 
 const loadTodayJournal = async () => {
@@ -296,7 +320,7 @@ const loadTodayJournal = async () => {
       created_at,
       client:clients(first_name, last_name),
       vendor:vendors(first_name, last_name),
-      items:sale_items(id)
+      items:sale_items(id, vendor:vendors(first_name, last_name))
     `)
     .gte('created_at', `${today}T00:00:00`)
     .eq('status', 'completed')
@@ -313,7 +337,7 @@ const loadTodayJournal = async () => {
     total: sale.total,
     created_at: sale.created_at,
     client_name: sale.client ? `${sale.client.first_name} ${sale.client.last_name}` : null,
-    vendor_name: sale.vendor ? `${sale.vendor.first_name} ${sale.vendor.last_name}` : 'Inconnu',
+    vendor_name: getSaleVendorSummary(sale),
     items_count: sale.items?.length || 0,
   }));
 };

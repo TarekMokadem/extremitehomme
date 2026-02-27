@@ -100,7 +100,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <header class="bg-gray-900 text-white px-4 py-2 md:px-6 md:py-2.5 lg:px-8 flex items-center justify-between flex-shrink-0 shadow-xl">
+  <header class="bg-gray-900 text-white px-4 py-3 md:px-6 md:py-4 lg:px-8 flex items-center justify-between flex-shrink-0 shadow-xl">
     <!-- Logo & Nom -->
     <div class="flex items-center gap-2 md:gap-4">
       <router-link to="/" class="flex items-center gap-2 md:gap-4 hover:opacity-80 transition-opacity">

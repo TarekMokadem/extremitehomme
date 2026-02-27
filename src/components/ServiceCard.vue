@@ -4,6 +4,7 @@ import { Clock } from 'lucide-vue-next';
 import type { Product } from '../types/database';
 import { useSales } from '../composables/useSales';
 import { useProducts } from '../composables/useProducts';
+import { useAuth } from '../composables/useAuth';
 
 // Props
 interface Props {
@@ -14,6 +15,7 @@ const props = defineProps<Props>();
 
 // Composables
 const { addToCart, cartItems } = useSales();
+const { vendor } = useAuth();
 const { getCategoryBorderColor } = useProducts();
 
 // Computed
@@ -26,7 +28,7 @@ const borderColor = computed(() => getCategoryBorderColor(props.service));
 
 // Handlers
 const handleAddToCart = (): void => {
-  addToCart(props.service);
+  addToCart(props.service, 1, vendor.value ?? undefined);
 };
 </script>
 

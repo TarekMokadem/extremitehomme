@@ -147,6 +147,17 @@ function getVendorName(vendor?: { first_name: string; last_name: string } | null
   return `${vendor.first_name} ${vendor.last_name}`.trim() || '—';
 }
 
+function getSaleVendorSummary(sale: SaleRow): string {
+  const items = sale.items || [];
+  const names = new Set<string>();
+  for (const item of items) {
+    const v = (item as { vendor?: { first_name: string; last_name: string } }).vendor;
+    if (v) names.add(`${v.first_name} ${v.last_name}`.trim());
+  }
+  if (names.size === 0) return getVendorName(sale.vendor);
+  return Array.from(names).join(', ');
+}
+
 async function loadData() {
   if (!isSupabaseConfigured()) {
     sales.value = [];
@@ -169,7 +180,7 @@ async function loadData() {
         id, ticket_number, total, discount_amount, created_at,
         client:clients(first_name, last_name),
         vendor:vendors(first_name, last_name),
-        items:sale_items(id, product_name, quantity, subtotal_ttc),
+        items:sale_items(id, product_name, quantity, subtotal_ttc, vendor:vendors(first_name, last_name)),
         payments:payments(method, amount)
       `)
       .gte('created_at', `${startDate}T00:00:00`)
@@ -363,7 +374,7 @@ function handlePrint() {
                     <td class="px-3 py-2 tabular-nums">{{ formatTime(sale.created_at) }}</td>
                     <td class="px-3 py-2 font-mono text-xs">{{ sale.ticket_number }}</td>
                     <td class="px-3 py-2">{{ getClientName(sale.client) }}</td>
-                    <td class="px-3 py-2">{{ getVendorName(sale.vendor) }}</td>
+                    <td class="px-3 py-2">{{ getSaleVendorSummary(sale) }}</td>
                     <td class="px-3 py-2 max-w-[200px] truncate" :title="getArticlesSummary(sale.items)">
                       {{ getArticlesSummary(sale.items) }}
                     </td>

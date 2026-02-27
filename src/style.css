@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* Thème basé sur la classe .dark (pas sur prefers-color-scheme du navigateur) */
+@custom-variant dark (&:where(.dark, .dark *));
+
 @layer base {
   * {
     @apply box-border;
@@ -10,20 +13,10 @@
     zoom: 1;
   }
 
-  /* Dézoom sur les grands écrans pour que tout le contenu soit visible sans scroll */
+  /* Dézoom de 20% sur les grands écrans (desktop/caisse) */
   @media (min-width: 1024px) {
     html {
-      zoom: 0.82;
-    }
-  }
-  @media (min-width: 1400px) {
-    html {
-      zoom: 0.88;
-    }
-  }
-  @media (min-width: 1920px) {
-    html {
-      zoom: 1;
+      zoom: 0.8;
     }
   }
 
@@ -122,19 +115,12 @@
     @apply bg-gray-900 text-white border-gray-900 dark:bg-emerald-600 dark:border-emerald-600;
   }
 
-  /* Boutons de paiement */
+  /* Boutons de paiement (couleurs définies par composant) */
   .payment-btn {
     @apply inline-flex flex-col items-center justify-center gap-1 md:gap-2;
-    @apply p-2 md:p-3 rounded-xl;
-    @apply text-[10px] md:text-xs font-medium;
-    @apply bg-white border border-gray-300 text-gray-700;
-    @apply hover:bg-gray-50 hover:border-gray-400;
-    @apply dark:bg-gray-700 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-600;
+    @apply p-2 md:p-3 rounded-xl border;
+    @apply font-medium hover:opacity-90 active:scale-[0.98];
     @apply transition-all duration-200;
-  }
-
-  .payment-btn.active {
-    @apply text-white;
   }
 
   /* Élément de panier */

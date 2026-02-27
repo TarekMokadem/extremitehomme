@@ -43,9 +43,9 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="h-screen flex flex-col bg-gray-50 text-gray-900 dark:bg-gray-900 dark:text-gray-100 overflow-hidden">
-    <!-- Header avec navigation -->
-    <AppHeader />
+  <div class="min-h-screen flex flex-col bg-gray-50 text-gray-900 dark:bg-gray-900 dark:text-gray-100">
+    <!-- Header avec navigation (masqué à l'impression) -->
+    <AppHeader class="print:hidden" />
 
     <!-- Contenu de la page (router) -->
     <router-view class="flex-1 min-h-0" />

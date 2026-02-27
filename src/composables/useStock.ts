@@ -1,5 +1,6 @@
 import { ref, computed } from 'vue';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import { categoryUsesTechnicalStock } from '../lib/stockTechnicalCategories';
 import type { Product, Category, StockMovement, StockMovementType, StockCategory } from '../types/database';
 
 export interface MovementWithDetails extends StockMovement {
@@ -185,31 +186,43 @@ export function useStock() {
   }) => {
     if (!isSupabaseConfigured()) throw new Error('Supabase non configuré');
 
+    const catId = params.category_id && String(params.category_id).trim() ? params.category_id : null;
+    const barcodeVal = params.barcode?.trim() || null;
+    const cat = categories.value.find((c) => c.id === catId);
+    const usesTechnicalStock = categoryUsesTechnicalStock(cat?.slug);
+
     isSaving.value = true;
     try {
-      const { error } = await supabase.from('products').insert({
-        name: params.name,
-        code: params.code || null,
+      const payload: Record<string, unknown> = {
+        name: params.name.trim(),
+        code: params.code?.trim() || null,
         description: null,
-        category_id: params.category_id || null,
-        brand: params.brand ?? null,
-        model: params.model ?? null,
-        barcode: params.barcode?.trim() || null,
-        location: params.location ?? null,
+        category_id: catId,
+        brand: params.brand?.trim() || null,
+        model: params.model?.trim() || null,
+        barcode: barcodeVal,
+        location: params.location?.trim() || null,
         type: 'product',
-        price_ht: params.price_ht,
-        price_ttc: params.price_ttc,
+        price_ht: Number(params.price_ht) || 0,
+        price_ttc: Number(params.price_ttc) || 0,
         tva_rate: params.tva_rate ?? 0.2,
-        size: params.size || null,
+        size: params.size?.trim() || null,
         duration: null,
-        stock: params.stock ?? 0,
-        stock_technical: params.stock_technical ?? 0,
-        alert_threshold: params.alert_threshold ?? 5,
+        stock: Math.max(0, Number(params.stock) || 0),
+        alert_threshold: Math.max(0, Number(params.alert_threshold) || 5),
         is_active: true,
         display_order: 999,
-      } as Record<string, unknown>);
+      };
+      if (usesTechnicalStock) {
+        payload.stock_technical = Math.max(0, Number(params.stock_technical) || 0);
+      }
 
-      if (error) throw error;
+      const { error } = await supabase.from('products').insert(payload);
+
+      if (error) {
+        const msg = error.message || JSON.stringify(error);
+        throw new Error(`Erreur création produit: ${msg}`);
+      }
       await loadProducts();
     } finally {
       isSaving.value = false;
@@ -257,6 +270,23 @@ export function useStock() {
     }
   };
 
+  const deleteProduct = async (productId: string) => {
+    if (!isSupabaseConfigured()) throw new Error('Supabase non configuré');
+
+    isSaving.value = true;
+    try {
+      const { error } = await supabase.from('products').delete().eq('id', productId);
+
+      if (error) {
+        const msg = error.message || JSON.stringify(error);
+        throw new Error(`Erreur suppression: ${msg}`);
+      }
+      await loadProducts();
+    } finally {
+      isSaving.value = false;
+    }
+  };
+
   const updateProduct = async (
     productId: string,
     params: {
@@ -271,22 +301,44 @@ export function useStock() {
       price_ttc?: number;
       tva_rate?: number;
       size?: string | null;
+      stock?: number;
+      stock_technical?: number;
       alert_threshold?: number;
     }
   ) => {
     if (!isSupabaseConfigured()) throw new Error('Supabase non configuré');
 
+    const cat = params.category_id
+      ? categories.value.find((c) => c.id === params.category_id)
+      : productsWithStock.value.find((p) => p.id === productId)?.category;
+    const usesTechnicalStock = categoryUsesTechnicalStock(cat?.slug);
+
+    const clean: Record<string, unknown> = { updated_at: new Date().toISOString() };
+    if (params.name !== undefined) clean.name = params.name.trim();
+    if (params.code !== undefined) clean.code = params.code?.trim() || null;
+    if (params.barcode !== undefined) clean.barcode = params.barcode?.trim() || null;
+    if (params.category_id !== undefined) clean.category_id = params.category_id?.trim() ? params.category_id : null;
+    if (params.brand !== undefined) clean.brand = params.brand?.trim() || null;
+    if (params.model !== undefined) clean.model = params.model?.trim() || null;
+    if (params.location !== undefined) clean.location = params.location?.trim() || null;
+    if (params.price_ht !== undefined) clean.price_ht = Number(params.price_ht) || 0;
+    if (params.price_ttc !== undefined) clean.price_ttc = Number(params.price_ttc) || 0;
+    if (params.tva_rate !== undefined) clean.tva_rate = params.tva_rate;
+    if (params.size !== undefined) clean.size = params.size?.trim() || null;
+    if (params.stock !== undefined) clean.stock = Math.max(0, Number(params.stock) || 0);
+    if (usesTechnicalStock && params.stock_technical !== undefined) {
+      clean.stock_technical = Math.max(0, Number(params.stock_technical) || 0);
+    }
+    if (params.alert_threshold !== undefined) clean.alert_threshold = Math.max(0, Number(params.alert_threshold) || 5);
+
     isSaving.value = true;
     try {
-      const { error } = await supabase
-        .from('products')
-        .update({
-          ...params,
-          updated_at: new Date().toISOString(),
-        } as Record<string, unknown>)
-        .eq('id', productId);
+      const { error } = await supabase.from('products').update(clean).eq('id', productId);
 
-      if (error) throw error;
+      if (error) {
+        const msg = error.message || JSON.stringify(error);
+        throw new Error(`Erreur mise à jour: ${msg}`);
+      }
       await loadProducts();
     } finally {
       isSaving.value = false;
@@ -309,6 +361,7 @@ export function useStock() {
     loadMovements,
     addMovement,
     createProduct,
+    deleteProduct,
     updateAlertThreshold,
     updateBarcode,
     updateProduct,

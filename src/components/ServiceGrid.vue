@@ -5,6 +5,7 @@ import ServiceCard from './ServiceCard.vue';
 import LoyaltyCard from './LoyaltyCard.vue';
 import { useProducts } from '../composables/useProducts';
 import { useSales } from '../composables/useSales';
+import { useAuth } from '../composables/useAuth';
 import { useClients } from '../composables/useClients';
 import { useLoyalty } from '../composables/useLoyalty';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
@@ -14,6 +15,7 @@ import ProductPickerDialog from './ProductPickerDialog.vue';
 // Composables
 const { products, isLoading, searchProducts, findByBarcode } = useProducts();
 const { addToCart } = useSales();
+const { vendor } = useAuth();
 const { selectedClient } = useClients();
 const { loadClientStamps, clearStamps } = useLoyalty();
 
@@ -96,7 +98,7 @@ const handleSearchBlur = (): void => {
 };
 
 const selectService = (product: Product): void => {
-  addToCart(product, 1, undefined, 'sale');
+  addToCart(product, 1, vendor.value ?? undefined, 'sale');
   searchQuery.value = '';
   autocompleteResults.value = [];
   showAutocomplete.value = false;
@@ -107,7 +109,7 @@ const handleSearchKeydown = (event: KeyboardEvent): void => {
   if (event.key === 'Enter' && autocompleteResults.value.length > 0) {
     event.preventDefault();
     const firstResult = autocompleteResults.value[0];
-    addToCart(firstResult, 1, undefined, 'sale');
+    if (firstResult) addToCart(firstResult, 1, vendor.value ?? undefined, 'sale');
     searchQuery.value = '';
     autocompleteResults.value = [];
     showAutocomplete.value = false;
@@ -126,7 +128,7 @@ const handleBarcodeSubmit = async (): Promise<void> => {
       barcodeError.value = 'Stock de vente vide pour ce produit';
       setTimeout(() => { barcodeError.value = ''; }, 3000);
     } else {
-      addToCart(product, 1);
+      addToCart(product, 1, vendor.value ?? undefined);
       barcodeSuccess.value = `${product.name} ajouté au panier`;
       setTimeout(() => { barcodeSuccess.value = ''; }, 2500);
     }
@@ -160,10 +162,10 @@ const parseShortcutCode = (code: string): { vendorInitials: string; productCode:
   const match = trimmed.match(/^([A-Z]+)(\d+.*)$/);
   if (!match) return null;
   
-  return {
-    vendorInitials: match[1],
-    productCode: match[2],
-  };
+  const vInit = match[1];
+  const pCode = match[2];
+  if (!vInit || !pCode) return null;
+  return { vendorInitials: vInit, productCode: pCode };
 };
 
 // Trouver le vendeur par ses initiales

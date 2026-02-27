@@ -17,7 +17,6 @@ import {
   FileText,
   Gift,
   HandCoins,
-  Wrench,
   Edit,
   X
 } from 'lucide-vue-next';
@@ -32,6 +31,8 @@ interface SaleWithDetails extends Omit<Sale, 'vendor' | 'client'> {
     quantity: number;
     price_ht: number;
     subtotal_ttc: number;
+    vendor_id?: string | null;
+    vendor?: { first_name: string; last_name: string };
   }[];
   payments?: {
     method: PaymentMethod;
@@ -68,7 +69,6 @@ const paymentMethodsList: { id: PaymentMethod; label: string; icon: typeof Bankn
   { id: 'check', label: 'Chèque', icon: FileText },
   { id: 'gift_card', label: 'Chèque Cadeau', icon: Gift },
   { id: 'free', label: 'Gratuit', icon: HandCoins },
-  { id: 'technical', label: 'Utilisation technique', icon: Wrench },
 ];
 
 // Filtres de date
@@ -196,7 +196,7 @@ const loadSales = async () => {
         *,
         vendor:vendors(first_name, last_name),
         client:clients(first_name, last_name),
-        items:sale_items(id, product_name, quantity, price_ht, subtotal_ttc),
+        items:sale_items(id, product_name, quantity, price_ht, subtotal_ttc, vendor_id, vendor:vendors(first_name, last_name)),
         payments(method, amount)
       `)
       .order('created_at', { ascending: false })
@@ -247,13 +247,16 @@ const filteredSales = computed(() => {
   if (!searchQuery.value.trim()) return sales.value;
   
   const q = searchQuery.value.toLowerCase();
-  return sales.value.filter(sale => 
-    sale.ticket_number.toLowerCase().includes(q) ||
-    sale.client?.first_name?.toLowerCase().includes(q) ||
-    sale.client?.last_name?.toLowerCase().includes(q) ||
-    sale.vendor?.first_name?.toLowerCase().includes(q) ||
-    sale.vendor?.last_name?.toLowerCase().includes(q)
-  );
+  return sales.value.filter(sale => {
+    if (sale.ticket_number.toLowerCase().includes(q)) return true;
+    if (sale.client?.first_name?.toLowerCase().includes(q) || sale.client?.last_name?.toLowerCase().includes(q)) return true;
+    if (sale.vendor?.first_name?.toLowerCase().includes(q) || sale.vendor?.last_name?.toLowerCase().includes(q)) return true;
+    for (const item of sale.items || []) {
+      const v = (item as { vendor?: { first_name: string; last_name: string } }).vendor;
+      if (v?.first_name?.toLowerCase().includes(q) || v?.last_name?.toLowerCase().includes(q)) return true;
+    }
+    return false;
+  });
 });
 
 // Statistiques
@@ -288,6 +291,19 @@ const formatTime = (dateStr: string) => {
   });
 };
 
+const getSaleVendorSummary = (sale: SaleWithDetails): string => {
+  const items = sale.items || [];
+  const names = new Set<string>();
+  for (const item of items) {
+    const v = (item as { vendor?: { first_name: string; last_name: string } }).vendor;
+    if (v) {
+      names.add(`${v.first_name} ${v.last_name}`.trim());
+    }
+  }
+  if (names.size === 0) return sale.vendor ? `${sale.vendor.first_name} ${sale.vendor.last_name}` : '—';
+  return Array.from(names).join(', ');
+};
+
 // Icône méthode de paiement
 const paymentIcon = (method: PaymentMethod) => {
   switch (method) {
@@ -296,7 +312,6 @@ const paymentIcon = (method: PaymentMethod) => {
     case 'contactless':
     case 'amex': return CreditCard;
     case 'free': return HandCoins;
-    case 'technical': return Wrench;
     case 'gift_card': return Gift;
     default: return Euro;
   }
@@ -311,7 +326,6 @@ const paymentLabel = (method: PaymentMethod) => {
     check: 'Chèque',
     gift_card: 'Chèque Cadeau',
     free: 'Gratuit',
-    technical: 'Utilisation technique',
   };
   return labels[method] || method;
 };
@@ -561,8 +575,8 @@ watch([dateFilter, statusFilter], () => {
                 <p class="text-sm font-medium text-gray-900 dark:text-white truncate">
                   {{ sale.client?.first_name }} {{ sale.client?.last_name }}
                 </p>
-                <p v-if="sale.vendor" class="text-xs text-gray-500 dark:text-gray-400 truncate">
-                  Vendeur: {{ sale.vendor.first_name }} {{ sale.vendor.last_name }}
+                <p class="text-xs text-gray-500 dark:text-gray-400 truncate">
+                  Vendeur(s): {{ getSaleVendorSummary(sale) }}
                 </p>
               </div>
 
@@ -607,12 +621,15 @@ watch([dateFilter, statusFilter], () => {
                       <div
                         v-for="item in sale.items"
                         :key="item.id"
-                        class="flex items-center justify-between text-sm"
+                        class="flex items-center justify-between text-sm gap-2"
                       >
-                        <span class="text-gray-700 dark:text-gray-300">
+                        <span class="text-gray-700 dark:text-gray-300 flex-1 min-w-0">
                           {{ item.quantity }}x {{ item.product_name }}
+                          <span v-if="(item as any).vendor" class="text-gray-500 dark:text-gray-400 text-xs">
+                            ({{ (item as any).vendor.first_name }} {{ (item as any).vendor.last_name }})
+                          </span>
                         </span>
-                        <span class="font-medium text-gray-900 dark:text-white">{{ item.subtotal_ttc.toFixed(2) }}€</span>
+                        <span class="font-medium text-gray-900 dark:text-white shrink-0">{{ item.subtotal_ttc.toFixed(2) }}€</span>
                       </div>
                     </div>
                   </div>

@@ -254,31 +254,34 @@ const loadData = async () => {
     const { start, end } = dateRange.value;
     const isAll = selectedVendorId.value === '__all__';
 
-    let query = supabase
+    const { data: sales, error: salesError } = await supabase
       .from('sales')
       .select(`
         id,
         total,
         created_at,
-        items:sale_items(id, product_name, quantity, subtotal_ttc, product_id),
+        items:sale_items(id, product_name, quantity, subtotal_ttc, product_id, vendor_id),
         payments:payments(method, amount)
       `)
       .gte('created_at', `${start}T00:00:00`)
       .lte('created_at', `${end}T23:59:59.999`)
       .eq('status', 'completed');
 
-    if (!isAll) {
-      query = query.eq('vendor_id', selectedVendorId.value);
-    }
-
-    const { data: sales, error: salesError } = await query;
-
     if (salesError) {
       console.error('Erreur Supabase stats employé:', salesError);
       throw salesError;
     }
 
-    const allSales = sales || [];
+    let allSales = sales || [];
+
+    if (!isAll) {
+      allSales = allSales
+        .map((sale: any) => ({
+          ...sale,
+          items: (sale.items || []).filter((item: any) => item.vendor_id === selectedVendorId.value),
+        }))
+        .filter((sale: any) => sale.items.length > 0);
+    }
 
     const productIds = new Set<string>();
     for (const sale of allSales) {
@@ -304,7 +307,13 @@ const loadData = async () => {
       }
     }
 
-    totalCA.value = allSales.reduce((s: number, sale: any) => s + sale.total, 0);
+    if (isAll) {
+      totalCA.value = allSales.reduce((s: number, sale: any) => s + sale.total, 0);
+    } else {
+      totalCA.value = allSales.reduce((s: number, sale: any) => {
+        return s + (sale.items || []).reduce((sum: number, item: any) => sum + (item.subtotal_ttc ?? 0), 0);
+      }, 0);
+    }
     totalSales.value = allSales.length;
 
     const catMap = new Map<string, CategoryStat>();

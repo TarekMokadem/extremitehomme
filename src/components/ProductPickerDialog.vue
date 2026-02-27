@@ -3,6 +3,7 @@ import { ref, computed, watch } from 'vue';
 import { Search, Package, Plus, X, ShoppingBag, Wrench } from 'lucide-vue-next';
 import { useProducts } from '../composables/useProducts';
 import { useSales } from '../composables/useSales';
+import { useAuth } from '../composables/useAuth';
 import { looksLikeBarcode } from '../composables/useBarcodeScanner';
 import type { Product, StockCategory } from '../types/database';
 
@@ -16,6 +17,7 @@ const emit = defineEmits<{
 
 const { physicalProducts, loadProducts, findByBarcode } = useProducts();
 const { addToCart } = useSales();
+const { vendor } = useAuth();
 
 const searchQuery = ref('');
 const stockMode = ref<StockCategory>('sale');
@@ -110,7 +112,7 @@ const productsByBrand = computed(() => {
 const addProductToCart = (product: Product) => {
   const stock = getStockForMode(product);
   if (stock <= 0) return;
-  addToCart(product, 1, undefined, stockMode.value);
+  addToCart(product, 1, vendor.value ?? undefined, stockMode.value);
 };
 
 const handleSearchKeydown = async (e: KeyboardEvent) => {

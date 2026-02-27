@@ -1,3 +1,4 @@
+import JsBarcode from 'jsbarcode';
 import type { Product } from '../types/database';
 
 export function generateEAN13(): string {
@@ -21,24 +22,28 @@ function escapeHtml(str: string): string {
     .replace(/"/g, '&quot;');
 }
 
-function generateBarcodeVisual(barcode: string): string {
-  let html = '';
-  for (let i = 0; i < barcode.length; i++) {
-    const digit = parseInt(barcode[i]) || 0;
-    const width = 1 + (digit % 3);
-    if (i % 2 === 0) {
-      html += `<div class="bar" style="width:${width}px;height:${14 + digit}px"></div>`;
-    } else {
-      html += `<div class="space" style="width:${width}px;height:${14 + digit}px"></div>`;
-    }
+function generateBarcodeSvg(barcode: string): string {
+  if (typeof document === 'undefined') return '';
+  try {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    const format = /^\d{12,13}$/.test(barcode) ? 'EAN13' : 'CODE128';
+    JsBarcode(svg, barcode, {
+      format,
+      width: 1.2,
+      height: 28,
+      displayValue: false,
+      margin: 0,
+    });
+    return svg.outerHTML;
+  } catch {
+    return '';
   }
-  return html;
 }
 
 export function printBarcodeLabels(product: Product, quantity: number = 24): void {
   const priceTtc = (product.price_ttc ?? 0).toFixed(2);
   const barcodeStr = product.barcode || '';
-  const barsHtml = barcodeStr ? generateBarcodeVisual(barcodeStr) : '';
+  const barcodeSvg = barcodeStr ? generateBarcodeSvg(barcodeStr) : '';
 
   let labelsHtml = '';
   for (let i = 0; i < quantity; i++) {
@@ -47,7 +52,7 @@ export function printBarcodeLabels(product: Product, quantity: number = 24): voi
   ${product.size ? `<div class="size">Taille : ${escapeHtml(product.size)}</div>` : ''}
   <div class="name">${escapeHtml(product.name)}</div>
   ${product.brand ? `<div class="brand">${escapeHtml(product.brand)}</div>` : ''}
-  ${barsHtml ? `<div class="barcode-visual">${barsHtml}</div>` : ''}
+  ${barcodeSvg ? `<div class="barcode-container">${barcodeSvg}</div>` : ''}
   ${barcodeStr ? `<div class="barcode-num">${barcodeStr}</div>` : ''}
 </div>\n`;
   }
@@ -65,9 +70,8 @@ body { margin: 0; padding: 0; }
 .label .name { font-size: 8pt; }
 .label .brand { font-size: 7pt; color: #555; }
 .label .barcode-num { font-size: 8pt; font-family: monospace; }
-.label .barcode-visual { display: flex; align-items: flex-end; justify-content: center; height: 20px; gap: 0; margin: 2px 0; }
-.label .barcode-visual .bar { background: #000; }
-.label .barcode-visual .space { background: #fff; }
+.label .barcode-container { margin: 2px 0; line-height: 0; }
+.label .barcode-container svg { max-width: 100%; height: auto; }
 </style>
 </head><body>
 <div class="labels-grid">

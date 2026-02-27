@@ -10,6 +10,7 @@ import {
   History,
   Edit2,
   Printer,
+  Trash2,
   X,
   ChevronLeft,
   ChevronRight,
@@ -19,6 +20,7 @@ import {
 import { useStock } from '../composables/useStock';
 import { useAuth } from '../composables/useAuth';
 import { printBarcodeLabels, generateEAN13 } from '../lib/printBarcodeLabels';
+import { categoryUsesTechnicalStock } from '../lib/stockTechnicalCategories';
 import type { Product, StockCategory } from '../types/database';
 import type { StockMovementType } from '../types/database';
 
@@ -32,6 +34,7 @@ const {
   loadMovements,
   addMovement,
   createProduct,
+  deleteProduct,
   updateProduct,
   updateAlertThreshold,
   updateBarcode,
@@ -67,15 +70,80 @@ const filteredProducts = computed(() => {
   );
 });
 
-// Pagination (comme Clients / Historique)
+// Regroupement par (name, code, category_id) : une ligne par modèle produit
+interface ProductGroup {
+  key: string;
+  products: Product[];
+  name: string;
+  code: string | null;
+  category_id: string | null;
+  brand: string | null;
+  model: string | null;
+  category: { id: string; name: string; slug: string } | null;
+  location: string | null;
+  sizes: string[];
+  barcodes: string[];
+  totalStock: number;
+  totalStockTech: number;
+  alertThreshold: number;
+  hasAlert: boolean;
+  hasTechnicalStock: boolean;
+}
+const groupedProducts = computed(() => {
+  const list = filteredProducts.value;
+  const map = new Map<string, Product[]>();
+  for (const p of list) {
+    const key = `${p.name}|${p.code ?? ''}|${p.category_id ?? ''}`;
+    if (!map.has(key)) map.set(key, []);
+    map.get(key)!.push(p);
+  }
+  const groups: ProductGroup[] = [];
+  for (const [, products] of map) {
+    const first = products[0]!;
+    const sizes = [...new Set(products.map((p) => (p as Product & { size?: string | null }).size).filter(Boolean))] as string[];
+    sizes.sort((a, b) => {
+      const na = parseFloat(a);
+      const nb = parseFloat(b);
+      if (!isNaN(na) && !isNaN(nb)) return na - nb;
+      return String(a).localeCompare(String(b));
+    });
+    const barcodes = products.map((p) => p.barcode).filter(Boolean) as string[];
+    const totalStock = products.reduce((s, p) => s + p.stock, 0);
+    const totalStockTech = products.reduce((s, p) => s + (p.stock_technical ?? 0), 0);
+    const alertThreshold = first.alert_threshold ?? 5;
+    const hasAlert = products.some((p) => p.stock <= (p.alert_threshold ?? 5));
+    const hasTechnicalStock = categoryUsesTechnicalStock(first.category?.slug);
+    groups.push({
+      key: `${first.id}-${products.length}`,
+      products,
+      name: first.name,
+      code: first.code ?? null,
+      category_id: first.category_id,
+      brand: first.brand ?? null,
+      model: first.model ?? null,
+      category: first.category ?? null,
+      location: first.location ?? null,
+      sizes,
+      barcodes,
+      totalStock,
+      totalStockTech,
+      alertThreshold,
+      hasAlert,
+      hasTechnicalStock,
+    });
+  }
+  return groups;
+});
+
+// Pagination sur les groupes
 const pageSize = ref(25);
 const pageSizeOptions = [25, 50, 100];
 const currentPage = ref(1);
 const totalPages = computed(() =>
-  Math.max(1, Math.ceil(filteredProducts.value.length / pageSize.value))
+  Math.max(1, Math.ceil(groupedProducts.value.length / pageSize.value))
 );
 const paginationInfo = computed(() => {
-  const total = filteredProducts.value.length;
+  const total = groupedProducts.value.length;
   const size = pageSize.value;
   const page = currentPage.value;
   const from = total === 0 ? 0 : (page - 1) * size + 1;
@@ -92,9 +160,9 @@ const visiblePages = computed(() => {
   }
   return pages;
 });
-const paginatedProducts = computed(() => {
+const paginatedGroups = computed(() => {
   const from = (currentPage.value - 1) * pageSize.value;
-  return filteredProducts.value.slice(from, from + pageSize.value);
+  return groupedProducts.value.slice(from, from + pageSize.value);
 });
 const goToPage = (p: number) => {
   currentPage.value = Math.max(1, Math.min(p, totalPages.value));
@@ -113,6 +181,23 @@ watch([filter, searchQuery], () => {
   currentPage.value = 1;
 });
 
+// Mouvement : sélection de la variante pour les produits groupés
+const showMovementVariantPicker = ref(false);
+const movementGroup = ref<ProductGroup | null>(null);
+function openMovementForGroup(group: ProductGroup) {
+  if (group.products.length === 1) {
+    openMovementModal(group.products[0]!);
+  } else {
+    movementGroup.value = group;
+    showMovementVariantPicker.value = true;
+  }
+}
+function pickMovementVariant(product: Product) {
+  showMovementVariantPicker.value = false;
+  movementGroup.value = null;
+  openMovementModal(product);
+}
+
 // Modal mouvement
 const showMovementModal = ref(false);
 const movementProduct = ref<Product | null>(null);
@@ -128,6 +213,10 @@ const currentStockForMovement = computed(() => {
     ? (movementProduct.value.stock_technical ?? 0)
     : movementProduct.value.stock;
 });
+
+const movementProductUsesTechnicalStock = computed(() =>
+  movementProduct.value ? categoryUsesTechnicalStock(movementProduct.value.category?.slug) : false
+);
 
 function openMovementModal(product: Product) {
   movementProduct.value = product;
@@ -270,6 +359,7 @@ const selectedCategorySlug = computed(() => {
   return categories.value.find(c => c.id === id)?.slug || '';
 });
 const showShoeSizeChoice = computed(() => SHOE_CATEGORY_SLUGS.includes(selectedCategorySlug.value));
+const showTechnicalStock = computed(() => categoryUsesTechnicalStock(selectedCategorySlug.value));
 const shoeSizeType = ref<'fr' | 'uk'>('fr');
 const selectedSize = ref<string | null>(null);
 const selectedSizes = ref<string[]>([]);
@@ -411,7 +501,7 @@ async function submitAddProduct() {
           tva_rate: 0.2,
           size: size,
           stock: Math.max(0, Number(details.stock) || 0),
-          stock_technical: 0,
+          stock_technical: showTechnicalStock.value ? 0 : undefined,
           alert_threshold: Math.max(0, Number(newProduct.value.alert_threshold) || 5),
         });
       }
@@ -429,7 +519,7 @@ async function submitAddProduct() {
         tva_rate: 0.2,
         size: null,
         stock: Math.max(0, Number(newProduct.value.stock) || 0),
-        stock_technical: Math.max(0, Number(newProduct.value.stock_technical) || 0),
+        stock_technical: showTechnicalStock.value ? Math.max(0, Number(newProduct.value.stock_technical) || 0) : undefined,
         alert_threshold: Math.max(0, Number(newProduct.value.alert_threshold) || 5),
       });
     }
@@ -439,9 +529,10 @@ async function submitAddProduct() {
   }
 }
 
-// Modal édition produit
+// Modal édition produit (support groupe multi-tailles)
 const showEditProductModal = ref(false);
 const editProduct = ref<Product | null>(null);
+const editProducts = ref<Product[]>([]); // Toutes les variantes pour l'édition multi-tailles
 const editForm = ref({
   name: '',
   code: '',
@@ -457,23 +548,33 @@ const editForm = ref({
 });
 const editBarcodeInputRef = ref<HTMLInputElement | null>(null);
 
-function openEditProductModal(product: Product) {
-  editProduct.value = product;
-  const priceTtc = product.price_ttc ?? product.price_ht * (1 + (product.tva_rate ?? 0.2));
+function openEditProductModal(productOrGroup: Product | ProductGroup) {
+  const products = 'products' in productOrGroup ? productOrGroup.products : [productOrGroup];
+  const first = products[0]!;
+  editProduct.value = first;
+  editProducts.value = products;
+  const priceTtc = first.price_ttc ?? first.price_ht * (1 + (first.tva_rate ?? 0.2));
   editForm.value = {
-    name: product.name,
-    code: product.code || '',
-    barcode: product.barcode || '',
-    category_id: product.category_id || '',
-    brand: product.brand || '',
-    model: product.model || '',
-    location: product.location || '',
-    price_ht: product.price_ht,
+    name: first.name,
+    code: first.code || '',
+    barcode: first.barcode || '',
+    category_id: first.category_id || '',
+    brand: first.brand || '',
+    model: first.model || '',
+    location: first.location || '',
+    price_ht: first.price_ht,
     price_ttc: priceTtc,
-    tva_rate: product.tva_rate ?? 0.2,
-    alert_threshold: product.alert_threshold ?? 5,
+    tva_rate: first.tva_rate ?? 0.2,
+    alert_threshold: first.alert_threshold ?? 5,
   };
-  selectedSize.value = (product as Product & { size?: string | null }).size ?? null;
+  // Multi-tailles : préremplir selectedSizes et sizeDetails depuis les variantes
+  selectedSizes.value = products.map((p) => (p as Product & { size?: string | null }).size).filter(Boolean) as string[];
+  sizeDetails.value = {};
+  for (const p of products) {
+    const sz = (p as Product & { size?: string | null }).size;
+    if (sz) sizeDetails.value[sz] = { barcode: p.barcode || '', stock: p.stock };
+  }
+  selectedSize.value = selectedSizes.value[0] ?? null;
   shoeSizeType.value = 'fr';
   showEditProductModal.value = true;
   loadCategories();
@@ -483,15 +584,32 @@ function openEditProductModal(product: Product) {
 function closeEditProductModal() {
   showEditProductModal.value = false;
   editProduct.value = null;
+  editProducts.value = [];
+  selectedSizes.value = [];
+  sizeDetails.value = {};
+}
+
+async function confirmDeleteGroup(group: ProductGroup) {
+  const count = group.products.length;
+  const msg = count > 1
+    ? `Supprimer ce produit et ses ${count} variantes (tailles) ?`
+    : 'Supprimer ce produit ?';
+  if (!confirm(msg)) return;
+  try {
+    for (const p of group.products) {
+      await deleteProduct(p.id);
+    }
+  } catch (e) {
+    alert(e instanceof Error ? e.message : 'Erreur lors de la suppression');
+  }
 }
 
 async function submitEditProduct() {
-  if (!editProduct.value || !editForm.value.name.trim()) return;
+  if (!editForm.value.name.trim()) return;
   try {
-    await updateProduct(editProduct.value.id, {
+    const common = {
       name: editForm.value.name.trim(),
       code: editForm.value.code.trim() || null,
-      barcode: editForm.value.barcode.trim() || null,
       category_id: editForm.value.category_id || null,
       brand: editForm.value.brand.trim() || null,
       model: editForm.value.model.trim() || null,
@@ -499,9 +617,36 @@ async function submitEditProduct() {
       price_ht: Number(editForm.value.price_ht) || 0,
       price_ttc: Number(editForm.value.price_ttc) || 0,
       tva_rate: 0.2,
-      size: selectedSize.value || null,
       alert_threshold: Math.max(0, Number(editForm.value.alert_threshold) || 5),
-    });
+    };
+    if (selectedSizes.value.length > 0) {
+      for (const size of selectedSizes.value) {
+        const details = sizeDetails.value[size] || { barcode: '', stock: 0 };
+        const existing = editProducts.value.find((p) => (p as Product & { size?: string | null }).size === size);
+        if (existing) {
+          await updateProduct(existing.id, {
+            ...common,
+            barcode: details.barcode.trim() || null,
+            size,
+            stock: Math.max(0, Number(details.stock) || 0),
+          });
+        } else {
+          await createProduct({
+            ...common,
+            barcode: details.barcode.trim() || null,
+            size,
+            stock: Math.max(0, Number(details.stock) || 0),
+            stock_technical: 0,
+          });
+        }
+      }
+    } else if (editProduct.value) {
+      await updateProduct(editProduct.value.id, {
+        ...common,
+        barcode: editForm.value.barcode.trim() || null,
+        size: null,
+      });
+    }
     closeEditProductModal();
   } catch (e) {
     alert(e instanceof Error ? e.message : 'Erreur lors de la mise à jour');
@@ -519,8 +664,8 @@ onMounted(() => {
 </script>
 
 <template>
-  <main class="flex-1 px-3 py-4 lg:px-4 lg:py-6 overflow-auto bg-gray-50 dark:bg-gray-900">
-    <div class="max-w-7xl mx-auto space-y-6">
+  <main class="flex-1 px-2 py-4 lg:px-6 lg:py-6 overflow-auto bg-gray-50 dark:bg-gray-900">
+    <div class="max-w-[1800px] mx-auto space-y-6">
       <!-- En-tête -->
       <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -676,110 +821,65 @@ onMounted(() => {
         </p>
       </div>
 
-      <!-- Tableau produits : 100% largeur, pas de scroll horizontal sur PC -->
+      <!-- Tableau produits : largeur maximale pour afficher toutes les infos -->
       <div v-else class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
-        <div class="overflow-x-auto lg:overflow-x-visible">
-          <table class="w-full text-left table-fixed">
+        <div class="overflow-x-auto">
+          <table class="w-full min-w-[1200px] text-left">
             <thead class="bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
               <tr>
-                <th class="px-3 py-3 text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider w-[13%]">Produit</th>
-                <th class="px-3 py-3 text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider w-[4%]">Taille</th>
-                <th class="px-3 py-3 text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider w-[5%]">Code</th>
-                <th class="px-3 py-3 text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider w-[9%]">Code-barres</th>
-                <th class="px-3 py-3 text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider w-[7%]">Marque</th>
-                <th class="px-3 py-3 text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider w-[6%]">Modèle</th>
-                <th class="px-3 py-3 text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider w-[7%]">Catégorie</th>
-                <th class="px-3 py-3 text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider w-[6%]">Empl.</th>
-                <th class="px-3 py-3 text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider text-center w-[4%]" title="Stock de vente">Vente</th>
-                <th class="px-3 py-3 text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider text-center w-[4%]" title="Stock technique">Tech.</th>
-                <th class="px-3 py-3 text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider text-center w-[5%]">Seuil</th>
-                <th class="px-3 py-3 text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider w-[30%]">Actions</th>
+                <th class="px-3 py-3 text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider min-w-[140px]">Produit</th>
+                <th class="px-3 py-3 text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider min-w-[100px]">Taille</th>
+                <th class="px-3 py-3 text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider min-w-[70px]">Code</th>
+                <th class="px-3 py-3 text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider min-w-[130px]">Code-barres</th>
+                <th class="px-3 py-3 text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider min-w-[100px]">Marque</th>
+                <th class="px-3 py-3 text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider min-w-[90px]">Modèle</th>
+                <th class="px-3 py-3 text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider min-w-[110px]">Catégorie</th>
+                <th class="px-3 py-3 text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider min-w-[100px]">Empl.</th>
+                <th class="px-3 py-3 text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider text-center min-w-[50px]" title="Stock de vente">Vente</th>
+                <th class="px-3 py-3 text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider text-center min-w-[50px]" title="Stock technique">Tech.</th>
+                <th class="px-3 py-3 text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider text-center min-w-[55px]">Seuil</th>
+                <th class="px-3 py-3 text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider min-w-[200px]">Actions</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
               <tr
-                v-for="product in paginatedProducts"
-                :key="product.id"
+                v-for="group in paginatedGroups"
+                :key="group.key"
                 class="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-                :class="{ 'bg-amber-50 dark:bg-amber-900/20': product.stock <= product.alert_threshold }"
+                :class="{ 'bg-amber-50 dark:bg-amber-900/20': group.hasAlert }"
               >
-                <td class="px-3 py-3 w-[13%]">
-                  <div class="flex items-center gap-2 min-w-0">
-                    <span class="font-medium text-gray-900 dark:text-white truncate" :title="product.name">{{ product.name }}</span>
+                <td class="px-3 py-3">
+                  <div class="flex items-center gap-2">
+                    <span class="font-medium text-gray-900 dark:text-white">{{ group.name }}</span>
                     <AlertTriangle
-                      v-if="product.stock <= product.alert_threshold"
+                      v-if="group.hasAlert"
                       class="w-4 h-4 text-amber-500 shrink-0"
                     />
                   </div>
                 </td>
-                <td class="px-3 py-3 text-sm text-gray-600 dark:text-gray-300 w-[4%]">{{ product.size || '—' }}</td>
-                <td class="px-3 py-3 text-sm text-gray-500 dark:text-gray-400 w-[5%]">{{ product.code || '—' }}</td>
-                <td class="px-3 py-3 text-sm w-[9%] min-w-0">
-                  <template v-if="editingBarcode === product.id">
-                    <input
-                      v-model="barcodeValue"
-                      type="text"
-                      class="w-full max-w-full px-2 py-1 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded text-sm box-border"
-                      placeholder="EAN..."
-                      @keydown.enter="saveBarcode"
-                      @keydown.escape="cancelEditBarcode"
-                    />
-                    <div class="flex gap-1 mt-1 flex-wrap">
-                      <button type="button" @click="saveBarcode" class="text-xs text-emerald-600 hover:underline">OK</button>
-                      <button type="button" @click="cancelEditBarcode" class="text-xs text-gray-500 hover:underline">Annuler</button>
-                    </div>
-                  </template>
-                  <template v-else>
-                    <span class="text-gray-600 dark:text-gray-300 truncate block" :title="product.barcode || ''">{{ product.barcode || '—' }}</span>
-                    <button
-                      type="button"
-                      @click="startEditBarcode(product)"
-                      class="mt-0.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-xs shrink-0"
-                      title="Modifier le code-barres"
-                    >
-                      <Edit2 class="w-3.5 h-3.5 inline" />
-                    </button>
-                  </template>
+                <td class="px-3 py-3 text-sm text-gray-600 dark:text-gray-300 whitespace-nowrap">{{ group.sizes.length ? group.sizes.join(', ') : '—' }}</td>
+                <td class="px-3 py-3 text-sm text-gray-500 dark:text-gray-400">{{ group.code || '—' }}</td>
+                <td class="px-3 py-3 text-sm text-gray-600 dark:text-gray-300">
+                  {{ group.barcodes.length ? (group.barcodes.length > 2 ? group.barcodes.slice(0, 2).join(', ') + '…' : group.barcodes.join(', ')) : '—' }}
                 </td>
-                <td class="px-3 py-3 text-sm text-gray-600 dark:text-gray-300 w-[7%] truncate" :title="product.brand || ''">{{ product.brand || '—' }}</td>
-                <td class="px-3 py-3 text-sm text-gray-600 dark:text-gray-300 w-[6%] truncate" :title="product.model || ''">{{ product.model || '—' }}</td>
-                <td class="px-3 py-3 text-sm text-gray-500 dark:text-gray-400 w-[7%] truncate" :title="product.category?.name || ''">{{ product.category?.name || '—' }}</td>
-                <td class="px-3 py-3 text-sm text-gray-500 dark:text-gray-400 w-[6%] truncate" :title="product.location || ''">{{ product.location || '—' }}</td>
-                <td class="px-3 py-3 text-center font-semibold w-[4%]" :class="product.stock <= product.alert_threshold ? 'text-amber-600 dark:text-amber-400' : 'text-gray-900 dark:text-white'">
-                  {{ product.stock }}
+                <td class="px-3 py-3 text-sm text-gray-600 dark:text-gray-300">{{ group.brand || '—' }}</td>
+                <td class="px-3 py-3 text-sm text-gray-600 dark:text-gray-300">{{ group.model || '—' }}</td>
+                <td class="px-3 py-3 text-sm text-gray-500 dark:text-gray-400">{{ group.category?.name || '—' }}</td>
+                <td class="px-3 py-3 text-sm text-gray-500 dark:text-gray-400">{{ group.location || '—' }}</td>
+                <td class="px-3 py-3 text-center font-semibold" :class="group.hasAlert ? 'text-amber-600 dark:text-amber-400' : 'text-gray-900 dark:text-white'">
+                  {{ group.totalStock }}
                 </td>
-                <td class="px-3 py-3 text-center font-semibold w-[4%] text-blue-600 dark:text-blue-400">
-                  {{ product.stock_technical ?? 0 }}
+                <td class="px-3 py-3 text-center">
+                  <span v-if="group.hasTechnicalStock" class="font-semibold text-blue-600 dark:text-blue-400">{{ group.totalStockTech }}</span>
+                  <span v-else class="text-gray-400 dark:text-gray-500">—</span>
                 </td>
-                <td class="px-3 py-3 text-center w-[5%]">
-                  <template v-if="editingThreshold === product.id">
-                    <div class="flex items-center justify-center gap-2">
-                      <input
-                        v-model.number="thresholdValue"
-                        type="number"
-                        min="0"
-                        class="w-16 px-2 py-1 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded text-sm text-center"
-                        @keydown.enter="saveThreshold"
-                      />
-                      <button @click="saveThreshold" class="text-emerald-600 hover:underline text-sm">OK</button>
-                      <button @click="cancelEditThreshold" class="text-gray-500 hover:underline text-sm">Annuler</button>
-                    </div>
-                  </template>
-                  <template v-else>
-                    <span class="text-gray-600 dark:text-gray-300">{{ product.alert_threshold }}</span>
-                    <button
-                      @click="startEditThreshold(product)"
-                      class="ml-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 inline-flex"
-                      title="Modifier le seuil"
-                    >
-                      <Edit2 class="w-3.5 h-3.5" />
-                    </button>
-                  </template>
+                <td class="px-3 py-3 text-center text-gray-600 dark:text-gray-300">
+                  {{ group.alertThreshold }}
                 </td>
-                <td class="px-3 py-3 w-[30%]">
+                <td class="px-3 py-3">
                   <div class="flex items-center gap-2 flex-wrap">
                     <button
-                      @click="openMovementModal(product)"
+                      @click="openMovementForGroup(group)"
                       class="inline-flex items-center gap-1 px-2 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600"
                       title="Ajouter un mouvement"
                     >
@@ -787,7 +887,7 @@ onMounted(() => {
                       Mouvement
                     </button>
                     <button
-                      @click="openHistory(product)"
+                      @click="openHistory(group.products[0]!)"
                       class="inline-flex items-center gap-1 px-2 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600"
                       title="Historique"
                     >
@@ -795,7 +895,7 @@ onMounted(() => {
                       Historique
                     </button>
                     <button
-                      @click="openEditProductModal(product)"
+                      @click="openEditProductModal(group)"
                       class="inline-flex items-center gap-1 px-2 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600"
                       title="Modifier le produit"
                     >
@@ -803,12 +903,20 @@ onMounted(() => {
                       Modifier
                     </button>
                     <button
-                      @click="printBarcodeLabels(product)"
+                      @click="group.products.forEach(p => printBarcodeLabels(p))"
                       class="inline-flex items-center gap-1 px-2 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600"
                       title="Imprimer étiquettes"
                     >
                       <Printer class="w-3.5 h-3.5" />
                       Étiquettes
+                    </button>
+                    <button
+                      @click="confirmDeleteGroup(group)"
+                      class="inline-flex items-center gap-1 px-2 py-1.5 text-xs font-medium text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/40"
+                      title="Supprimer le produit"
+                    >
+                      <Trash2 class="w-3.5 h-3.5" />
+                      Supprimer
                     </button>
                   </div>
                 </td>
@@ -816,13 +924,13 @@ onMounted(() => {
             </tbody>
           </table>
         </div>
-        <p v-if="filteredProducts.length === 0" class="p-6 text-center text-gray-500 dark:text-gray-400">
+        <p v-if="groupedProducts.length === 0" class="p-6 text-center text-gray-500 dark:text-gray-400">
           Aucun produit à afficher.
         </p>
 
         <!-- Pagination -->
         <div
-          v-if="!isLoading && filteredProducts.length > 0"
+          v-if="!isLoading && groupedProducts.length > 0"
           class="flex flex-wrap items-center justify-between gap-4 px-4 py-3 border-t border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-800/50"
         >
           <div class="flex items-center gap-3">
@@ -898,6 +1006,36 @@ onMounted(() => {
         </div>
       </div>
 
+      <!-- Modal choix variante pour mouvement (produits multi-tailles) -->
+      <Teleport to="body">
+        <div
+          v-if="showMovementVariantPicker && movementGroup"
+          class="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50"
+          @click.self="showMovementVariantPicker = false; movementGroup = null"
+        >
+          <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl max-w-sm w-full p-6 border border-gray-200 dark:border-gray-700" @click.stop>
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">Choisir la taille</h3>
+            <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">{{ movementGroup.name }}</p>
+            <div class="flex flex-wrap gap-2">
+              <button
+                v-for="p in movementGroup.products"
+                :key="p.id"
+                @click="pickMovementVariant(p)"
+                class="px-4 py-2 rounded-xl bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 font-medium transition-colors"
+              >
+                {{ (p as Product & { size?: string }).size || 'Sans taille' }} (stock: {{ p.stock }})
+              </button>
+            </div>
+            <button
+              @click="showMovementVariantPicker = false; movementGroup = null"
+              class="mt-4 w-full px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700"
+            >
+              Annuler
+            </button>
+          </div>
+        </div>
+      </Teleport>
+
       <!-- Modal mouvement -->
       <Teleport to="body">
         <div
@@ -917,7 +1055,7 @@ onMounted(() => {
             </p>
 
             <div class="space-y-4">
-              <div>
+              <div v-if="movementProductUsesTechnicalStock">
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Type de stock</label>
                 <div class="flex rounded-xl border border-gray-200 dark:border-gray-600 overflow-hidden">
                   <button
@@ -1045,16 +1183,17 @@ onMounted(() => {
       <Teleport to="body">
         <div
           v-if="showAddProductModal"
-          class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 overflow-y-auto"
+          class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
         >
-          <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl max-w-lg w-full my-8 p-6 border border-gray-200 dark:border-gray-700" @click.stop>
-            <div class="flex items-center justify-between mb-6">
+          <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl max-w-lg w-full max-h-[90vh] flex flex-col overflow-hidden border border-gray-200 dark:border-gray-700 my-8" @click.stop>
+            <div class="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700 shrink-0">
               <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Nouveau produit</h3>
               <button @click="closeAddProductModal" class="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded">
                 <X class="w-5 h-5" />
               </button>
             </div>
 
+            <div class="p-6 overflow-y-auto flex-1 min-h-0">
             <div class="space-y-4">
               <div v-if="selectedSizes.length === 0">
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Code-barres</label>
@@ -1238,7 +1377,7 @@ onMounted(() => {
                   />
                 </div>
               </div>
-              <div v-if="selectedSizes.length === 0" class="grid grid-cols-3 gap-4">
+              <div v-if="selectedSizes.length === 0" :class="['grid gap-4', showTechnicalStock ? 'grid-cols-3' : 'grid-cols-2']">
                 <div>
                   <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Stock vente</label>
                   <input
@@ -1248,7 +1387,7 @@ onMounted(() => {
                     class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-xl focus:ring-2 focus:ring-gray-900 dark:focus:ring-emerald-500 focus:border-transparent"
                   />
                 </div>
-                <div>
+                <div v-if="showTechnicalStock">
                   <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Stock technique</label>
                   <input
                     v-model.number="newProduct.stock_technical"
@@ -1277,8 +1416,9 @@ onMounted(() => {
                 />
               </div>
             </div>
+            </div>
 
-            <div class="flex gap-3 mt-6">
+            <div class="flex gap-3 p-6 pt-4 shrink-0 border-t border-gray-200 dark:border-gray-700">
               <button
                 @click="closeAddProductModal"
                 class="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700"
@@ -1301,18 +1441,19 @@ onMounted(() => {
       <Teleport to="body">
         <div
           v-if="showEditProductModal && editProduct"
-          class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 overflow-y-auto"
+          class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
         >
-          <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl max-w-lg w-full my-8 p-6 border border-gray-200 dark:border-gray-700" @click.stop>
-            <div class="flex items-center justify-between mb-6">
+          <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl max-w-lg w-full max-h-[90vh] flex flex-col overflow-hidden border border-gray-200 dark:border-gray-700 my-8" @click.stop>
+            <div class="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700 shrink-0">
               <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Modifier le produit</h3>
               <button @click="closeEditProductModal" class="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded">
                 <X class="w-5 h-5" />
               </button>
             </div>
 
+            <div class="p-6 overflow-y-auto flex-1 min-h-0">
             <div class="space-y-4">
-              <div>
+              <div v-if="selectedSizes.length === 0">
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Code-barres</label>
                 <div class="flex gap-2">
                   <input
@@ -1360,9 +1501,9 @@ onMounted(() => {
                   <option v-for="cat in categories" :key="cat.id" :value="cat.id">{{ cat.name }}</option>
                 </select>
               </div>
-              <!-- Grilles de taille (édition) -->
+              <!-- Grilles de taille (édition multi-sélection, comme création) -->
               <div v-if="sizeGridForCategory.length > 0" class="space-y-2">
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tailles</label>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tailles <span class="text-xs text-gray-400 font-normal">(sélection multiple)</span></label>
                 <div v-if="showShoeSizeChoice" class="flex gap-2 mb-2">
                   <button
                     type="button"
@@ -1384,11 +1525,43 @@ onMounted(() => {
                     v-for="size in sizeGridForCategory"
                     :key="size"
                     type="button"
-                    @click="selectSize(size)"
-                    :class="['px-3 py-2 rounded-lg text-sm font-medium transition-colors', selectedSize === size ? 'bg-gray-900 dark:bg-emerald-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600']"
+                    @click="toggleSizeMulti(size)"
+                    :class="['px-3 py-2 rounded-lg text-sm font-medium transition-colors', selectedSizes.includes(size) ? 'bg-gray-900 dark:bg-emerald-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600']"
                   >
                     {{ size }}
                   </button>
+                </div>
+              </div>
+              <!-- Détails par taille (édition) -->
+              <div v-if="selectedSizes.length > 0" class="space-y-2">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Détails par taille</label>
+                <div v-for="size in selectedSizes" :key="size" class="flex items-center gap-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl p-3">
+                  <span class="text-sm font-semibold text-gray-900 dark:text-white min-w-[60px]">{{ size }}</span>
+                  <template v-if="sizeDetails[size]">
+                    <div class="flex-1">
+                      <label class="block text-xs text-gray-500 dark:text-gray-400 mb-0.5">Code-barres</label>
+                      <div class="flex gap-1">
+                        <input
+                          v-model="sizeDetails[size]!.barcode"
+                          type="text"
+                          class="flex-1 px-3 py-1.5 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-lg text-sm"
+                          placeholder="EAN…"
+                        />
+                        <button type="button" @click="generateBarcodeForField(size)" class="px-2 py-1.5 text-xs bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-500">
+                          Générer
+                        </button>
+                      </div>
+                    </div>
+                    <div class="w-20">
+                      <label class="block text-xs text-gray-500 dark:text-gray-400 mb-0.5">Stock</label>
+                      <input
+                        v-model.number="sizeDetails[size]!.stock"
+                        type="number"
+                        min="0"
+                        class="w-full px-3 py-1.5 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-lg text-sm"
+                      />
+                    </div>
+                  </template>
                 </div>
               </div>
               <div class="grid grid-cols-2 gap-4">
@@ -1471,8 +1644,9 @@ onMounted(() => {
                 />
               </div>
             </div>
+            </div>
 
-            <div class="flex gap-3 mt-6">
+            <div class="flex gap-3 p-6 pt-4 shrink-0 border-t border-gray-200 dark:border-gray-700">
               <button
                 @click="closeEditProductModal"
                 class="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700"

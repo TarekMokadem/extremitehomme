@@ -170,8 +170,8 @@ const handlePrint = () => {
           </div>
         </div>
 
-        <!-- Journal des ventes -->
-        <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden print:rounded-none print:border print:shadow-none">
+        <!-- Journal des ventes (masqué à l'impression) -->
+        <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden print:rounded-none print:border print:shadow-none print:hidden">
           <button
             type="button"
             @click="journalExpanded = !journalExpanded"

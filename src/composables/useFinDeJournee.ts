@@ -90,7 +90,9 @@ export function useFinDeJournee() {
             product_name,
             quantity,
             subtotal_ttc,
-            product_id
+            product_id,
+            vendor_id,
+            vendor:vendors(first_name, last_name)
           ),
           payments(method, amount)
         `)
@@ -193,10 +195,10 @@ export function useFinDeJournee() {
         reductionPct: v.ca > 0 ? (v.reduction / v.ca) * 100 : 0,
       }));
 
-      // 6. Journal des ventes (une ligne par item)
+      // 6. Journal des ventes (une ligne par item, vendeur par article)
       const journal: JournalRow[] = [];
       (sales || []).forEach((s: any) => {
-        const vendorName = s.vendor
+        const fallbackVendorName = s.vendor
           ? `${s.vendor.first_name || ''} ${s.vendor.last_name || ''}`.trim()
           : '—';
         const clientName = s.client
@@ -209,13 +211,16 @@ export function useFinDeJournee() {
         (s.items || []).forEach((item: any) => {
           const product = productCategoryMap[item.product_id];
           const size = product?.size ?? null;
+          const itemVendorName = item.vendor
+            ? `${item.vendor.first_name || ''} ${item.vendor.last_name || ''}`.trim()
+            : fallbackVendorName;
           journal.push({
             ticketNumber: s.ticket_number || s.id,
             saleTime: new Date(s.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
             productName: item.product_name || '—',
             size: size ?? null,
             amount: item.subtotal_ttc ?? 0,
-            vendorName,
+            vendorName: itemVendorName,
             paymentMethod,
             clientName,
           });

@@ -108,6 +108,15 @@ export function useSales() {
     }
   };
 
+  // Attribuer un vendeur à une ligne du panier
+  const setItemVendor = (lineId: string, vendor: Vendor | null) => {
+    const item = findCartItemByLineId(lineId);
+    if (item) {
+      item.vendor_id = vendor?.id;
+      item.vendor = vendor ?? undefined;
+    }
+  };
+
   // Modifier la quantité d'un item (par lineId)
   const updateQuantity = (lineId: string, quantity: number) => {
     const item = findCartItemByLineId(lineId);
@@ -741,6 +750,7 @@ export function useSales() {
     removeFromCart,
     getMaxQuantityForItem,
     setItemFixedPrice,
+    setItemVendor,
     clearCart,
     // Methods - Réduction
     setDiscount,

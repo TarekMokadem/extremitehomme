@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, ref, watch, onMounted } from 'vue';
 import { 
   Banknote, 
   CreditCard, 
@@ -40,6 +40,7 @@ const {
   updateQuantity,
   removeFromCart,
   setItemFixedPrice,
+  setItemVendor,
   clearCart,
   setDiscount,
   setPayment,
@@ -50,8 +51,12 @@ const {
   error: saleError,
 } = useSales();
 
-const { vendor } = useAuth();
+const { vendor, loadVendors } = useAuth();
 const { selectedClient } = useClients();
+const vendorsList = ref<import('../types/database').Vendor[]>([]);
+onMounted(async () => {
+  vendorsList.value = await loadVendors();
+});
 const { loadProducts } = useProducts();
 const { saveStamps, loadClientStamps } = useLoyalty();
 const { salonInfo, ticketHeader, ticketFooter } = useSettings();
@@ -63,15 +68,15 @@ const localDiscount = ref(0);
 // Méthode de paiement sélectionnée
 const selectedPaymentMethod = ref<PaymentMethod>('card');
 
-// Configuration des moyens de paiement
-const paymentMethods: { id: PaymentMethod; label: string; icon: typeof Banknote; color: string }[] = [
-  { id: 'cash', label: 'Espèces', icon: Banknote, color: 'bg-green-600 border-green-600 text-white' },
-  { id: 'card', label: 'CB', icon: CreditCard, color: 'bg-blue-600 border-blue-600 text-white' },
-  { id: 'contactless', label: 'Sans contact', icon: Smartphone, color: 'bg-violet-600 border-violet-600 text-white' },
-  { id: 'amex', label: 'American Express', icon: CreditCard, color: 'bg-red-600 border-red-600 text-white' },
-  { id: 'check', label: 'Chèque', icon: FileText, color: 'bg-gray-600 border-gray-600 text-white' },
-  { id: 'gift_card', label: 'Chèque Cadeau', icon: Gift, color: 'bg-yellow-500 border-yellow-500 text-black' },
-  { id: 'free', label: 'Gratuit', icon: HandCoins, color: 'bg-orange-500 border-orange-500 text-white' },
+// Configuration des moyens de paiement (couleurs en normal + selected)
+const paymentMethods: { id: PaymentMethod; label: string; icon: typeof Banknote; normalColor: string; selectedColor: string }[] = [
+  { id: 'cash', label: 'Espèces', icon: Banknote, normalColor: 'border-green-600 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300', selectedColor: 'bg-green-600 border-green-600 text-white' },
+  { id: 'card', label: 'CB', icon: CreditCard, normalColor: 'border-blue-600 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300', selectedColor: 'bg-blue-600 border-blue-600 text-white' },
+  { id: 'contactless', label: 'Sans contact', icon: Smartphone, normalColor: 'border-violet-600 bg-violet-50 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300', selectedColor: 'bg-violet-600 border-violet-600 text-white' },
+  { id: 'amex', label: 'American Express', icon: CreditCard, normalColor: 'border-red-600 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300', selectedColor: 'bg-red-600 border-red-600 text-white' },
+  { id: 'check', label: 'Chèque', icon: FileText, normalColor: 'border-gray-600 bg-gray-50 dark:bg-gray-700/50 text-gray-700 dark:text-gray-300', selectedColor: 'bg-gray-600 border-gray-600 text-white' },
+  { id: 'gift_card', label: 'Chèque Cadeau', icon: Gift, normalColor: 'border-yellow-500 bg-yellow-50 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-200', selectedColor: 'bg-yellow-500 border-yellow-500 text-black' },
+  { id: 'free', label: 'Gratuit', icon: HandCoins, normalColor: 'border-orange-500 bg-orange-50 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300', selectedColor: 'bg-orange-500 border-orange-500 text-white' },
 ];
 
 // Formatage du prix
@@ -243,21 +248,21 @@ const handlePrintTicket = () => {
 <template>
   <div class="card h-full flex flex-col overflow-hidden">
     <!-- En-tête avec date -->
-    <div class="px-3 py-2 md:px-4 md:py-2.5 border-b border-gray-200 bg-gray-50 dark:bg-gray-800 dark:border-gray-700">
+    <div class="p-4 md:p-5 border-b border-gray-200 bg-gray-50 dark:bg-gray-800 dark:border-gray-700">
       <div class="flex items-center justify-between">
         <div>
-          <p class="text-[9px] md:text-[10px] text-gray-500 uppercase tracking-wider font-semibold dark:text-gray-400">Date</p>
-          <p class="text-[11px] md:text-xs font-semibold text-gray-900 dark:text-gray-100">{{ ticketDate }}</p>
+          <p class="text-[10px] md:text-[11px] text-gray-500 uppercase tracking-wider font-semibold mb-1 dark:text-gray-400">Date</p>
+          <p class="text-xs md:text-sm font-semibold text-gray-900 dark:text-gray-100">{{ ticketDate }}</p>
         </div>
         <div class="text-right">
-          <p class="text-[9px] md:text-[10px] text-gray-500 uppercase tracking-wider font-semibold dark:text-gray-400">Ticket</p>
-          <p class="text-[11px] md:text-xs font-semibold text-gray-900 dark:text-gray-100">#001</p>
+          <p class="text-[10px] md:text-[11px] text-gray-500 uppercase tracking-wider font-semibold mb-1 dark:text-gray-400">Ticket</p>
+          <p class="text-xs md:text-sm font-semibold text-gray-900 dark:text-gray-100">#001</p>
         </div>
       </div>
     </div>
 
     <!-- Liste des articles -->
-    <div class="flex-1 overflow-y-auto p-3 md:p-4 space-y-1.5 md:space-y-2 min-h-0">
+    <div class="flex-1 overflow-y-auto p-4 md:p-5 space-y-2 md:space-y-3 min-h-0">
       <template v-if="cartItems.length > 0">
         <div
           v-for="item in cartItems"
@@ -269,10 +274,20 @@ const handlePrintTicket = () => {
               <p class="font-medium text-gray-900 dark:text-gray-100 line-clamp-2 text-xs md:text-sm leading-snug">
                 {{ item.product.name }}
               </p>
-              <div class="flex items-center gap-1.5 mt-0.5">
+              <div class="flex items-center gap-1.5 mt-0.5 flex-wrap">
                 <span v-if="item.stockCategory === 'technical'" class="inline-flex px-1.5 py-0.5 rounded text-[9px] font-semibold bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300">TECH</span>
-                <p v-if="item.vendor" class="text-[10px] text-gray-500 dark:text-gray-400">
-                  par <span class="font-semibold text-gray-600 dark:text-gray-300">{{ item.vendor.initials || `${item.vendor.first_name?.[0]}${item.vendor.last_name?.[0]}` }}</span>
+                <p class="text-[10px] text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                  <span>Vendeur:</span>
+                  <select
+                    :value="item.vendor_id ?? ''"
+                    @change="(e) => { const v = (e.target as HTMLSelectElement).value; setItemVendor(item.lineId, v ? vendorsList.find(x => x.id === v) ?? null : null); }"
+                    class="text-[10px] md:text-xs px-2 py-0.5 rounded border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-gray-400 min-w-0 max-w-full"
+                  >
+                    <option value="">—</option>
+                    <option v-for="v in vendorsList" :key="v.id" :value="v.id">
+                      {{ v.initials || `${v.first_name?.[0] ?? ''}${v.last_name?.[0] ?? ''}` }} — {{ v.first_name }} {{ v.last_name }}
+                    </option>
+                  </select>
                 </p>
               </div>
             </div>
@@ -329,10 +344,10 @@ const handlePrintTicket = () => {
     </div>
 
     <!-- Réduction avec sélecteur élégant € / % -->
-    <div class="px-3 py-2 md:px-4 md:py-2.5 border-t border-gray-100 dark:border-gray-700">
-      <div class="flex flex-col gap-1.5 md:gap-2">
+    <div class="px-4 py-3 md:px-5 md:py-4 border-t border-gray-100 dark:border-gray-700">
+      <div class="flex flex-col gap-2 md:gap-3">
         <div class="flex items-center justify-between gap-2">
-          <label class="text-[11px] md:text-xs text-gray-600 dark:text-gray-400 font-medium">Réduction</label>
+          <label class="text-xs md:text-sm text-gray-600 dark:text-gray-400 font-medium">Réduction</label>
 
           <!-- Segmented control moderne -->
           <div class="inline-flex items-center bg-gray-100 dark:bg-gray-700 rounded-full p-0.5 shadow-inner border border-gray-200 dark:border-gray-600">
@@ -383,9 +398,9 @@ const handlePrintTicket = () => {
     </div>
 
     <!-- Fixer le prix -->
-    <div class="px-3 py-2 md:px-4 md:py-2.5 border-t border-gray-100 dark:border-gray-700">
-      <div class="flex flex-col gap-1.5">
-        <label class="text-[11px] md:text-xs text-gray-600 dark:text-gray-400 font-medium">Fixer le prix total (€)</label>
+    <div class="px-4 py-3 md:px-5 md:py-4 border-t border-gray-100 dark:border-gray-700">
+      <div class="flex flex-col gap-2">
+        <label class="text-xs md:text-sm text-gray-600 dark:text-gray-400 font-medium">Fixer le prix total (€)</label>
         <div class="flex items-center gap-2">
           <input
             type="number"
@@ -410,16 +425,16 @@ const handlePrintTicket = () => {
     </div>
 
     <!-- Moyens de paiement -->
-    <div class="px-3 py-2 md:px-4 md:py-2.5 border-t border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
-      <p class="text-[9px] md:text-[10px] text-gray-600 dark:text-gray-400 uppercase tracking-wider font-semibold mb-1.5 md:mb-2">Règlement</p>
-      <div class="grid grid-cols-4 md:grid-cols-4 gap-1 md:gap-1.5">
+    <div class="px-4 py-3 md:px-5 md:py-4 border-t border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+      <p class="text-[10px] md:text-[11px] text-gray-600 dark:text-gray-400 uppercase tracking-wider font-semibold mb-2 md:mb-3">Règlement</p>
+      <div class="grid grid-cols-3 md:grid-cols-2 gap-1.5 md:gap-2">
         <button
           v-for="method in paymentMethods"
           :key="method.id"
           @click="selectPaymentMethod(method.id)"
           :class="[
             'payment-btn text-[10px] md:text-xs',
-            selectedPaymentMethod === method.id && method.color
+            selectedPaymentMethod === method.id ? method.selectedColor : method.normalColor
           ]"
         >
           <component :is="method.icon" class="w-3.5 h-3.5 md:w-4 md:h-4" />
@@ -429,8 +444,8 @@ const handlePrintTicket = () => {
     </div>
 
     <!-- Total -->
-    <div class="p-3 md:p-4 border-t-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
-      <div class="space-y-1 md:space-y-1.5 mb-2 md:mb-3">
+    <div class="p-4 md:p-5 border-t-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+      <div class="space-y-2 md:space-y-2.5 mb-3 md:mb-4">
         <!-- Sous-total HT -->
         <div class="flex justify-between text-xs md:text-sm">
           <span class="text-gray-500 dark:text-gray-400">Sous-total HT</span>
