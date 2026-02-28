@@ -2,7 +2,10 @@
 
 Application de caisse complète pour salon de coiffure et barbier (chausseur, coiffeur, barbier), développée avec Vue 3, TypeScript, TailwindCSS v4 et Supabase.
 
-**Statut :** ✅ Application terminée et opérationnelle
+**Statut :** ✅ Application terminée et opérationnelle  
+**Agence :** Futurealm – Tarek Mokadem
+
+> **Note :** L'application n'est pas responsive (non adaptée au mobile). Adaptation possible sur devis séparé.
 
 ---
 
@@ -186,8 +189,9 @@ npm run migrate:from-sales
 npm run migrate:dry
 ```
 
-## 🎯 Fonctionnalités à Venir (optionnelles)
+## 🎯 Fonctionnalités à Venir (optionnelles, sur devis séparé)
 
+- [ ] Adaptation mobile / responsive
 - [ ] Planning des rendez-vous
 - [ ] Mode hors-ligne (PWA)
 

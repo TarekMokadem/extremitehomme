@@ -1,8 +1,9 @@
 # 🎉 Présentation Projet - Application de Caisse
 
 **Client :** Extrémités Homme  
+**Agence :** Futurealm – Tarek Mokadem  
 **Date :** 29 janvier 2026  
-**Montant :** 6 000€
+**Montant total :** 3 500€
 
 ---
 
@@ -80,7 +81,7 @@ L'application de caisse est **complète et fonctionnelle** :
 
 #### 🎨 Interface
 - **Thème sombre** : bascule clair/sombre
-- **Responsive** : tablette et mobile (onglets sur mobile)
+- **Format actuel** : optimisé pour desktop/tablette. L'adaptation mobile pourra être mise en place ultérieurement sur devis séparé.
 
 ---
 
@@ -208,53 +209,24 @@ L'application de caisse est **complète et fonctionnelle** :
 
 ---
 
-## 📅 PLANNING PRÉVISIONNEL
+## 📅 RÉALISATION
 
-```
-Janvier 2026    ✅ Audit technique + Roadmap
-                 ↓
-Février-Mars    🔄 PHASE 1 : Backend + Caisse finalisée
-                 ↓ (4-6 semaines)
-                 💰 Paiement : 800€
-                 ↓
-Avril-Mai       📦 PHASE 2 : Modules Gestion
-                 ↓ (4-6 semaines)
-                 💰 Paiement : 850€
-                 ↓
-Juin-Juillet    🚀 PHASE 3 : Avancé + NF525
-                 ↓ (4-6 semaines)
-                 💰 Paiement : 850€
-                 ↓
-Août 2026       ✅ APPLICATION COMPLÈTE
-```
+L'application complète a été développée en **un mois** à partir de la maquette initiale (première page de caisse non fonctionnelle).
 
-**Durée totale :** 6-7 mois (environ)
-
-**Note :** Planning indicatif, peut varier selon disponibilités et feedback.
+**Déploiement :** L'application est entièrement déployée et prête à être utilisée par le client. Aucun bug caché, tout est conforme aux attentes.
 
 ---
 
 ## 💰 RÉCAPITULATIF FINANCIER
 
-### Montant Total : 6 000€
+### Montant Total : 3 500€
 
 | Paiement | Montant | Quand | Statut |
 |----------|---------|-------|--------|
-| Acompte | 1 000€ | 29 janvier 2026 | ✅ Versé |
-| Phase 1 | 800€ | À la livraison Phase 1 | ⏳ |
-| Phase 2 | 850€ | À la livraison Phase 2 | ⏳ |
-| Phase 3 | 850€ | À la livraison Phase 3 | ⏳ |
-| Année 2 | 2 500€ | Échelonné sur 2026-2027 | ⏳ |
+| Acompte | 1 000€ | 1er mars 2026 | ✅ Versé |
+| Solde | 2 500€ | Étalé sur 24 mois | ⏳ |
 
-### Échelonnement Année 2 (2 500€)
-
-**Option A - Trimestriel :**
-- Tous les 3 mois : 625€ × 4
-
-**Option B - Semestriel :**
-- Tous les 6 mois : 1 250€ × 2
-
-→ À définir ensemble selon votre préférence.
+**Échelonnement du solde (2 500€) :** 24 mensualités (à définir avec le client).
 
 ---
 
@@ -317,60 +289,52 @@ Nous récupérerons vos données actuelles :
 
 ---
 
-## 🏢 HÉBERGEMENT
+## 🏢 HÉBERGEMENT & INFRASTRUCTURE
 
-### Option Recommandée : Serveur Local
+### Hébergement de l'application
+- **Hébergement :** GitHub Pages (gratuit)
+- **Base de données & backend :** Supabase, formule gratuite (compte du prestataire)
 
-**Avantages :**
-- ✅ Vos données restent chez vous
-- ✅ Pas de dépendance internet
-- ✅ Sécurité maximale
-- ✅ Pas de coût mensuel
+L'application est déployée et accessible en ligne sans coût d'hébergement pour le client.
 
-**Matériel nécessaire :**
-- Mini-PC ou PC fixe (300-500€ one-time)
-- Connexion secteur stable
-- Optionnel : onduleur (protection coupures)
+---
 
-**Alternative : Cloud (VPS)**
-- Accès depuis n'importe où
-- Sauvegardes automatiques
-- Coût : ~15-30€/mois
+## 📱 ADAPTATION MOBILE
 
-→ À décider ensemble selon vos besoins.
+L'application n'est **pas responsive** pour l'instant : elle n'est pas adaptée au format mobile.  
+Une version mobile pourra être mise en place ultérieurement sur **devis séparé**.
+
+---
+
+## 🔧 FORMULES DE MAINTENANCE
+
+| Formule | Prix | Contenu |
+|---------|------|---------|
+| **Maintenance caisse** | 30€/mois | Corrections de bugs, mises à jour, support technique de l'application de caisse |
+| **Maintenance caisse + site Wix** | 50€/mois | Idem + gestion du site web Wix et du système de réservation avec planning par employé |
 
 ---
 
 ## 📞 QUESTIONS FRÉQUENTES
 
-### "Puis-je utiliser l'application pendant le développement ?"
+### "L'application est-elle prête à l'emploi ?"
 
-**Phase 1 :** Vous pourrez déjà faire des ventes dès la fin de Phase 1 (Mars 2026).  
-**Phase 2-3 :** Utilisation quotidienne + ajout progressif de fonctionnalités.
+Oui. Tout est déployé et prêt à être utilisé. Aucun bug caché, tout est conforme aux attentes du client.
 
-### "Que se passe-t-il si mon internet tombe ?"
+### "L'application fonctionne-t-elle sur mobile ?"
 
-Avec un serveur local : **aucun impact** ! L'application fonctionne en réseau local (WiFi du salon).
-
-### "Mes vendeurs doivent-ils être formés ?"
-
-Oui, formation incluse :
-- 🎥 Vidéos tutoriels
-- 📚 Guide utilisateur illustré
-- 👨‍🏫 Formation sur place (1-2h)
+Pas pour l'instant. L'interface est optimisée pour desktop/tablette. L'adaptation mobile peut être réalisée plus tard sur devis séparé.
 
 ### "L'application est-elle évolutive ?"
 
-Oui ! Après les 3 phases, nous pourrons ajouter :
-- Application mobile (devis séparé)
-- Multi-établissements
+Oui. Nous pourrons ajouter :
+- Version mobile / responsive (devis séparé)
 - Nouvelles fonctionnalités sur demande
 
 ### "Qu'en est-il de la sécurité ?"
 
 - 🔐 Authentification par mot de passe
 - 🔒 Données chiffrées
-- 💾 Sauvegardes quotidiennes automatiques
 - 📝 Journal d'audit (NF525)
 - ⏱️ Horodatage certifié
 
@@ -378,33 +342,18 @@ Oui ! Après les 3 phases, nous pourrons ajouter :
 
 ## ✅ PROCHAINES ÉTAPES
 
-### Immédiatement
-1. ✅ Valider cette présentation avec vous
-2. ✅ Confirmer le planning
-3. ✅ Décider de l'hébergement (local ou cloud)
-4. ✅ Programmer extraction anciennes données
-
-### Semaine prochaine
-1. 🔄 Démarrer Phase 1
-2. 🔄 Setup backend et base de données
-3. 🔄 Premiers tests avec vous
-
-### Dans 1 mois
-1. 🎯 Phase 1 bien avancée
-2. 🎯 Tests de la page de caisse
-3. 🎯 Feedback et ajustements
+1. ✅ Validation de l'application par le client
+2. ✅ Souscription éventuelle à une formule de maintenance
+3. ✅ Formation de l'équipe si nécessaire
 
 ---
 
 ## 📧 CONTACT
 
-Pour toute question ou remarque :
+**Agence :** Futurealm  
+**Développeur :** Tarek Mokadem  
 
-**Développeur :** [Votre nom]  
-**Email :** [Votre email]  
-**Téléphone :** [Votre téléphone]
-
-**Disponibilité :** [Vos horaires]
+Pour toute question ou remarque : [coordonnées à compléter]
 
 ---
 

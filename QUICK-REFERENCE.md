@@ -1,6 +1,6 @@
 # ⚡ QUICK REFERENCE - Aide-Mémoire Rapide
 
-**Projet :** Caisse Extrémités Homme | **Budget :** 6 000€ | **Durée :** 6-7 mois
+**Projet :** Caisse Extrémités Homme | **Budget :** 3 500€ | **Agence :** Futurealm – Tarek Mokadem
 
 ---
 
@@ -31,14 +31,13 @@ Fonctionnalités : Caisse, Clients, Stock, Stats, Tiroir, Fin de journée, NF525
 ## 💰 BUDGET & PAIEMENTS
 
 ```
-TOTAL : 6 000€
+TOTAL : 3 500€
 
-✅ Acompte        : 1 000€  (versé 29/01/2026)
-⏳ Phase 1        :   800€  (Mars 2026)
-⏳ Phase 2        :   850€  (Mai 2026)
-⏳ Phase 3        :   850€  (Juillet 2026)
-⏳ Année 2        : 2 500€  (2026-2027)
+✅ Acompte  : 1 000€  (versé 1er mars 2026)
+⏳ Solde    : 2 500€  (étalé sur 24 mois)
 ```
+
+**Maintenance :** 30€/mois (caisse) | 50€/mois (caisse + site Wix + réservation)
 
 ---
 
@@ -122,13 +121,10 @@ Cypress (E2E)
 
 ## 📞 CONTACT RAPIDE
 
-**Développeur :** [Votre nom]  
-📧 [Votre email]  
-📱 [Votre téléphone]
+**Agence :** Futurealm  
+**Développeur :** Tarek Mokadem  
 
-**Client :** Extrémités Homme  
-📧 [Email client]  
-📱 [Tél client]
+**Client :** Extrémités Homme
 
 ---
 

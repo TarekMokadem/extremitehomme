@@ -1,6 +1,7 @@
 # 📚 INDEX - Documentation Complète du Projet
 
 **Projet :** Refonte Application de Caisse - Extrémités Homme  
+**Agence :** Futurealm – Tarek Mokadem  
 **Date :** 29 janvier 2026
 
 ---

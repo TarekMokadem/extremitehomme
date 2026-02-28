@@ -359,20 +359,22 @@ Large: 2rem (8)
 
 ### Vente Réalisée
 
-**Montant total :** 6 000€
+**Montant total :** 3 500€
 
 **Structure de paiement :**
-- ✅ **Acompte initial :** 1 000€ (versé le 29 janvier 2026)
-- 📅 **Reste à payer :** 5 000€
-  - 50% étalé sur 1 an (2 500€)
-  - 50% étalé sur 2 ans (2 500€)
+- ✅ **Acompte :** 1 000€ (versé le 1er mars 2026)
+- 📅 **Solde :** 2 500€ (étalé sur 24 mois)
 
-**Calendrier de paiement proposé :**
-- Acompte : 1 000€ ✅ (versé)
-- À la livraison Phase 1 : 800€
-- À la livraison Phase 2 : 850€
-- À la livraison Phase 3 : 850€
-- Année 2 : 2 500€ (échéancier trimestriel ou semestriel)
+**Réalisation :** Application complète en 1 mois à partir de la maquette initiale (première page de caisse non fonctionnelle).
+
+**Hébergement :** GitHub Pages (gratuit) | **Backend :** Supabase formule gratuite (compte prestataire)
+
+**Formules maintenance :**
+
+| Formule | Prix |
+|---------|------|
+| Caisse uniquement | 30€/mois |
+| Caisse + site Wix + réservation (planning employés) | 50€/mois (sur devis) |
 
 ---
 
@@ -393,7 +395,8 @@ Large: 2rem (8)
 - **Moyens de paiement** : Espèces, CB, Sans contact, American Express, Chèque, Carte cadeau
 - **NF525** : Chaînage hash, clôture journalière, vérification intégrité
 
-### À venir (optionnel)
+### À venir (optionnel, sur devis séparé)
+- Adaptation mobile / responsive
 - Mode hors-ligne (PWA)
 - Planning des rendez-vous
 

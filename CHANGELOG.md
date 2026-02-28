@@ -4,6 +4,20 @@ Historique des changements et évolutions du projet.
 
 ---
 
+## [1.3.0] - 2026-01-29 (Infos commerciales et prestataire)
+
+### 📝 Mise à jour informations projet
+- **Budget :** 3 500€ (1 000€ acompte versé 1er mars, 2 500€ étalés sur 24 mois)
+- **Durée :** 1 mois de développement (maquette initiale non fonctionnelle → application complète)
+- **Agence :** Futurealm – Tarek Mokadem
+- **Hébergement :** GitHub Pages (gratuit)
+- **Backend/BDD :** Supabase formule gratuite (compte prestataire)
+- **Déploiement :** Application déployée et prête à l'emploi, conforme aux attentes
+- **Responsive :** Non adapté au mobile pour l'instant (sur devis séparé)
+- **Maintenance :** 30€/mois (caisse) | 50€/mois (caisse + site Wix + réservation planning employés)
+
+---
+
 ## [1.2.0] - 2026-01-29 (Documentation – état final)
 
 ### 📚 Mise à jour documentation

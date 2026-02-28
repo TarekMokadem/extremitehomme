@@ -2,9 +2,10 @@
 
 **Projet :** Refonte Application de Caisse  
 **Client :** Extrémités Homme (Salon de coiffure)  
-**Budget :** 6 000€  
-**Durée :** 6-7 mois (Janvier - Août 2026)  
-**Statut :** ✅ Application terminée et opérationnelle
+**Agence :** Futurealm – Tarek Mokadem  
+**Budget :** 3 500€  
+**Durée de réalisation :** 1 mois (à partir de la maquette initiale non fonctionnelle)  
+**Statut :** ✅ Application terminée, déployée et opérationnelle
 
 ---
 
@@ -85,15 +86,12 @@ Application moderne en 3 phases :
 
 ## 💰 BUDGET
 
-| Phase | Montant | Quand | Statut |
-|-------|---------|-------|--------|
-| Acompte | 1 000€ | 29/01/2026 | ✅ Versé |
-| Phase 1 | 800€ | Mars 2026 | ⏳ |
-| Phase 2 | 850€ | Mai 2026 | ⏳ |
-| Phase 3 | 850€ | Juillet 2026 | ⏳ |
-| Année 2 | 2 500€ | 2026-2027 | ⏳ |
+| Paiement | Montant | Quand | Statut |
+|----------|---------|-------|--------|
+| Acompte | 1 000€ | 1er mars 2026 | ✅ Versé |
+| Solde | 2 500€ | Étalé sur 24 mois | ⏳ |
 
-**Total :** 6 000€
+**Total :** 3 500€
 
 ---
 
@@ -106,10 +104,9 @@ Application moderne en 3 phases :
 - Vite 7.2.4
 - Lucide Icons
 
-### Backend (Supabase)
-- Supabase (PostgreSQL)
-- Authentification Supabase
-- Données persistées
+### Backend & Hébergement
+- **Supabase** : PostgreSQL, Auth (formule gratuite, compte prestataire)
+- **Hébergement** : GitHub Pages (gratuit)
 
 ---
 
@@ -179,9 +176,9 @@ npm run dev
 
 ## 👥 ÉQUIPE
 
-**Développeur :** [Votre nom]  
-**Client :** Extrémités Homme  
-**Contact client :** [À compléter]
+**Agence :** Futurealm  
+**Développeur :** Tarek Mokadem  
+**Client :** Extrémités Homme
 
 ---
 
@@ -204,9 +201,10 @@ npm run dev
 
 ## 📞 SUPPORT
 
-**Email :** [Votre email]  
-**Téléphone :** [Votre téléphone]  
-**Disponibilité :** [Vos horaires]
+**Agence :** Futurealm  
+**Contact :** Tarek Mokadem – [coordonnées à compléter]  
+
+**Formules maintenance :** 30€/mois (caisse) | 50€/mois (caisse + site Wix + réservation)
 
 ---
 
@@ -253,7 +251,7 @@ Avant de commencer Phase 1 :
 - ✅ Thème sombre
 - ✅ NF525, impression thermique, scanner code-barres
 
-**Statut :** Prête pour présentation client
+**Statut :** Déployée et prête à l'emploi. Non responsive (mobile sur devis séparé).
 
 ---
 

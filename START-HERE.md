@@ -214,12 +214,10 @@ Le projet utilise **Supabase** (PostgreSQL + Auth). Voir `SUPABASE-SETUP.md` pou
 
 ## 📞 CONTACT
 
-**Développeur :** [Votre nom]  
-**Email :** [Votre email]  
-**Téléphone :** [Votre téléphone]
+**Agence :** Futurealm  
+**Développeur :** Tarek Mokadem  
 
-**Client :** Extrémités Homme  
-**Contact :** [À compléter]
+**Client :** Extrémités Homme
 
 ---
 
