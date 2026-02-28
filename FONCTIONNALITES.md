@@ -306,22 +306,24 @@ Large: 2rem (8)
 
 ## 🔮 Améliorations Futures
 
-### ✅ Réalisé
+### ✅ Réalisé (Application terminée)
 - [x] Connexion Supabase (PostgreSQL)
-- [x] Authentification
+- [x] Authentification (Supabase Auth)
 - [x] Page Clients avec historique achats
 - [x] Page Historique des ventes
-- [x] Page Stock
-- [x] Page Statistiques
+- [x] Page Stock (produits, variantes, codes-barres)
+- [x] Page Statistiques (générales, par employé, CA, récap mensuel)
 - [x] Page Tiroir de caisse
+- [x] Page Fin de journée (clôture, journal)
+- [x] Valeur théorique du stock
 - [x] Programme de fidélité (carte tampons)
 - [x] Thème sombre
 - [x] American Express
+- [x] Impression thermique (ticket 80mm ESC/POS)
+- [x] Scanner code-barres (champ dédié sur la caisse)
+- [x] NF525 : chaînage hash SHA-256, clôture journalière, vérification intégrité
 
-### À venir
-- [ ] Conformité NF525 complète
-- [ ] Impression thermique
-- [ ] Scanner code-barres
+### À venir (optionnel)
 - [ ] Mode hors-ligne (PWA)
 - [ ] Planning des rendez-vous
 
@@ -376,23 +378,24 @@ Large: 2rem (8)
 
 ## 📊 État du Projet
 
-### ✅ Réalisé
-- **Backend** : Supabase (PostgreSQL)
-- **Caisse** : Page fonctionnelle avec ventes persistées
+### ✅ Application terminée (Janvier 2026)
+- **Backend** : Supabase (PostgreSQL, Auth)
+- **Authentification** : Connexion par email/mot de passe
+- **Caisse** : Page fonctionnelle avec ventes persistées, impression thermique, scan code-barres
 - **Clients** : Page complète avec historique et fidélité
 - **Historique** : Liste des ventes, modification paiement
-- **Stock** : Gestion produits et mouvements
-- **Statistiques** : Graphiques et indicateurs
+- **Stock** : Gestion produits, variantes, codes-barres, étiquettes
+- **Statistiques** : Générales, par employé, CA, récap mensuel, valeur théorique
 - **Tiroir de caisse** : Ouverture/fermeture, mouvements
+- **Fin de journée** : Clôture, journal, archivage NF525
 - **Paramètres** : Configuration
-- **Commande** : Page commandes fournisseurs
 - **Thème sombre** : Bascule clair/sombre
-- **Moyens de paiement** : + American Express
+- **Moyens de paiement** : Espèces, CB, Sans contact, American Express, Chèque, Carte cadeau
+- **NF525** : Chaînage hash, clôture journalière, vérification intégrité
 
-### À venir
-- Conformité NF525 complète
-- Impression thermique
-- Scanner code-barres
+### À venir (optionnel)
+- Mode hors-ligne (PWA)
+- Planning des rendez-vous
 
 ---
 
@@ -407,6 +410,6 @@ Large: 2rem (8)
 ---
 
 **Dernière mise à jour :** Janvier 2026  
-**Version actuelle :** Application fonctionnelle avec Supabase  
-**Status :** 🔄 En développement actif
+**Version actuelle :** Application complète et opérationnelle  
+**Status :** ✅ Terminée – prête pour présentation client
 

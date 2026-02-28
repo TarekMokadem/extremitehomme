@@ -10,73 +10,89 @@
 
 Merci de votre confiance pour la refonte de votre application de caisse !
 
+**Statut actuel :** ✅ **Application terminée et opérationnelle** (Janvier 2026)
+
 Ce document présente :
-- ✅ Ce qui a déjà été fait (maquette)
-- 🚀 Ce qui va être développé (3 phases)
-- 📅 Le planning prévu
+- ✅ Ce qui a été livré (application complète)
+- 📅 Le planning des phases (réalisé)
 - 💰 Les paiements échelonnés
 
 ---
 
-## 🎨 CE QUI EST DÉJÀ FAIT
+## 🎉 APPLICATION TERMINÉE
 
-### Maquette Fonctionnelle (Décembre 2025)
+### Ce qui a été livré (Janvier 2026)
 
-Nous avons créé une **maquette moderne** de votre future caisse :
+L'application de caisse est **complète et fonctionnelle** :
 
-#### ✨ Interface Utilisateur
-- **Design épuré** et professionnel
-- **3 colonnes** : Ticket | Services | Client
-- **Responsive** : fonctionne sur tablette et mobile
-- **Couleurs sobres** et élégantes
+#### 🔐 Authentification
+- Connexion par email/mot de passe (Supabase Auth)
+- Protection des routes
+- Gestion des sessions
 
-#### 🛠️ Fonctionnalités Déjà Présentes
-✅ Sélection du vendeur (4 vendeurs avec couleurs)  
-✅ Grille de services avec recherche  
-✅ Ajout services au panier  
-✅ Modification quantités (+/-)  
-✅ Réductions en € et en %  
-✅ 5 moyens de paiement  
-✅ Formulaire client complet  
-✅ Autocomplétion adresses (API gratuite gouvernement)  
-✅ Recherche de clients  
+#### 🏪 Caisse
+- Sélection du vendeur (menu déroulant)
+- Grille de services et produits (Supabase)
+- **Scanner code-barres** : champ dédié pour ajouter des produits par scan
+- Panier avec calculs HT/TVA/TTC
+- Réductions en € ou %
+- 6 moyens de paiement : Espèces, CB, Sans contact, American Express, Chèque, Carte cadeau
+- **Impression thermique** : tickets 80mm (ESC/POS)
 
-#### 📸 Captures d'Écran
-Disponibles dans le dossier `docs/` :
-- Interface complète
-- Menu vendeur
-- Recherche services
-- Calculs réductions
+#### 👥 Clients
+- Liste avec recherche
+- Fiches détaillées (coordonnées, stats)
+- Historique des achats
+- Carte de fidélité (points tampons)
+- Création, modification, suppression
+
+#### 📜 Historique des ventes
+- Liste avec filtres par date
+- Détail des ventes
+- Modification du mode de paiement
+
+#### 📦 Stock
+- Gestion produits et variantes (tailles)
+- Codes-barres et étiquettes imprimables
+- Alertes de stock
+- Mouvements d'inventaire
+
+#### 💵 Tiroir de caisse
+- Ouverture/fermeture
+- Mouvements (entrées/sorties)
+- Rapprochement espèces
+
+#### 📄 Fin de journée
+- Clôture journalière
+- Journal des ventes
+- **Archivage NF525** (chaînage hash SHA-256)
+
+#### 📊 Statistiques
+- Statistiques générales
+- Stats par employé
+- Chiffre d'affaires
+- Récap mensuel
+- Valeur théorique du stock
+
+#### ⚙️ Paramètres
+- Configuration de l'application
+- En-tête et pied de page des tickets
+
+#### 🎨 Interface
+- **Thème sombre** : bascule clair/sombre
+- **Responsive** : tablette et mobile (onglets sur mobile)
 
 ---
 
-## ⚠️ CE QUI MANQUE (À DÉVELOPPER)
+## 🗺️ PLAN DE DÉVELOPPEMENT (RÉALISÉ)
 
-La maquette actuelle est **visuelle uniquement** :
-- ❌ Pas de sauvegarde des données
-- ❌ Pas de backend (serveur)
-- ❌ Pas de base de données
-- ❌ Calculs TVA non détaillés
-- ❌ Pas de gestion stock
-- ❌ Pas d'impression de tickets
-- ❌ Pas d'historique des ventes
-- ❌ Pas de statistiques
-- ❌ Pas de conformité NF525
+### ✅ PHASE 1 : La Caisse Fonctionne ! – TERMINÉE
 
-**→ C'est ce que nous allons créer ensemble sur les prochains mois !**
+**Objectif :** Pouvoir faire des ventes réelles et enregistrer les données. ✅
 
----
-
-## 🗺️ PLAN DE DÉVELOPPEMENT
-
-### 📦 PHASE 1 : La Caisse Fonctionne ! (4-6 semaines)
-
-**Objectif :** Pouvoir faire des ventes réelles et enregistrer les données.
-
-#### Ce qui sera développé :
-1. **Serveur backend** (cerveau de l'application)
-   - API REST sécurisée
-   - Base de données PostgreSQL
+#### Ce qui a été développé :
+1. **Backend Supabase** (PostgreSQL)
+   - Base de données cloud
    - Authentification des vendeurs
 
 2. **Calculs avancés**
@@ -94,16 +110,13 @@ La maquette actuelle est **visuelle uniquement** :
    - Sauvegarde automatique
    - Impossible de perdre des données
 
-**✅ Livrable Phase 1 :**  
-Page de caisse 100% fonctionnelle que vous pouvez utiliser tous les jours !
-
-**💰 Paiement Phase 1 :** 800€ à la livraison
+**✅ Livrable Phase 1 :** Livré – Page de caisse 100% fonctionnelle
 
 ---
 
-### 📊 PHASE 2 : Gestion Complète (4-6 semaines)
+### ✅ PHASE 2 : Gestion Complète – TERMINÉE
 
-**Objectif :** Gérer clients, stock, commandes et consulter l'historique.
+**Objectif :** Gérer clients, stock et consulter l'historique. ✅
 
 #### Modules développés :
 1. **Clients**
@@ -131,16 +144,13 @@ Page de caisse 100% fonctionnelle que vous pouvez utiliser tous les jours !
    - Réimpression de tickets
    - Remboursements
 
-**✅ Livrable Phase 2 :**  
-Application complète de gestion du salon (caisse + administration)
-
-**💰 Paiement Phase 2 :** 850€ à la livraison
+**✅ Livrable Phase 2 :** Livré – Application complète de gestion
 
 ---
 
-### 🚀 PHASE 3 : Modules Avancés + Conformité (4-6 semaines)
+### ✅ PHASE 3 : Modules Avancés + Conformité – TERMINÉE
 
-**Objectif :** Statistiques, fidélité, et conformité fiscale NF525.
+**Objectif :** Statistiques, fidélité, et conformité fiscale NF525. ✅
 
 #### Modules développés :
 1. **Fidélité**
@@ -179,10 +189,7 @@ Application complète de gestion du salon (caisse + administration)
    - Envoi tickets par email
    - Campagnes marketing
 
-**✅ Livrable Phase 3 :**  
-Application complète, conforme NF525, prête pour certification
-
-**💰 Paiement Phase 3 :** 850€ à la livraison
+**✅ Livrable Phase 3 :** Livré – Application complète avec NF525
 
 ---
 

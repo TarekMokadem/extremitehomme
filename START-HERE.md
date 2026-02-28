@@ -155,22 +155,14 @@ Le projet utilise **Supabase** (PostgreSQL + Auth). Voir `SUPABASE-SETUP.md` pou
 
 ## 🎯 OÙ EN EST LE PROJET ?
 
-### ✅ Phase 0 : TERMINÉE (29/01/2026)
-- Audit technique complet
-- Roadmap détaillée
-- Documentation exhaustive
+### ✅ Application terminée (Janvier 2026)
 
-### ⏳ Phase 1 : À DÉMARRER (Février-Mars 2026)
-- Backend + API REST
-- PostgreSQL + Prisma
-- Calculs HT/TVA/TTC
-- Caisse fonctionnelle
+- **Phase 0** : Audit technique ✅
+- **Phase 1** : Caisse + Backend Supabase ✅
+- **Phase 2** : Clients, Stock, Historique ✅
+- **Phase 3** : Stats, Tiroir, Fin de journée, NF525, Impression, Scanner ✅
 
-### 📅 Phase 2 : PLANIFIÉE (Avril-Mai 2026)
-- Modules Stock, Clients, Historique
-
-### 📅 Phase 3 : PLANIFIÉE (Juin-Juillet 2026)
-- Stats, Fidélité, NF525
+**L'application est complète et opérationnelle.** Prête pour présentation client.
 
 ---
 

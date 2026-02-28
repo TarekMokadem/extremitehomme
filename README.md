@@ -1,16 +1,27 @@
 # 💼 Extrémités Homme - Système de Caisse
 
-Application de caisse moderne pour salon de coiffure et barbier, développée avec Vue 3, TypeScript, TailwindCSS et Supabase.
+Application de caisse complète pour salon de coiffure et barbier (chausseur, coiffeur, barbier), développée avec Vue 3, TypeScript, TailwindCSS v4 et Supabase.
+
+**Statut :** ✅ Application terminée et opérationnelle
+
+---
 
 ## ✨ Fonctionnalités
 
+### 🔐 Authentification
+- Connexion par email/mot de passe (Supabase Auth)
+- Protection des routes
+- Déconnexion
+
 ### 🏪 Page Caisse
 - **Sélection du vendeur** : Menu déroulant dans le header
-- **Grille de services** : Produits et services chargés depuis Supabase, recherche et filtres par catégorie
+- **Services et produits** : Grille chargée depuis Supabase, recherche et filtres par catégorie
+- **Scanner code-barres** : Champ dédié pour ajouter des produits par scan
 - **Panier** : Ajout/suppression, modification des quantités, calcul HT/TVA/TTC
 - **Réductions** : Mode € (euros) ou % (pourcentage)
 - **Paiements** : Espèces, CB, Sans contact, American Express, Chèque, Carte cadeau
 - **Validation** : Enregistrement des ventes en base de données
+- **Impression thermique** : Ticket 80mm (ESC/POS)
 
 ### 👥 Page Clients
 - Liste des clients avec recherche
@@ -25,34 +36,43 @@ Application de caisse moderne pour salon de coiffure et barbier, développée av
 - Modification du mode de paiement d'une vente
 
 ### 📦 Page Stock
-- Gestion des produits et variantes
+- Gestion des produits et variantes (tailles)
+- Codes-barres et étiquettes imprimables
 - Alertes de stock
 - Mouvements d'inventaire
-
-### 📊 Page Statistiques
-- Graphiques et indicateurs de ventes
-- Analyse par service/produit
 
 ### 💵 Page Tiroir de Caisse
 - Ouverture/fermeture de caisse
 - Mouvements (entrées/sorties)
 - Rapprochement espèces
 
+### 📄 Page Fin de Journée
+- Clôture journalière
+- Journal des ventes
+- Archivage NF525 (chaînage hash SHA-256)
+
+### 📊 Pages Statistiques
+- **Statistiques générales** : Graphiques et indicateurs
+- **Stats par employé** : Performance par vendeur
+- **Chiffre d'affaires** : CA détaillé
+- **Récap mensuel** : Synthèse mensuelle
+- **Valeur théorique** : Valeur du stock
+
 ### ⚙️ Page Paramètres
 - Configuration de l'application
-
-### 📋 Page Commande
-- Gestion des commandes fournisseurs
+- En-tête et pied de page des tickets
 
 ### 🎨 Interface
 - **Thème sombre** : Bascule clair/sombre
-- **Responsive** : Adapté mobile et desktop
-- **Navigation** : Vue Router avec 8 pages
+- **Responsive** : Adapté mobile et desktop (onglets sur mobile)
+- **Navigation** : 13 routes
 
 ### 🔍 Recherche & Autocomplétion
 - **Services** : Recherche en temps réel, suggestions dès 2 caractères
 - **Clients** : Par nom, prénom, téléphone
 - **Adresses** : API gouvernementale française (api-adresse.data.gouv.fr) - gratuite, sans clé
+
+---
 
 ## 🏗️ Architecture Technique
 
@@ -61,7 +81,7 @@ Application de caisse moderne pour salon de coiffure et barbier, développée av
 - **TypeScript** - Typage fort
 - **TailwindCSS v4** - Styling utility-first
 - **Vite** - Build tool
-- **Supabase** - Backend as a Service (PostgreSQL, Auth, Realtime)
+- **Supabase** - Backend as a Service (PostgreSQL, Auth)
 - **Lucide Vue** - Icônes SVG
 
 ### Structure du projet
@@ -70,22 +90,28 @@ Application de caisse moderne pour salon de coiffure et barbier, développée av
 src/
 ├── components/           # Composants réutilisables
 │   ├── AppHeader.vue     # En-tête + vendeur + navigation
-│   ├── TicketPanel.vue   # Panier + paiement
-│   ├── ServiceGrid.vue   # Grille des services
-│   ├── ServiceCard.vue    # Carte de service
-│   ├── ClientPanel.vue    # Formulaire client
-│   ├── CartPanel.vue      # Panier (mode alternatif)
-│   └── LoyaltyCard.vue    # Carte fidélité
+│   ├── TicketPanel.vue   # Panier + paiement + impression
+│   ├── ServiceGrid.vue   # Grille services + scan code-barres
+│   ├── ServiceCard.vue   # Carte de service
+│   ├── ClientPanel.vue   # Formulaire client
+│   ├── CartPanel.vue     # Panier (mode alternatif)
+│   ├── LoyaltyCard.vue   # Carte fidélité
+│   └── ProductPickerDialog.vue # Sélection produits physiques
 │
 ├── pages/                # Pages de l'application
-│   ├── CaissePage.vue     # Page principale caisse
-│   ├── ClientsPage.vue    # Gestion clients
+│   ├── LoginPage.vue     # Connexion
+│   ├── CaissePage.vue    # Page principale caisse
+│   ├── ClientsPage.vue   # Gestion clients
 │   ├── HistoriquePage.vue # Historique des ventes
-│   ├── StockPage.vue      # Gestion stock
-│   ├── StatistiquesPage.vue
+│   ├── StockPage.vue     # Gestion stock
+│   ├── ValeurTheoriquePage.vue # Valeur théorique du stock
 │   ├── TiroirCaissePage.vue
-│   ├── ParametresPage.vue
-│   └── CommandePage.vue
+│   ├── FinDeJourneePage.vue
+│   ├── StatistiquesPage.vue
+│   ├── StatsEmployePage.vue
+│   ├── ChiffreAffairePage.vue
+│   ├── RecapMensuelPage.vue
+│   └── ParametresPage.vue
 │
 ├── composables/          # Logique métier
 │   ├── useCart.ts        # Panier
@@ -99,10 +125,17 @@ src/
 │   ├── useCashRegister.ts # Tiroir de caisse
 │   ├── useAuth.ts        # Authentification
 │   ├── useTheme.ts       # Thème clair/sombre
+│   ├── useSettings.ts    # Paramètres
+│   ├── useFinDeJournee.ts
+│   ├── useArchiveNF525.ts # Archivage NF525
+│   ├── useBarcodeScanner.ts
 │   └── useAddressAutocomplete.ts
 │
 ├── lib/                  # Bibliothèques
-│   └── supabase.ts       # Client Supabase
+│   ├── supabase.ts       # Client Supabase
+│   ├── thermalPrint.ts   # Impression thermique 80mm
+│   ├── printBarcodeLabels.ts # Étiquettes code-barres
+│   └── nf525.ts         # Utilitaires NF525 (hash SHA-256)
 │
 ├── types/                # Types TypeScript
 │   ├── database.ts       # Types Supabase
@@ -111,6 +144,8 @@ src/
 ├── router/               # Vue Router
 └── style.css             # Styles globaux
 ```
+
+---
 
 ## 🚀 Installation & Lancement
 
@@ -151,11 +186,8 @@ npm run migrate:from-sales
 npm run migrate:dry
 ```
 
-## 🎯 Fonctionnalités à Venir
+## 🎯 Fonctionnalités à Venir (optionnelles)
 
-- [ ] Conformité NF525 complète
-- [ ] Impression thermique
-- [ ] Scanner code-barres
 - [ ] Planning des rendez-vous
 - [ ] Mode hors-ligne (PWA)
 

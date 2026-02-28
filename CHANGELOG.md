@@ -4,6 +4,25 @@ Historique des changements et évolutions du projet.
 
 ---
 
+## [1.2.0] - 2026-01-29 (Documentation – état final)
+
+### 📚 Mise à jour documentation
+- **README.md** : Application terminée, liste complète des 13 pages, Auth, impression thermique, scanner, NF525
+- **FONCTIONNALITES.md** : Statut "terminée", NF525/impression/scanner marqués réalisés
+- **PRESENTATION-CLIENT.md** : Section "APPLICATION TERMINÉE" remplaçant "CE QUI MANQUE"
+- **QUICK-REFERENCE.md** : Avancement 100%, backend Supabase
+- **START-HERE.md** : "Où en est le projet" – application terminée
+- **README-PROJET.md** : Statut terminé, 13 pages, NF525/impression/scanner
+
+### 📊 État réel de l'application
+- Authentification (Supabase Auth)
+- 13 routes : Login, Caisse, Historique, Clients, Stock, Valeur théorique, Tiroir, Fin de journée, Stats (4 sous-pages), Paramètres
+- Impression thermique (thermalPrint.ts)
+- Scanner code-barres (ServiceGrid, useBarcodeScanner)
+- NF525 (nf525.ts, useArchiveNF525)
+
+---
+
 ## [1.1.1] - 2026-01-29 (Nettoyage livraison client)
 
 ### 🧹 Nettoyage
@@ -46,7 +65,6 @@ Historique des changements et évolutions du projet.
 - **Statistiques** : Graphiques et indicateurs
 - **Tiroir de caisse** : Ouverture/fermeture, mouvements
 - **Paramètres** : Configuration
-- **Commande** : Commandes fournisseurs
 
 ### ✅ Fonctionnalités
 - Thème sombre (bascule clair/sombre)

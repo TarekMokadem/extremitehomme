@@ -4,7 +4,7 @@
 **Client :** Extrémités Homme (Salon de coiffure)  
 **Budget :** 6 000€  
 **Durée :** 6-7 mois (Janvier - Août 2026)  
-**Statut :** 🔄 Application fonctionnelle avec Supabase
+**Statut :** ✅ Application terminée et opérationnelle
 
 ---
 
@@ -13,11 +13,11 @@
 Refonte complète d'une application de caisse obsolète en une solution moderne, sécurisée et conforme NF525.
 
 **État actuel :**
-- ✅ Backend : Supabase (PostgreSQL)
-- ✅ Caisse : Ventes persistées
+- ✅ Backend : Supabase (PostgreSQL, Auth)
+- ✅ Caisse : Ventes persistées, impression thermique, scanner code-barres
 - ✅ Clients : Page complète + historique + fidélité
-- ✅ Historique, Stock, Statistiques, Tiroir de caisse
-- ⏳ À venir : NF525, impression thermique, scanner
+- ✅ Historique, Stock, Statistiques, Tiroir de caisse, Fin de journée
+- ✅ NF525 : Chaînage hash, clôture journalière
 
 ---
 
@@ -37,7 +37,7 @@ Refonte complète d'une application de caisse obsolète en une solution moderne,
 │
 └── 📁 src/                         # Code source
     ├── components/                 # Composants Vue
-    ├── pages/                      # 8 pages (Caisse, Clients, etc.)
+    ├── pages/                      # 13 pages (Caisse, Clients, Stats, etc.)
     ├── composables/                # Logique métier (Supabase)
     ├── lib/                        # Supabase client
     └── types/                      # Types TypeScript
@@ -78,7 +78,7 @@ Application moderne en 3 phases :
 ├─ Intégration Supabase              ✅ TERMINÉ
 ├─ Caisse + Clients + Historique     ✅ TERMINÉ
 ├─ Stock + Stats + Tiroir            ✅ TERMINÉ
-└─ NF525 + Impression + Scanner      ⏳ À VENIR
+└─ NF525 + Impression + Scanner       ✅ TERMINÉ
 ```
 
 ---
@@ -115,23 +115,19 @@ Application moderne en 3 phases :
 
 ## 📊 AVANCEMENT
 
-### Réalisé (~80%)
-✅ Backend Supabase (PostgreSQL)  
-✅ Page Caisse avec ventes persistées  
+### Réalisé (100%)
+✅ Backend Supabase (PostgreSQL, Auth)  
+✅ Page Caisse avec ventes persistées, impression thermique, scan code-barres  
 ✅ Page Clients (historique, fidélité)  
 ✅ Page Historique des ventes  
-✅ Page Stock  
-✅ Page Statistiques  
+✅ Page Stock (produits, variantes, codes-barres)  
+✅ Pages Statistiques (générales, employé, CA, récap mensuel, valeur théorique)  
 ✅ Page Tiroir de caisse  
+✅ Page Fin de journée (clôture, NF525)  
 ✅ Page Paramètres  
-✅ Page Commande  
 ✅ Thème sombre  
 ✅ American Express  
-
-### À venir
-⏳ Conformité NF525 complète  
-⏳ Impression thermique  
-⏳ Scanner code-barres  
+✅ NF525 (chaînage hash, clôture journalière)  
 
 ---
 
@@ -176,10 +172,8 @@ npm run dev
 | 29/01/2026 | Vente confirmée 6000€ | ✅ |
 | 29/01/2026 | Acompte 1000€ reçu | ✅ |
 | 29/01/2026 | Phase 0 (Audit) terminée | ✅ |
-| Mars 2026 | Phase 1 livrée | ⏳ |
-| Mai 2026 | Phase 2 livrée | ⏳ |
-| Juillet 2026 | Phase 3 livrée | ⏳ |
-| Août 2026 | Mise en production | ⏳ |
+| Janvier 2026 | Phases 1-2-3 livrées | ✅ |
+| Janvier 2026 | Application complète | ✅ |
 
 ---
 
@@ -250,18 +244,18 @@ Avant de commencer Phase 1 :
 
 ## 🎉 ÉTAT ACTUEL
 
-**Application fonctionnelle ✅**
+**Application terminée ✅**
 
-- ✅ Supabase intégré
-- ✅ 8 pages opérationnelles
-- ✅ Ventes, clients, stock, historique, stats, tiroir
+- ✅ Supabase intégré (PostgreSQL, Auth)
+- ✅ 13 pages opérationnelles
+- ✅ Ventes, clients, stock, historique, stats, tiroir, fin de journée
 - ✅ Fidélité clients
 - ✅ Thème sombre
+- ✅ NF525, impression thermique, scanner code-barres
 
-**Prochaines étapes :**
-→ NF525, impression thermique, scanner
+**Statut :** Prête pour présentation client
 
 ---
 
 **Dernière mise à jour :** Janvier 2026  
-**Version :** 1.1.0 (Application fonctionnelle)
+**Version :** 1.2.0 (Application complète)
