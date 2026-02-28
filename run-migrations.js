@@ -32,24 +32,12 @@ try {
 const SUPABASE_DB_URI = process.env.SUPABASE_DB_URI || process.env.DATABASE_URL;
 
 const STEPS = [
-  { id: 'prep', label: 'Préparation (idempotent)', file: 'MIGRATION-PREP-IDEMPOTENT.sql' },
-  { id: 'clients', label: 'Clients', file: 'migration_combined/01_clients.sql' },
-  { id: 'products', label: 'Produits', file: 'migration_combined/02_products.sql' },
-  { id: 'sales', label: 'Ventes (batches)', files: () => {
-    const list = [];
-    for (let i = 1; i <= 97; i++) list.push(join('migration_output', `03_sales_batch_${String(i).padStart(3, '0')}.sql`));
-    return list;
-  }},
-  { id: 'sale_items', label: 'Lignes de ventes (batches)', files: () => {
-    const list = [];
-    for (let i = 1; i <= 61; i++) list.push(join('migration_output', `04_sale_items_batch_${String(i).padStart(3, '0')}.sql`));
-    return list;
-  }},
-  { id: 'payments', label: 'Paiements (batches)', files: () => {
-    const list = [];
-    for (let i = 1; i <= 49; i++) list.push(join('migration_output', `05_payments_batch_${String(i).padStart(3, '0')}.sql`));
-    return list;
-  }},
+  { id: 'prep', label: 'Préparation (idempotent)', file: 'documentation/migrations/MIGRATION-PREP-IDEMPOTENT.sql' },
+  { id: 'clients', label: 'Clients', file: 'documentation/migrations/combined/01_clients.sql' },
+  { id: 'products', label: 'Produits', file: 'documentation/migrations/combined/02_products.sql' },
+  { id: 'sales', label: 'Ventes', file: 'documentation/migrations/combined/03_sales_combined.sql' },
+  { id: 'sale_items', label: 'Lignes de ventes', file: 'documentation/migrations/combined/04_sale_items_combined.sql' },
+  { id: 'payments', label: 'Paiements', file: 'documentation/migrations/combined/05_payments_combined.sql' },
 ];
 
 function parseArgs() {

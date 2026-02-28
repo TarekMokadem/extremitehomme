@@ -118,23 +118,9 @@ npm run dev
 # Ouvrir : http://localhost:5173
 ```
 
-### 3. Backend (À créer - Phase 1)
+### 3. Backend & Base de données
 
-**Voir guide complet :** `NEXT-STEPS.md`
-
-```bash
-# Créer dossier backend
-mkdir backend
-cd backend
-
-# Initialiser
-npm init -y
-
-# Installer dépendances (liste complète dans NEXT-STEPS.md)
-npm install express @prisma/client cors helmet dotenv
-
-# Setup PostgreSQL (voir NEXT-STEPS.md section 1.4)
-```
+Le projet utilise **Supabase** (PostgreSQL + Auth). Voir `SUPABASE-SETUP.md` pour la configuration complète.
 
 ---
 
@@ -149,7 +135,7 @@ npm install express @prisma/client cors helmet dotenv
 | `PRESENTATION-CLIENT.md` | Client | Document commercial | 32 |
 | `AUDIT-TECHNIQUE.md` | Dev | Analyse complète existant | 47 |
 | `ROADMAP.md` | Dev | Plan 3 phases détaillé | 56 |
-| `NEXT-STEPS.md` | Dev | Guide démarrage Phase 1 | 42 |
+| `MIGRATION-README.md` | Dev | Migration des données | - |
 | `FONCTIONNALITES.md` | Tous | Liste fonctionnalités + état | 25 |
 | `CHANGELOG.md` | Tous | Historique modifications | 12 |
 | `README.md` | Dev | Doc technique code | 10 |
@@ -204,10 +190,9 @@ npm install express @prisma/client cors helmet dotenv
 
 1. ✅ Lire `AUDIT-TECHNIQUE.md` (30 min)
 2. ✅ Lire `ROADMAP.md` (30 min)
-3. ✅ Lire `NEXT-STEPS.md` (20 min)
-4. ✅ Setup PostgreSQL (1-2h)
-5. ✅ Créer structure backend (1-2h)
-6. ✅ Coder la première API (2-3h)
+3. ✅ Lire `SUPABASE-SETUP.md` (30 min)
+4. ✅ Configurer Supabase (projet + schéma)
+5. ✅ Lancer la migration si besoin (`npm run migrate`)
 
 **Total temps Phase 1 :** ~160 heures (4-6 semaines)
 
@@ -224,7 +209,7 @@ npm install express @prisma/client cors helmet dotenv
 ### Pour le Développeur
 - 📚 Lire TOUTE la documentation avant de coder
 - 🏗️ Respecter l'architecture proposée
-- ✅ Suivre les checklists dans `NEXT-STEPS.md`
+- ✅ Suivre les checklists dans `ROADMAP.md`
 - 🧪 Tester au fur et à mesure
 - 📝 Mettre à jour `CHANGELOG.md` après chaque feature
 
@@ -258,8 +243,8 @@ npm install express @prisma/client cors helmet dotenv
 → Dès la fin de Phase 1 (Mars 2026), oui !
 
 ### "Où est le code ?"
-→ Dossier `src/` pour le frontend actuel.  
-→ Dossier `backend/` à créer pour Phase 1.
+→ Dossier `src/` pour le frontend.  
+→ Backend : Supabase (PostgreSQL, Auth) – voir `SUPABASE-SETUP.md`.
 
 ### "Où est la documentation technique ?"
 → Tout est dans ce dossier racine (fichiers .md).

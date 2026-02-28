@@ -56,13 +56,13 @@ npm run migrate:dry
 ## Ordre d’exécution (automatique)
 
 1. **MIGRATION-PREP-IDEMPOTENT.sql** – prépare les contraintes pour éviter les doublons.
-2. **01_clients.sql** – clients (ignoré si vous utilisez `migrate:from-sales`).
-3. **02_products.sql** – produits (idem).
-4. **03_sales_batch_001.sql** … **097.sql** – ventes (avec `ON CONFLICT (old_mysql_id) DO NOTHING`).
-5. **04_sale_items_combined.sql** – lignes de ventes.
-6. **05_payments_combined.sql** – paiements.
+2. **combined/01_clients.sql** – clients (ignoré si vous utilisez `migrate:from-sales`).
+3. **combined/02_products.sql** – produits (idem).
+4. **combined/03_sales_combined.sql** – ventes (avec `ON CONFLICT (old_mysql_id) DO NOTHING`).
+5. **combined/04_sale_items_combined.sql** – lignes de ventes.
+6. **combined/05_payments_combined.sql** – paiements.
 
-Relancer tout ou une partie ne crée pas de doublons grâce au prep et aux `ON CONFLICT`.
+Les fichiers sont dans `documentation/migrations/`. Relancer tout ou une partie ne crée pas de doublons grâce au prep et aux `ON CONFLICT`.
 
 ---
 
@@ -88,4 +88,4 @@ Valeurs possibles pour `--from` : `prep`, `clients`, `products`, `sales`, `sale_
 
 ## (Optionnel) Totaux réels dans l’historique des ventes
 
-Pour que la page **Historique des ventes** affiche le **Total €** et le **panier moyen** sur toute la base (et pas seulement sur les 1000 dernières ventes), exécutez une fois dans le **SQL Editor** Supabase le fichier **`supabase_get_sales_stats.sql`** à la racine du projet.
+Pour que la page **Historique des ventes** affiche le **Total €** et le **panier moyen** sur toute la base (et pas seulement sur les 1000 dernières ventes), exécutez une fois dans le **SQL Editor** Supabase le fichier **`documentation/maintenance/supabase_get_sales_stats.sql`**.

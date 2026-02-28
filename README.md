@@ -138,6 +138,8 @@ L'application sera accessible sur : `http://localhost:5173/`
 Voir `SUPABASE-SETUP.md` pour la configuration complète de la base de données.
 
 ### Migration des données
+Les scripts SQL sont dans `documentation/migrations/`. Voir `MIGRATION-README.md` pour les détails.
+
 ```bash
 # Migration complète (clients, produits, ventes)
 npm run migrate

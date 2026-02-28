@@ -214,41 +214,18 @@
 
 ---
 
-### 6. NEXT-STEPS.md
-**Type :** Guide pratique Phase 1  
+### 6. MIGRATION-README.md
+**Type :** Guide migration des données  
 **Audience :** Développeurs  
-**Pages :** 42  
 **Contenu :**
-- Récap Phase 0 (terminée)
-- Objectifs Phase 1
-- **Tâches détaillées avec code :**
-  - 1. Setup Backend (Semaine 1-2)
-    - Initialisation projet
-    - Configuration TypeScript
-    - Structure projet backend
-    - Installation PostgreSQL
-    - Configuration Prisma
-    - Migrations initiales
-  - 2. API Backend (Semaine 2-3)
-    - Point d'entrée (index.ts)
-    - Routes principales
-    - Controllers avec code complet
-  - 3. Authentification JWT (Semaine 2)
-    - Middleware auth
-    - Controller auth
-  - 4. Frontend - Intégration (Semaine 3-4)
-    - Client API
-    - Refactorisation useCart (HT/TVA/TTC)
-    - Affichage détaillé TVA
-  - 5. Tests Phase 1 (Semaine 5)
-- Checklist Phase 1
-- Livrable Phase 1
-- Questions à poser au client
+- Migration MySQL → Supabase (clients, produits, ventes)
+- Configuration `.env.migration`
+- Commandes `npm run migrate`, `migrate:from-sales`, `migrate:dry`
+- Script `documentation/maintenance/supabase_get_sales_stats.sql` pour les stats
 
 **📌 Quand lire :**
-- Juste avant de démarrer Phase 1
-- Pour avoir guide pas à pas
-- Code prêt à copier/adapter
+- Pour migrer des données vers Supabase
+- Pour rejouer une migration sur un nouvel environnement
 
 ---
 
@@ -399,7 +376,7 @@
    ↓
 5. ROADMAP.md (focus Phase 1)                      [30 min]
    ↓
-6. NEXT-STEPS.md (complet)                         [30 min]
+6. SUPABASE-SETUP.md (complet)                     [30 min]
    ↓
 ✅ TERMINÉ - Vous pouvez coder !
 ```
@@ -494,13 +471,13 @@
 → AUDIT-TECHNIQUE.md
 
 **...comment démarrer Phase 1**
-→ NEXT-STEPS.md
+→ SUPABASE-SETUP.md ou ROADMAP.md
 
 **...l'architecture proposée**
 → ROADMAP.md (section Architecture globale)
 
 **...le schéma de BDD**
-→ AUDIT-TECHNIQUE.md (section Types Manquants) ou NEXT-STEPS.md (Prisma schema)
+→ AUDIT-TECHNIQUE.md (section Types) ou SUPABASE-SETUP.md
 
 **...les fonctionnalités existantes**
 → FONCTIONNALITES.md ou README.md
@@ -536,7 +513,7 @@
 ### Si je suis Développeur
 - [ ] J'ai lu AUDIT-TECHNIQUE.md
 - [ ] J'ai lu ROADMAP.md
-- [ ] J'ai lu NEXT-STEPS.md
+- [ ] J'ai lu SUPABASE-SETUP.md
 - [ ] J'ai lancé l'application actuelle
 - [ ] Je peux commencer à coder
 
@@ -551,7 +528,7 @@
 
 **Questions techniques :**
 - Consulter AUDIT-TECHNIQUE.md
-- Consulter NEXT-STEPS.md
+- Consulter SUPABASE-SETUP.md ou MIGRATION-README.md
 - Voir le code dans `src/`
 
 **Questions commerciales :**

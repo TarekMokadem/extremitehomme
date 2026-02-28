@@ -153,7 +153,7 @@ npm init -y
 npm install express @prisma/client cors helmet dotenv
 npm install -D typescript @types/node @types/express prisma tsx
 npx prisma init
-# Voir NEXT-STEPS.md pour suite
+# Voir SUPABASE-SETUP.md et MIGRATION-README.md
 ```
 
 ### Lancer PostgreSQL (Docker)
@@ -172,14 +172,12 @@ docker run --name postgres-caisse \
 
 | Je cherche... | Fichier | Section |
 |---------------|---------|---------|
-| Code d'exemple backend | NEXT-STEPS.md | Section 2-3 |
-| Schéma BDD Prisma | NEXT-STEPS.md | Section 1.5 |
+| Schéma BDD Supabase | SUPABASE-SETUP.md | Étape 2 |
 | Architecture proposée | ROADMAP.md | Architecture globale |
 | Liste fonctionnalités | FONCTIONNALITES.md | - |
-| Calcul HT/TVA/TTC | NEXT-STEPS.md | Section 4.2 |
+| Calcul HT/TVA/TTC | README.md | - |
 | Codes produits (1V, 2B) | AUDIT-TECHNIQUE.md | Types Manquants |
-| API endpoints | NEXT-STEPS.md | Section 2.2 |
-| Authentification JWT | NEXT-STEPS.md | Section 3 |
+| API Supabase | SUPABASE-SETUP.md | - |
 | Tests à faire | ROADMAP.md | Stratégie de tests |
 | Infos commerciales | PRESENTATION-CLIENT.md | - |
 
@@ -369,9 +367,9 @@ const tva = priceTTC - priceHT;             // 2.00
 ### Si Développeur :
 1. ✅ Lire AUDIT-TECHNIQUE.md
 2. ✅ Lire ROADMAP.md
-3. ✅ Lire NEXT-STEPS.md
-4. ✅ Setup PostgreSQL
-5. ✅ Créer backend
+3. ✅ Lire SUPABASE-SETUP.md
+4. ✅ Configurer Supabase
+5. ✅ Lancer migration si besoin
 6. 🚀 Coder !
 
 ---

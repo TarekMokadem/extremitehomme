@@ -10,7 +10,9 @@
 ```
 Caisse maquette/
 │
-├── 📚 DOCUMENTATION (11 fichiers .md créés 29/01/2026)
+├── 📚 DOCUMENTATION (fichiers .md à la racine)
+├── documentation/       # Scripts SQL (migrations, schéma, maintenance)
+├── docs/               # Build Vite (GitHub Pages)
 ├── ⚙️ CONFIGURATION (8 fichiers)
 ├── 💻 CODE SOURCE (src/)
 ├── 📦 DÉPENDANCES (package.json, node_modules)
@@ -31,7 +33,7 @@ Caisse maquette/
 |---------|-------------|-------|------|
 | **AUDIT-TECHNIQUE.md** | Analyse complète de l'existant | 47 | 29/01/2026 |
 | **ROADMAP.md** | Plan détaillé 3 phases | 56 | 29/01/2026 |
-| **NEXT-STEPS.md** | Guide Phase 1 avec code | 42 | 29/01/2026 |
+| **MIGRATION-README.md** | Migration des données | - | - |
 | **PRESENTATION-CLIENT.md** | Document commercial | 32 | 29/01/2026 |
 | **README-PROJET.md** | Vue d'ensemble | 10 | 29/01/2026 |
 
@@ -201,7 +203,7 @@ Caisse maquette/
 │   ├── START-HERE.md ⭐ (point d'entrée)
 │   ├── AUDIT-TECHNIQUE.md
 │   ├── ROADMAP.md
-│   ├── NEXT-STEPS.md
+│   ├── MIGRATION-README.md
 │   ├── PRESENTATION-CLIENT.md
 │   ├── README-PROJET.md
 │   ├── FONCTIONNALITES.md

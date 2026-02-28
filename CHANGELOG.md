@@ -4,6 +4,23 @@ Historique des changements et évolutions du projet.
 
 ---
 
+## [1.1.1] - 2026-01-29 (Nettoyage livraison client)
+
+### 🧹 Nettoyage
+- Suppression `migration_output/` (~220 fichiers de lots)
+- Suppression scripts obsolètes : `combine_migration_files.ps1`, `run_migration_remaining.ps1`, `migration_script.py`, `backfill_barcodes.py`
+- Regroupement des scripts SQL dans `documentation/` :
+  - `documentation/migrations/` : MIGRATION-*.sql + combined/
+  - `documentation/sql/` : évolution schéma (barcode, tiroir, fidélité…)
+  - `documentation/maintenance/` : CLEANUP-*.sql, supabase_get_sales_stats.sql
+
+### 📝 Documentation
+- Mise à jour `run-migrations.js` : chemins vers `documentation/migrations/`
+- Mise à jour `MIGRATION-README.md`, `FILES-OVERVIEW.md`, `START-HERE.md`
+- Création `documentation/README.md` et `FICHIERS-A-NETTOYER.md`
+
+---
+
 ## [1.1.0] - 2026-01-29 (Mise à jour documentation)
 
 ### 📚 Documentation
