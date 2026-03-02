@@ -64,9 +64,15 @@ export function buildReceiptHTML(data: ReceiptData): string {
 <html>
 <head>
   <meta charset="utf-8">
-  <title>Ticket</title>
+  <title>Ticket - 1 copie</title>
   <style>
     @page { size: 80mm 297mm; margin: 0; }
+    .copies-reminder {
+      background: #fef3c7; color: #92400e; padding: 8px 12px;
+      font-size: 12px; text-align: center; margin-bottom: 8px;
+      border: 1px solid #f59e0b; border-radius: 4px;
+    }
+    @media print { .copies-reminder { display: none !important; } }
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
       font-family: 'Arial', 'Helvetica', sans-serif;
@@ -98,6 +104,7 @@ export function buildReceiptHTML(data: ReceiptData): string {
   </style>
 </head>
 <body>
+  <div class="copies-reminder">Réglez le nombre de copies sur <strong>1</strong> dans la boîte de dialogue d'impression.</div>
   <div class="receipt-header">
     <div class="name">${escapeHtml(header.name)}</div>
     ${header.address ? `<div class="address">${escapeHtml(header.address)}</div>` : ''}
