@@ -19,6 +19,8 @@ export interface ReceiptData {
     phone: string;
     siret?: string;
   };
+  /** Nom de l'entreprise du client (affiché quand "Facture au nom de l'entreprise" est coché) */
+  clientCompany?: string;
   dateTime: string;
   items: ReceiptItem[];
   subtotalHT?: number;
@@ -99,6 +101,7 @@ export function buildReceiptHTML(data: ReceiptData): string {
     .receipt-item { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .receipt-price { flex-shrink: 0; text-align: right; }
     .receipt-total { font-weight: bold; margin-top: 4px; padding-top: 4px; border-top: 1px dashed #000; }
+    .receipt-client-company { margin: 6px 0; padding: 4px 0; font-size: 12px; font-weight: 600; border-top: 1px dashed #000; }
     .receipt-tva-section { margin-top: 4px; font-size: 12px; }
     .receipt-footer { text-align: center; margin-top: 8px; font-size: 12px; }
   </style>
@@ -112,6 +115,7 @@ export function buildReceiptHTML(data: ReceiptData): string {
     ${header.phone ? `<div class="phone">${escapeHtml(header.phone)}</div>` : ''}
     ${header.siret ? `<div class="receipt-siret">SIRET: ${escapeHtml(header.siret)}</div>` : ''}
   </div>
+  ${data.clientCompany ? `<div class="receipt-client-company">Facture au nom de : ${escapeHtml(data.clientCompany)}</div>` : ''}
   <div class="receipt-date">${escapeHtml(dateTime)}</div>
   ${itemsHtml}
   ${data.subtotalHT != null ? `

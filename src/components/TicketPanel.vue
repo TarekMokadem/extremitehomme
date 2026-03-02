@@ -52,7 +52,7 @@ const {
 } = useSales();
 
 const { vendor, loadVendors } = useAuth();
-const { selectedClient } = useClients();
+const { selectedClient, invoiceInCompanyName } = useClients();
 const vendorsList = ref<import('../types/database').Vendor[]>([]);
 onMounted(async () => {
   vendorsList.value = await loadVendors();
@@ -236,6 +236,7 @@ const handlePrintTicket = () => {
       phone: salonInfo.value.phone || '03 20 25 54 91',
       siret: salonInfo.value.siret || '99205852900015',
     },
+    clientCompany: invoiceInCompanyName.value && selectedClient.value?.company ? selectedClient.value.company : undefined,
     dateTime: `${dateStr} ${timeStr}`,
     items,
     subtotalHT: subtotalHT.value,
