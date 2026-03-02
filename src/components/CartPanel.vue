@@ -11,7 +11,6 @@ import {
   FileText, 
   Gift,
   HandCoins,
-  Wrench,
   Check
 } from 'lucide-vue-next';
 import { useCart } from '../composables/useCart';
@@ -41,7 +40,6 @@ const paymentMethods: { id: PaymentMethod; label: string; icon: any }[] = [
   { id: 'check', label: 'Chèque', icon: FileText },
   { id: 'gift_card', label: 'Chèque Cadeau', icon: Gift },
   { id: 'free', label: 'Gratuit', icon: HandCoins },
-  { id: 'technical', label: 'Utilisation technique', icon: Wrench },
 ];
 
 const handleCheckout = () => {

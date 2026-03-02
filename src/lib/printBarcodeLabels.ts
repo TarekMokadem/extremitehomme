@@ -57,6 +57,12 @@ export function printBarcodeLabels(product: Product, quantity: number = 24): voi
 </div>\n`;
   }
 
+  if (quantity < 24) {
+    for (let i = quantity; i < 24; i++) {
+      labelsHtml += '<div class="label"></div>\n';
+    }
+  }
+
   const html = `<!DOCTYPE html>
 <html><head><meta charset="utf-8">
 <title>Étiquettes - ${escapeHtml(product.name)}</title>

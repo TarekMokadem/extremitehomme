@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
-import { Search, Package, Plus, X, ShoppingBag, Wrench } from 'lucide-vue-next';
+import { Search, Package, Plus, X } from 'lucide-vue-next';
 import { useProducts } from '../composables/useProducts';
 import { useSales } from '../composables/useSales';
 import { useAuth } from '../composables/useAuth';
 import { looksLikeBarcode } from '../composables/useBarcodeScanner';
-import type { Product, StockCategory } from '../types/database';
+import type { Product } from '../types/database';
 
 const props = defineProps<{
   modelValue: boolean;
@@ -20,7 +20,6 @@ const { addToCart } = useSales();
 const { vendor } = useAuth();
 
 const searchQuery = ref('');
-const stockMode = ref<StockCategory>('sale');
 const isOpen = computed({
   get: () => props.modelValue,
   set: (v) => emit('update:modelValue', v),
@@ -30,7 +29,6 @@ watch(isOpen, (open) => {
   if (open) {
     loadProducts();
     searchQuery.value = '';
-    stockMode.value = 'sale';
     const handler = (e: KeyboardEvent) => {
       if (e.key === 'Escape') close();
     };
@@ -59,16 +57,12 @@ interface SizeVariant {
   product: Product;
   size: string | null;
   stockSale: number;
-  stockTech: number;
 }
 
 interface ProductModel {
   displayName: string;
   variants: SizeVariant[];
 }
-
-const getStockForMode = (p: Product) =>
-  stockMode.value === 'technical' ? (p.stock_technical ?? 0) : p.stock;
 
 const productsByBrand = computed(() => {
   const byBrand = new Map<string, Product[]>();
@@ -98,7 +92,6 @@ const productsByBrand = computed(() => {
           product: p,
           size: p.size ?? null,
           stockSale: p.stock ?? 0,
-          stockTech: p.stock_technical ?? 0,
         })),
       });
     }
@@ -110,9 +103,8 @@ const productsByBrand = computed(() => {
 });
 
 const addProductToCart = (product: Product) => {
-  const stock = getStockForMode(product);
-  if (stock <= 0) return;
-  addToCart(product, 1, vendor.value ?? undefined, stockMode.value);
+  if ((product.stock ?? 0) <= 0) return;
+  addToCart(product, 1, vendor.value ?? undefined);
 };
 
 const handleSearchKeydown = async (e: KeyboardEvent) => {
@@ -168,36 +160,8 @@ const close = () => {
             </button>
           </div>
 
-          <!-- Toggle Vente / Technique -->
+          <!-- Recherche -->
           <div class="px-4 py-3 border-b border-gray-100 dark:border-gray-700 shrink-0">
-            <div class="flex rounded-xl border border-gray-200 dark:border-gray-600 overflow-hidden mb-3">
-              <button
-                @click="stockMode = 'sale'"
-                :class="[
-                  'flex-1 px-4 py-2.5 text-sm font-medium transition-colors flex items-center justify-center gap-2',
-                  stockMode === 'sale'
-                    ? 'bg-emerald-600 text-white'
-                    : 'bg-gray-50 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600'
-                ]"
-              >
-                <ShoppingBag class="w-4 h-4" />
-                Produit de vente
-              </button>
-              <button
-                @click="stockMode = 'technical'"
-                :class="[
-                  'flex-1 px-4 py-2.5 text-sm font-medium transition-colors flex items-center justify-center gap-2',
-                  stockMode === 'technical'
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-50 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600'
-                ]"
-              >
-                <Wrench class="w-4 h-4" />
-                Utilisation technique
-              </button>
-            </div>
-
-            <!-- Barre de recherche (scan code-barres : taper ou scanner puis Entrée) -->
             <div class="relative">
               <Search class="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500 pointer-events-none" />
               <input
@@ -245,35 +209,31 @@ const close = () => {
                           <button
                             v-if="v.size"
                             @click="addProductToCart(v.product)"
-                            :disabled="(stockMode === 'sale' ? v.stockSale : v.stockTech) <= 0"
+                            :disabled="v.stockSale <= 0"
                             :class="[
                               'inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
-                              (stockMode === 'sale' ? v.stockSale : v.stockTech) > 0
-                                ? (stockMode === 'sale'
-                                  ? 'bg-emerald-600 text-white hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-600'
-                                  : 'bg-blue-600 text-white hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600')
+                              v.stockSale > 0
+                                ? 'bg-emerald-600 text-white hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-600'
                                 : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400 cursor-not-allowed'
                             ]"
                           >
                             <span>{{ v.size }}</span>
-                            <span class="text-xs opacity-90">({{ stockMode === 'sale' ? v.stockSale : v.stockTech }})</span>
+                            <span class="text-xs opacity-90">({{ v.stockSale }})</span>
                           </button>
                           <button
                             v-else
                             @click="addProductToCart(v.product)"
-                            :disabled="(stockMode === 'sale' ? v.stockSale : v.stockTech) <= 0"
+                            :disabled="v.stockSale <= 0"
                             :class="[
                               'inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
-                              (stockMode === 'sale' ? v.stockSale : v.stockTech) > 0
-                                ? (stockMode === 'sale'
-                                  ? 'bg-emerald-600 text-white hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-600'
-                                  : 'bg-blue-600 text-white hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600')
+                              v.stockSale > 0
+                                ? 'bg-emerald-600 text-white hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-600'
                                 : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400 cursor-not-allowed'
                             ]"
                           >
                             <Plus class="w-4 h-4" />
                             <span>Ajouter</span>
-                            <span class="text-xs opacity-90">({{ stockMode === 'sale' ? v.stockSale : v.stockTech }})</span>
+                            <span class="text-xs opacity-90">({{ v.stockSale }})</span>
                           </button>
                         </template>
                       </div>

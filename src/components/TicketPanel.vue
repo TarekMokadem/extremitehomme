@@ -139,7 +139,7 @@ const handleValidate = async (): Promise<void> => {
   
   if (sale) {
     // Sauvegarder les points de fidélité si un client est sélectionné
-    if (selectedClient.value && vendor.value) {
+    if (selectedClient.value && vendor.value?.id) {
       await saveStamps(selectedClient.value.id, vendor.value.id, sale.id);
       await loadClientStamps(selectedClient.value.id);
     }
@@ -169,7 +169,7 @@ const handleEmail = () => {
 
   const now = new Date();
   const dateStr = now.toLocaleDateString('fr-FR');
-  const salonName = salonInfo.value.name || 'Extrémités Homme';
+  const salonName = salonInfo.value.name || 'Extrémités Hommes';
 
   const subject = `Facture ${dateStr} - ${salonName}`;
 
@@ -222,7 +222,7 @@ const handlePrintTicket = () => {
   const timeStr = now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
   const items = cartItems.value.map((item) => {
     const v = item.vendor;
-    const vendorName = v ? `${v.first_name ?? ''} ${v.last_name ?? ''}`.trim() : undefined;
+    const vendorName = v ? (v.first_name ?? '') : undefined;
     return {
       label: item.product.name,
       vendorName: vendorName || undefined,
@@ -231,12 +231,15 @@ const handlePrintTicket = () => {
   });
   printReceipt({
     header: {
-      name: ticketHeader.value.line1 || salonInfo.value.name,
-      address: salonInfo.value.address,
-      phone: salonInfo.value.phone,
+      name: ticketHeader.value.line1 || 'Extrémités Hommes',
+      address: salonInfo.value.address || '22 PLACE DE L\'ABBE BONPAIN, 59910 BONDUES',
+      phone: salonInfo.value.phone || '03 20 25 54 91',
+      siret: salonInfo.value.siret || '99205852900015',
     },
     dateTime: `${dateStr} ${timeStr}`,
     items,
+    subtotalHT: subtotalHT.value,
+    totalTVA: totalTVA.value,
     subtotal: subtotalTTC.value,
     discount: discountAmount.value > 0 ? discountAmount.value : undefined,
     total: total.value,
@@ -275,7 +278,6 @@ const handlePrintTicket = () => {
                 {{ item.product.name }}
               </p>
               <div class="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                <span v-if="item.stockCategory === 'technical'" class="inline-flex px-1.5 py-0.5 rounded text-[9px] font-semibold bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300">TECH</span>
                 <p class="text-[10px] text-gray-500 dark:text-gray-400 flex items-center gap-1">
                   <span>Vendeur:</span>
                   <select

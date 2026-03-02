@@ -30,10 +30,10 @@ export interface LoyaltyConfig {
 
 const defaults = {
   salon_info: {
-    name: 'Extrémités Homme',
-    address: '',
-    phone: '',
-    siret: '',
+    name: 'Extrémités Hommes',
+    address: '22 PLACE DE L\'ABBE BONPAIN, 59910 BONDUES',
+    phone: '03 20 25 54 91',
+    siret: '99205852900015',
   } as SalonInfo,
   tva_rates: {
     normal: 0.2,
@@ -41,7 +41,7 @@ const defaults = {
     super_reduced: 0.055,
   } as TvaRates,
   ticket_header: {
-    line1: 'Extrémités Homme',
+    line1: 'Extrémités Hommes',
     line2: '',
     line3: '',
   } as TicketLines,

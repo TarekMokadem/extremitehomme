@@ -79,7 +79,6 @@ const PAYMENT_LABELS: Record<string, string> = {
   gift_card: 'Bon cadeau',
   amex: 'Amex',
   free: 'Gratuit',
-  technical: 'Technique',
 };
 
 const vendors = ref<VendorOption[]>([]);

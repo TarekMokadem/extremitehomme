@@ -35,7 +35,8 @@ const pageSizeOptions = [25, 50, 100];
 const selectedClient = ref<Client | null>(null);
 const clientSales = ref<Sale[]>([]);
 const isLoadingSales = ref(false);
-const { loadClientStamps, checkedCount } = useLoyalty();
+const { loadClientStamps, checkedCount, resetPointsToZero } = useLoyalty();
+const isResettingLoyalty = ref(false);
 
 // Stats du client sélectionné, calculées depuis l'historique des achats (et points fidélité) pour cohérence avec l'affichage
 const selectedClientStats = computed(() => {
@@ -271,10 +272,17 @@ const deleteClient = async () => {
   if (!selectedClient.value) return;
   
   try {
+    const clientId = selectedClient.value.id;
+
+    await supabase
+      .from('sales')
+      .update({ client_id: null } as any)
+      .eq('client_id', clientId);
+
     const { error } = await supabase
       .from('clients')
       .delete()
-      .eq('id', selectedClient.value.id);
+      .eq('id', clientId);
 
     if (error) throw error;
     
@@ -285,6 +293,23 @@ const deleteClient = async () => {
   } catch (err) {
     console.error('Erreur suppression:', err);
     alert('Erreur lors de la suppression');
+  }
+};
+
+// Réinitialiser les points de fidélité
+const resetLoyalty = async () => {
+  if (!selectedClient.value) return;
+  if (!confirm('Réinitialiser tous les points de fidélité de ce client ?')) return;
+
+  isResettingLoyalty.value = true;
+  try {
+    await resetPointsToZero(selectedClient.value.id);
+    alert('Points de fidélité réinitialisés !');
+  } catch (err) {
+    console.error('Erreur réinitialisation fidélité:', err);
+    alert('Erreur lors de la réinitialisation');
+  } finally {
+    isResettingLoyalty.value = false;
   }
 };
 
@@ -516,6 +541,18 @@ onMounted(loadClients);
               <p class="text-lg font-bold text-gray-900 dark:text-white mt-1">{{ selectedClientStats.loyaltyPoints }}</p>
               <p class="text-xs text-gray-500 dark:text-gray-400">Points</p>
             </div>
+          </div>
+
+          <!-- Réinitialiser fidélité -->
+          <div v-if="selectedClientStats.loyaltyPoints > 0" class="flex justify-end">
+            <button
+              @click="resetLoyalty"
+              :disabled="isResettingLoyalty"
+              class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors disabled:opacity-50"
+            >
+              <RefreshCw :class="['w-3.5 h-3.5', isResettingLoyalty && 'animate-spin']" />
+              {{ isResettingLoyalty ? 'Réinitialisation...' : 'Réinitialiser les points' }}
+            </button>
           </div>
 
           <!-- Coordonnées -->

@@ -1,7 +1,6 @@
 import { ref, computed } from 'vue';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
-import { categoryUsesTechnicalStock } from '../lib/stockTechnicalCategories';
-import type { Product, Category, StockMovement, StockMovementType, StockCategory } from '../types/database';
+import type { Product, Category, StockMovement, StockMovementType } from '../types/database';
 
 export interface MovementWithDetails extends StockMovement {
   product?: Product;
@@ -29,10 +28,7 @@ export function useStock() {
         .order('display_order');
 
       if (error) throw error;
-      productsWithStock.value = (data || []).map(p => ({
-        ...p,
-        stock_technical: (p as any).stock_technical ?? 0,
-      }));
+      productsWithStock.value = data || [];
     } catch (err) {
       console.error('Erreur chargement produits (stock):', err);
       productsWithStock.value = [];
@@ -60,10 +56,7 @@ export function useStock() {
 
       const { data, error } = await query;
       if (error) throw error;
-      movements.value = ((data || []) as MovementWithDetails[]).map(m => ({
-        ...m,
-        stock_type: (m as any).stock_type ?? 'sale',
-      }));
+      movements.value = (data || []) as MovementWithDetails[];
     } catch (err) {
       console.error('Erreur chargement mouvements:', err);
       movements.value = [];
@@ -77,8 +70,6 @@ export function useStock() {
    * - in: quantity > 0, stock += quantity
    * - out: quantity > 0 (saisi), stock -= quantity (on enregistre -quantity)
    * - adjustment: quantity = nouvelle valeur cible du stock (on calcule le delta)
-   * 
-   * stockType : 'sale' (vente) ou 'technical' (technique)
    */
   const addMovement = async (params: {
     product_id: string;
@@ -87,29 +78,24 @@ export function useStock() {
     reason: string;
     reference_id?: string | null;
     vendor_id?: string | null;
-    stock_type?: StockCategory;
   }) => {
     if (!isSupabaseConfigured()) throw new Error('Supabase non configuré');
 
-    const { product_id, type, reason, reference_id = null, vendor_id = null, stock_type = 'sale' } = params;
+    const { product_id, type, reason, reference_id = null, vendor_id = null } = params;
     let quantity = params.quantity;
 
-    const stockColumn = stock_type === 'technical' ? 'stock_technical' : 'stock';
-
-    // Récupérer le stock actuel
     const { data: product } = await supabase
       .from('products')
-      .select(`${stockColumn}, stock, stock_technical`)
+      .select('stock')
       .eq('id', product_id)
       .single();
 
-    const currentStock = (product as any)?.[stockColumn] ?? 0;
+    const currentStock = (product as any)?.stock ?? 0;
     let newStock: number;
 
     if (type === 'adjustment') {
-      // Ajustement = fixer le stock à la valeur indiquée
       newStock = Math.max(0, quantity);
-      quantity = newStock - currentStock; // delta pour le mouvement
+      quantity = newStock - currentStock;
     } else {
       if (type === 'out' && quantity > 0) {
         quantity = -quantity;
@@ -130,14 +116,14 @@ export function useStock() {
         reason,
         reference_id,
         vendor_id,
-        stock_type,
+        stock_type: 'sale',
       } as Record<string, unknown>);
 
       if (insertError) throw insertError;
 
       const { error: updateError } = await supabase
         .from('products')
-        .update({ [stockColumn]: newStock, updated_at: new Date().toISOString() } as Record<string, unknown>)
+        .update({ stock: newStock, updated_at: new Date().toISOString() } as Record<string, unknown>)
         .eq('id', product_id);
 
       if (updateError) throw updateError;
@@ -181,15 +167,12 @@ export function useStock() {
     tva_rate?: number;
     size?: string | null;
     stock?: number;
-    stock_technical?: number;
     alert_threshold?: number;
   }) => {
     if (!isSupabaseConfigured()) throw new Error('Supabase non configuré');
 
     const catId = params.category_id && String(params.category_id).trim() ? params.category_id : null;
     const barcodeVal = params.barcode?.trim() || null;
-    const cat = categories.value.find((c) => c.id === catId);
-    const usesTechnicalStock = categoryUsesTechnicalStock(cat?.slug);
 
     isSaving.value = true;
     try {
@@ -213,9 +196,6 @@ export function useStock() {
         is_active: true,
         display_order: 999,
       };
-      if (usesTechnicalStock) {
-        payload.stock_technical = Math.max(0, Number(params.stock_technical) || 0);
-      }
 
       const { error } = await supabase.from('products').insert(payload);
 
@@ -302,16 +282,10 @@ export function useStock() {
       tva_rate?: number;
       size?: string | null;
       stock?: number;
-      stock_technical?: number;
       alert_threshold?: number;
     }
   ) => {
     if (!isSupabaseConfigured()) throw new Error('Supabase non configuré');
-
-    const cat = params.category_id
-      ? categories.value.find((c) => c.id === params.category_id)
-      : productsWithStock.value.find((p) => p.id === productId)?.category;
-    const usesTechnicalStock = categoryUsesTechnicalStock(cat?.slug);
 
     const clean: Record<string, unknown> = { updated_at: new Date().toISOString() };
     if (params.name !== undefined) clean.name = params.name.trim();
@@ -326,9 +300,6 @@ export function useStock() {
     if (params.tva_rate !== undefined) clean.tva_rate = params.tva_rate;
     if (params.size !== undefined) clean.size = params.size?.trim() || null;
     if (params.stock !== undefined) clean.stock = Math.max(0, Number(params.stock) || 0);
-    if (usesTechnicalStock && params.stock_technical !== undefined) {
-      clean.stock_technical = Math.max(0, Number(params.stock_technical) || 0);
-    }
     if (params.alert_threshold !== undefined) clean.alert_threshold = Math.max(0, Number(params.alert_threshold) || 5);
 
     isSaving.value = true;
@@ -347,7 +318,7 @@ export function useStock() {
 
   const productsOnly = computed(() => productsWithStock.value);
   const lowStockList = computed(() =>
-    productsWithStock.value.filter((p) => p.stock <= p.alert_threshold)
+    productsWithStock.value.filter((p) => (p.stock ?? 0) <= (p.alert_threshold ?? 5))
   );
 
   return {

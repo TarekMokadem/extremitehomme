@@ -278,19 +278,27 @@ const clearStamps = () => {
   initializeCard();
 };
 
-// Réinitialiser les points du client à 0 en BDD (et rafraîchir l'affichage)
+// Réinitialiser les points du client à 0 en BDD (supprime les transactions + remet à 0)
 const resetPointsToZero = async (clientId: string) => {
   if (!isSupabaseConfigured()) {
     initializeCard();
     return;
   }
   try {
+    const { error: txError } = await supabase
+      .from('loyalty_transactions')
+      .delete()
+      .eq('client_id', clientId);
+    if (txError) throw txError;
+
     const { error } = await supabase
       .from('clients')
-      .update({ loyalty_points: 0 })
+      .update({ loyalty_points: 0 } as any)
       .eq('id', clientId);
     if (error) throw error;
-    await loadClientStamps(clientId);
+
+    initializeCard();
+    selectedClientId.value = clientId;
   } catch (err) {
     console.error('Erreur réinitialisation points:', err);
     throw err;

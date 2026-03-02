@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
-import { Calculator, Printer, RefreshCw, Users, ShoppingCart, TrendingUp, Receipt } from 'lucide-vue-next';
+import { Calculator, Printer, Download, RefreshCw, Users, ShoppingCart, TrendingUp, Receipt } from 'lucide-vue-next';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 
 interface SaleRow {
@@ -30,7 +30,6 @@ const PAYMENT_LABELS: Record<string, string> = {
   check: 'Chèque',
   gift_card: 'Chèque Cadeau',
   free: 'Gratuit',
-  technical: 'Technique',
 };
 
 const PAYMENT_METHODS = Object.keys(PAYMENT_LABELS);
@@ -202,6 +201,79 @@ async function loadData() {
 function handlePrint() {
   window.print();
 }
+
+function handleDownloadPDF() {
+  const printContent = document.querySelector('.print-thermal-compact')?.parentElement?.parentElement;
+  if (!printContent) {
+    window.print();
+    return;
+  }
+
+  const win = window.open('', '_blank', 'width=900,height=700');
+  if (!win) { alert('Autorisez les pop-ups'); return; }
+
+  const html = `<!DOCTYPE html>
+<html><head><meta charset="utf-8">
+<title>Récapitulatif ${periodLabel.value}</title>
+<style>
+  body { font-family: Arial, sans-serif; padding: 20px; color: #000; }
+  h1 { font-size: 18px; text-align: center; margin-bottom: 20px; }
+  .summary { display: flex; gap: 20px; margin-bottom: 20px; }
+  .summary-card { flex: 1; border: 1px solid #ddd; border-radius: 8px; padding: 12px; text-align: center; }
+  .summary-card .label { font-size: 11px; color: #666; text-transform: uppercase; }
+  .summary-card .value { font-size: 20px; font-weight: bold; margin-top: 4px; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 12px; }
+  th, td { border: 1px solid #ddd; padding: 6px 8px; text-align: left; }
+  th { background: #f5f5f5; font-weight: 600; font-size: 11px; text-transform: uppercase; }
+  .text-right { text-align: right; }
+  .font-bold { font-weight: bold; }
+  .section-title { font-size: 14px; font-weight: bold; margin: 16px 0 8px; }
+  .total-row { background: #333; color: white; font-weight: bold; }
+  .day-header { background: #f0f0f0; font-weight: bold; font-size: 11px; text-transform: uppercase; }
+  .subtotal-row { background: #f8f8f8; font-weight: bold; }
+</style>
+</head><body>
+<h1>Récapitulatif Mensuel — ${periodLabel.value}</h1>
+<div class="summary">
+  <div class="summary-card"><div class="label">Total CA</div><div class="value">${formatPrice(totalCA.value)} €</div></div>
+  <div class="summary-card"><div class="label">Ventes</div><div class="value">${salesCount.value}</div></div>
+  <div class="summary-card"><div class="label">Panier moyen</div><div class="value">${formatPrice(avgBasket.value)} €</div></div>
+  <div class="summary-card"><div class="label">Clients uniques</div><div class="value">${uniqueClients.value}</div></div>
+</div>
+
+<div class="section-title">Modes de règlement</div>
+<table>
+<tr><th>Mode</th><th class="text-right">Montant</th><th class="text-right">Nb</th></tr>
+${paymentSummary.value.map(r => `<tr><td>${r.label}</td><td class="text-right">${formatPrice(r.amount)} €</td><td class="text-right">${r.count}</td></tr>`).join('')}
+<tr class="font-bold"><td>Total</td><td class="text-right">${formatPrice(paymentTotalAmount.value)} €</td><td class="text-right">${paymentTotalCount.value}</td></tr>
+</table>
+
+<div class="section-title">Journal des ventes</div>
+<table>
+<tr><th>Date</th><th>Heure</th><th>Ticket</th><th>Client</th><th>Vendeur</th><th>Articles</th><th>Paiement</th><th class="text-right">Total</th></tr>
+${dayGroups.value.map(group => `
+<tr class="day-header"><td colspan="8">${group.label}</td></tr>
+${group.sales.map(sale => `<tr>
+<td>${formatDateShort(sale.created_at)}</td>
+<td>${formatTime(sale.created_at)}</td>
+<td>${sale.ticket_number}</td>
+<td>${getClientName(sale.client)}</td>
+<td>${getSaleVendorSummary(sale)}</td>
+<td>${getArticlesSummary(sale.items)}</td>
+<td>${getPaymentLabels(sale.payments)}</td>
+<td class="text-right">${formatPrice(sale.total)} €</td>
+</tr>`).join('')}
+<tr class="subtotal-row"><td colspan="7" class="text-right">Sous-total ${group.label}</td><td class="text-right">${formatPrice(group.subtotal)} €</td></tr>
+`).join('')}
+<tr class="total-row"><td colspan="7" class="text-right">Total ${periodLabel.value}</td><td class="text-right">${formatPrice(totalCA.value)} €</td></tr>
+</table>
+</body></html>`;
+
+  win.document.write(html);
+  win.document.close();
+  win.focus();
+  setTimeout(() => win.print(), 300);
+}
 </script>
 
 <template>
@@ -212,14 +284,24 @@ function handlePrint() {
         <h1 class="text-xl lg:text-2xl font-bold text-gray-900 dark:text-white print:text-black">
           Récapitulatif Mensuel
         </h1>
-        <button
-          v-if="hasLoaded && sales.length > 0"
-          @click="handlePrint"
-          class="inline-flex items-center gap-2 px-4 py-2 bg-gray-900 dark:bg-emerald-600 text-white rounded-xl hover:bg-gray-800 dark:hover:bg-emerald-500 transition-colors print:hidden"
-        >
-          <Printer class="w-4 h-4" />
-          Imprimer
-        </button>
+        <div class="flex gap-2">
+          <button
+            v-if="hasLoaded && sales.length > 0"
+            @click="handlePrint"
+            class="inline-flex items-center gap-2 px-4 py-2 bg-gray-900 dark:bg-emerald-600 text-white rounded-xl hover:bg-gray-800 dark:hover:bg-emerald-500 transition-colors print:hidden"
+          >
+            <Printer class="w-4 h-4" />
+            Imprimer
+          </button>
+          <button
+            v-if="hasLoaded && sales.length > 0"
+            @click="handleDownloadPDF"
+            class="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors print:hidden"
+          >
+            <Download class="w-4 h-4" />
+            Télécharger PDF
+          </button>
+        </div>
       </div>
 
       <!-- Period selector -->

@@ -17,9 +17,12 @@ export interface ReceiptData {
     address: string;
     city?: string;
     phone: string;
+    siret?: string;
   };
   dateTime: string;
   items: ReceiptItem[];
+  subtotalHT?: number;
+  totalTVA?: number;
   subtotal?: number;
   discount?: number;
   total: number;
@@ -66,8 +69,8 @@ export function buildReceiptHTML(data: ReceiptData): string {
     @page { size: 80mm 297mm; margin: 0; }
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
-      font-family: 'Courier New', Courier, monospace;
-      font-size: 12px;
+      font-family: 'Arial', 'Helvetica', sans-serif;
+      font-size: 13px;
       line-height: 1.3;
       width: 80mm;
       max-width: 80mm;
@@ -76,20 +79,22 @@ export function buildReceiptHTML(data: ReceiptData): string {
       background: #fff;
     }
     .receipt-header { text-align: center; margin-bottom: 6px; }
-    .receipt-header .name { font-weight: bold; font-size: 14px; }
-    .receipt-header .address, .receipt-header .phone { font-size: 11px; }
-    .receipt-date { margin-bottom: 6px; font-size: 11px; }
+    .receipt-header .name { font-weight: bold; font-size: 16px; }
+    .receipt-header .address, .receipt-header .phone { font-size: 12px; }
+    .receipt-siret { text-align: center; font-size: 11px; margin-bottom: 4px; }
+    .receipt-date { margin-bottom: 6px; font-size: 12px; }
     .receipt-line {
       display: flex;
       justify-content: space-between;
       gap: 8px;
       margin-bottom: 2px;
-      font-size: 11px;
+      font-size: 12px;
     }
     .receipt-item { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .receipt-price { flex-shrink: 0; text-align: right; }
     .receipt-total { font-weight: bold; margin-top: 4px; padding-top: 4px; border-top: 1px dashed #000; }
-    .receipt-footer { text-align: center; margin-top: 8px; font-size: 11px; }
+    .receipt-tva-section { margin-top: 4px; font-size: 12px; }
+    .receipt-footer { text-align: center; margin-top: 8px; font-size: 12px; }
   </style>
 </head>
 <body>
@@ -98,9 +103,25 @@ export function buildReceiptHTML(data: ReceiptData): string {
     ${header.address ? `<div class="address">${escapeHtml(header.address)}</div>` : ''}
     ${header.city ? `<div class="address">${escapeHtml(header.city)}</div>` : ''}
     ${header.phone ? `<div class="phone">${escapeHtml(header.phone)}</div>` : ''}
+    ${header.siret ? `<div class="receipt-siret">SIRET: ${escapeHtml(header.siret)}</div>` : ''}
   </div>
   <div class="receipt-date">${escapeHtml(dateTime)}</div>
   ${itemsHtml}
+  ${data.subtotalHT != null ? `
+    <div class="receipt-tva-section">
+      <div class="receipt-line">
+        <span class="receipt-item">Sous-total HT</span>
+        <span class="receipt-price">${formatPrice(data.subtotalHT)} €</span>
+      </div>
+      <div class="receipt-line">
+        <span class="receipt-item">TVA (20%)</span>
+        <span class="receipt-price">${formatPrice(data.totalTVA ?? 0)} €</span>
+      </div>
+      <div class="receipt-line">
+        <span class="receipt-item">Sous-total TTC</span>
+        <span class="receipt-price">${formatPrice(data.subtotal ?? 0)} €</span>
+      </div>
+    </div>` : ''}
   ${discountHtml}
   <div class="receipt-line receipt-total">
     <span class="receipt-item">TOTAL</span>

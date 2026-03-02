@@ -139,7 +139,6 @@ function mapMethodToKey(method: PaymentMethod): keyof Pick<DayRow, 'amex' | 'cb'
     case 'contactless': return 'sansContact';
     case 'gift_card': return 'chequesCadeau';
     case 'free': return 'gratuit';
-    case 'technical': return 'gratuit';
     default: return null;
   }
 }

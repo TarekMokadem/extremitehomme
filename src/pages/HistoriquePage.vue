@@ -330,11 +330,25 @@ const paymentLabel = (method: PaymentMethod) => {
   return labels[method] || method;
 };
 
+// Paiements à afficher (avec fallback si vide, ex. vente gratuite)
+const getPaymentsToDisplay = (sale: SaleWithDetails): { method: PaymentMethod; amount: number }[] => {
+  const payments = sale.payments;
+  const list = Array.isArray(payments) ? payments : payments ? [payments] : [];
+  if (list.length > 0) {
+    return list.filter((p): p is { method: PaymentMethod; amount: number } =>
+      p && typeof p.method === 'string' && typeof p.amount === 'number'
+    );
+  }
+  return [{ method: 'free', amount: sale.total }];
+};
+
 // Modifier le mode de paiement d'une vente
 const openEditPayment = (sale: SaleWithDetails) => {
   saleToEditPayment.value = sale;
-  const current = sale.payments?.[0];
-  editPaymentMethod.value = current?.method ?? 'card';
+  const payments = sale.payments;
+  const list = Array.isArray(payments) && payments.length > 0 ? payments : [];
+  const current = list[0];
+  editPaymentMethod.value = current?.method ?? (sale.total === 0 ? 'free' : 'card');
 };
 
 const closeEditPayment = () => {
@@ -364,12 +378,15 @@ const saveEditPayment = async () => {
         .eq('sale_id', sale.id);
       if (deleteError) throw deleteError;
 
-      const { error: insertError } = await supabase.from('payments').insert({
-        sale_id: sale.id,
-        method: editPaymentMethod.value,
-        amount: sale.total,
-      } as any);
-      if (insertError) throw insertError;
+      // Gratuit : pas d'enregistrement en base (comme à la validation)
+      if (editPaymentMethod.value !== 'free') {
+        const { error: insertError } = await supabase.from('payments').insert({
+          sale_id: sale.id,
+          method: editPaymentMethod.value,
+          amount: sale.total,
+        } as any);
+        if (insertError) throw insertError;
+      }
     } finally {
       if (needsStatusToggle) {
         await (supabase as any)
@@ -582,7 +599,7 @@ watch([dateFilter, statusFilter], () => {
 
               <!-- Paiement -->
               <div class="hidden md:flex items-center gap-2">
-                <template v-for="payment in sale.payments" :key="payment.method">
+                <template v-for="(payment, idx) in getPaymentsToDisplay(sale)" :key="`${payment.method}-${idx}`">
                   <span class="inline-flex items-center gap-1 px-2 py-1 bg-gray-50 dark:bg-gray-700 rounded text-xs text-gray-600 dark:text-gray-300">
                     <component :is="paymentIcon(payment.method)" class="w-3.5 h-3.5" />
                     {{ paymentLabel(payment.method) }}
@@ -658,7 +675,7 @@ watch([dateFilter, statusFilter], () => {
                   <div class="border-t border-gray-200 dark:border-gray-600 pt-3 flex items-center justify-between gap-4 flex-wrap">
                     <div class="flex items-center gap-2 flex-wrap">
                       <span class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Paiement</span>
-                      <template v-for="payment in sale.payments" :key="payment.method">
+                      <template v-for="(payment, idx) in getPaymentsToDisplay(sale)" :key="`${payment.method}-${idx}`">
                         <span class="inline-flex items-center gap-1 px-2 py-1 bg-white dark:bg-gray-600 rounded-lg text-sm text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-500">
                           <component :is="paymentIcon(payment.method)" class="w-4 h-4" />
                           {{ paymentLabel(payment.method) }} — {{ payment.amount.toFixed(2) }}€

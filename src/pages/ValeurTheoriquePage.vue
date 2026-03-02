@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
-import { Package, RefreshCw } from 'lucide-vue-next';
+import { Package, Printer, Download, RefreshCw } from 'lucide-vue-next';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 
 interface BrandRow {
@@ -81,6 +81,43 @@ async function loadData() {
   }
 }
 
+function handlePrint() {
+  window.print();
+}
+
+function handleDownloadPDF() {
+  const win = window.open('', '_blank', 'width=900,height=700');
+  if (!win) { alert('Autorisez les pop-ups'); return; }
+
+  const html = `<!DOCTYPE html>
+<html><head><meta charset="utf-8">
+<title>Valeur théorique du stock</title>
+<style>
+  body { font-family: Arial, sans-serif; padding: 20px; color: #000; }
+  h1 { font-size: 18px; text-align: center; margin-bottom: 20px; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+  th { background: #f5f5f5; font-weight: 600; font-size: 11px; text-transform: uppercase; }
+  .text-right { text-align: right; }
+  tfoot tr { background: #f5f5f5; font-weight: bold; }
+</style>
+</head><body>
+<h1>Valeur théorique du stock</h1>
+<table>
+<thead><tr><th>Marque</th><th class="text-right">Nombre de produits</th><th class="text-right">Prix HT total</th><th class="text-right">Prix TTC total</th></tr></thead>
+<tbody>
+${brandRows.value.map(row => `<tr><td>${row.brand}</td><td class="text-right">${row.count.toLocaleString('fr-FR')}</td><td class="text-right">${formatPrice(row.totalHt)} €</td><td class="text-right">${formatPrice(row.totalTtc)} €</td></tr>`).join('')}
+</tbody>
+<tfoot><tr><td>Total</td><td class="text-right">${grandTotal.value.count.toLocaleString('fr-FR')}</td><td class="text-right">${formatPrice(grandTotal.value.totalHt)} €</td><td class="text-right">${formatPrice(grandTotal.value.totalTtc)} €</td></tr></tfoot>
+</table>
+</body></html>`;
+
+  win.document.write(html);
+  win.document.close();
+  win.focus();
+  setTimeout(() => win.print(), 300);
+}
+
 onMounted(() => loadData());
 </script>
 
@@ -98,14 +135,32 @@ onMounted(() => loadData());
             Valeur totale du stock par marque (produits physiques uniquement)
           </p>
         </div>
-        <button
-          @click="loadData"
-          :disabled="isLoading"
-          class="inline-flex items-center gap-2 px-4 py-2 bg-gray-900 dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white rounded-xl hover:bg-gray-800 transition-colors disabled:opacity-50"
-        >
-          <RefreshCw :class="['w-4 h-4', isLoading && 'animate-spin']" />
-          Rafraîchir
-        </button>
+        <div class="flex gap-2">
+          <button
+            @click="handlePrint"
+            :disabled="isLoading || brandRows.length === 0"
+            class="inline-flex items-center gap-2 px-4 py-2 bg-gray-900 dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white rounded-xl hover:bg-gray-800 transition-colors disabled:opacity-50"
+          >
+            <Printer class="w-4 h-4" />
+            Imprimer
+          </button>
+          <button
+            @click="handleDownloadPDF"
+            :disabled="isLoading || brandRows.length === 0"
+            class="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-50"
+          >
+            <Download class="w-4 h-4" />
+            Télécharger PDF
+          </button>
+          <button
+            @click="loadData"
+            :disabled="isLoading"
+            class="inline-flex items-center gap-2 px-4 py-2 bg-gray-900 dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white rounded-xl hover:bg-gray-800 transition-colors disabled:opacity-50"
+          >
+            <RefreshCw :class="['w-4 h-4', isLoading && 'animate-spin']" />
+            Rafraîchir
+          </button>
+        </div>
       </div>
 
       <!-- Table card -->

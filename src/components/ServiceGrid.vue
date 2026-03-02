@@ -98,7 +98,7 @@ const handleSearchBlur = (): void => {
 };
 
 const selectService = (product: Product): void => {
-  addToCart(product, 1, vendor.value ?? undefined, 'sale');
+  addToCart(product, 1, vendor.value ?? undefined);
   searchQuery.value = '';
   autocompleteResults.value = [];
   showAutocomplete.value = false;
@@ -109,7 +109,7 @@ const handleSearchKeydown = (event: KeyboardEvent): void => {
   if (event.key === 'Enter' && autocompleteResults.value.length > 0) {
     event.preventDefault();
     const firstResult = autocompleteResults.value[0];
-    if (firstResult) addToCart(firstResult, 1, vendor.value ?? undefined, 'sale');
+    if (firstResult) addToCart(firstResult, 1, vendor.value ?? undefined);
     searchQuery.value = '';
     autocompleteResults.value = [];
     showAutocomplete.value = false;

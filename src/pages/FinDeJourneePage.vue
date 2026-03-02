@@ -70,7 +70,7 @@ const handlePrint = () => {
 
       <template v-else>
         <!-- Tableaux récap -->
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 print:grid-cols-2">
+        <div class="print-tables-container grid grid-cols-1 lg:grid-cols-2 gap-6">
           <!-- Mode règlement -->
           <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden print:rounded-none print:border print:shadow-none">
             <div class="px-4 py-3 bg-gray-100 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
@@ -222,16 +222,33 @@ const handlePrint = () => {
 @media print {
   @page { size: 80mm 297mm; margin: 2mm; }
   body, html { width: 80mm !important; }
-  main { padding: 0 !important; font-size: 9px !important; }
+  main { padding: 0 !important; }
 
-  * { color: black !important; background: white !important; border-color: #ddd !important; }
+  * {
+    color: black !important;
+    background: white !important;
+    border-color: #ddd !important;
+    font-family: 'Arial', 'Helvetica', sans-serif !important;
+  }
+
+  body, main, p, span, td, th, li {
+    font-size: 14px !important;
+  }
+
+  h1 { font-size: 16px !important; text-align: center !important; font-weight: bold !important; }
+  h2 { font-size: 16px !important; font-weight: bold !important; }
+
+  table { font-size: 13px !important; width: 100% !important; }
+  th, td { padding: 2px 3px !important; }
+  table .min-w-\[700px\] { min-width: 0 !important; }
+
+  .print-tables-container {
+    display: flex !important;
+    flex-direction: column !important;
+  }
 
   .rounded-xl, .rounded-2xl { border-radius: 0 !important; }
   .shadow, .shadow-sm, .shadow-lg { box-shadow: none !important; }
-
-  table { font-size: 8px !important; width: 100% !important; }
-  th, td { padding: 1px 2px !important; }
-  table .min-w-\[700px\] { min-width: 0 !important; }
 
   .journal-content { display: block !important; overflow: visible !important; }
   .journal-content table { min-width: 0 !important; }
@@ -244,23 +261,20 @@ const handlePrint = () => {
   .print\:max-w-none { max-width: none !important; }
   .print\:flex-row { flex-direction: row !important; }
 
-  .print\:grid-cols-2 { grid-template-columns: repeat(2, 1fr) !important; }
   .print\:grid-cols-3 { grid-template-columns: repeat(3, 1fr) !important; }
 
   .max-w-5xl { max-width: none !important; }
-  .space-y-6 > * + * { margin-top: 4px !important; }
-  .gap-6 { gap: 4px !important; }
-  .gap-4 { gap: 2px !important; }
+  .space-y-6 > * + * { margin-top: 6px !important; }
+  .gap-6 { gap: 6px !important; }
+  .gap-4 { gap: 4px !important; }
 
-  h1 { font-size: 11px !important; text-align: center !important; }
-  h2 { font-size: 9px !important; }
-  .px-4 { padding-left: 2px !important; padding-right: 2px !important; }
-  .py-3 { padding-top: 1px !important; padding-bottom: 1px !important; }
+  .px-4 { padding-left: 3px !important; padding-right: 3px !important; }
+  .py-3 { padding-top: 2px !important; padding-bottom: 2px !important; }
   .py-2 { padding-top: 1px !important; padding-bottom: 1px !important; }
-  .p-4 { padding: 2px !important; }
+  .p-4 { padding: 3px !important; }
 
-  .grid-cols-3 .text-xl { font-size: 10px !important; }
-  .grid-cols-3 .text-xs { font-size: 7px !important; }
-  .grid-cols-3 .p-4 { padding: 2px !important; }
+  .grid-cols-3 .text-xl { font-size: 14px !important; }
+  .grid-cols-3 .text-xs { font-size: 11px !important; }
+  .grid-cols-3 .p-4 { padding: 3px !important; }
 }
 </style>

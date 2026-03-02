@@ -16,7 +16,7 @@ export type DiscountType = 'euro' | 'percent';
 export type SaleStatus = 'pending' | 'completed' | 'cancelled' | 'refunded';
 export type PaymentMethod = 'cash' | 'card' | 'contactless' | 'check' | 'gift_card' | 'amex' | 'free';
 export type StockMovementType = 'in' | 'out' | 'adjustment';
-export type StockCategory = 'sale' | 'technical';
+export type StockCategory = 'sale';
 
 // Tables
 export interface Vendor {
@@ -365,7 +365,6 @@ export interface CartItem {
   vendor?: Vendor;
   /** Prix unitaire TTC fixé manuellement (ex. Bon cadeau). Si défini, prioritaire sur product.price_ttc */
   fixedPriceTTC?: number;
-  /** Type de stock utilisé ('sale' par défaut, 'technical' pour usage technique) */
   stockCategory?: StockCategory;
   // Calculés
   price_ht: number;

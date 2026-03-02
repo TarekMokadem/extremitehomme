@@ -10,7 +10,6 @@ import type {
   PaymentMethod,
   DiscountType,
   Vendor,
-  StockCategory,
 } from '../types/database';
 
 // State global du panier
@@ -42,18 +41,17 @@ export function useSales() {
   };
 
   // Stock disponible pour ajout au panier (produits uniquement ; services = illimité)
-  const getAvailableStock = (product: Product, excludeLineId?: string, stockCat?: StockCategory) => {
+  const getAvailableStock = (product: Product, excludeLineId?: string) => {
     if (product.type !== 'product') return Infinity;
     const inCart = cartItems.value
-      .filter((i) => i.product.id === product.id && i.lineId !== excludeLineId && (i.stockCategory ?? 'sale') === (stockCat ?? 'sale'))
+      .filter((i) => i.product.id === product.id && i.lineId !== excludeLineId)
       .reduce((sum, i) => sum + i.quantity, 0);
-    const totalStock = (stockCat === 'technical') ? (product.stock_technical ?? 0) : (product.stock ?? 0);
-    return Math.max(0, totalStock - inCart);
+    return Math.max(0, (product.stock ?? 0) - inCart);
   };
 
   // Ajouter un produit au panier
-  const addToCart = (product: Product, quantity: number = 1, vendor?: Vendor, stockCategory: StockCategory = 'sale') => {
-    const maxQty = getAvailableStock(product, undefined, stockCategory);
+  const addToCart = (product: Product, quantity: number = 1, vendor?: Vendor) => {
+    const maxQty = getAvailableStock(product);
     const qty = product.type === 'product' ? Math.min(quantity, maxQty) : quantity;
     if (qty <= 0) return;
 
@@ -64,7 +62,6 @@ export function useSales() {
       quantity: qty,
       vendor_id: vendor?.id,
       vendor: vendor,
-      stockCategory,
       price_ht: product.price_ht,
       tva_rate: product.tva_rate || DEFAULT_TVA_RATE,
       subtotal_ht: 0,
@@ -257,9 +254,10 @@ export function useSales() {
   );
 
   // Paiement complet ?
-  const isPaymentComplete = computed(() => 
-    totalPaid.value >= total.value && total.value > 0
-  );
+  const isPaymentComplete = computed(() => {
+    if (selectedPaymentMethods.value.some(p => p.method === 'free')) return true;
+    return totalPaid.value >= total.value && total.value > 0;
+  });
 
   // =====================================================
   // VALIDATION DE LA VENTE
@@ -272,7 +270,7 @@ export function useSales() {
     return `T-${dateStr}-${timeStr}`;
   };
 
-  const validateSale = async (vendorId: string, clientId?: string): Promise<Sale | null> => {
+  const validateSale = async (vendorId?: string, clientId?: string): Promise<Sale | null> => {
     if (isEmpty.value) {
       error.value = 'Le panier est vide';
       return null;
@@ -288,42 +286,29 @@ export function useSales() {
       return null;
     }
 
-    // Vérifier que le vendorId est un UUID valide (pas "demo")
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    if (!uuidRegex.test(vendorId)) {
-      error.value = 'Aucun vendeur sélectionné. Veuillez sélectionner un vendeur.';
-      console.error('vendorId invalide:', vendorId);
-      return null;
-    }
-
     isProcessing.value = true;
     error.value = null;
     
-    console.log('Validation vente - vendorId:', vendorId, 'clientId:', clientId);
+    console.log('Validation vente - vendorId:', vendorId ?? '(aucun)', 'clientId:', clientId);
 
     try {
-      // VÉRIFIER LE STOCK AVANT TOUTE CRÉATION (vente + technique séparément)
+      // VÉRIFIER LE STOCK AVANT TOUTE CRÉATION
       if (isSupabaseConfigured()) {
-        // Clé = productId|stockCategory
-        const qtyByKey = new Map<string, { qty: number; name: string; stockCat: string }>();
+        const qtyByProduct = new Map<string, { qty: number; name: string }>();
         for (const item of cartItems.value) {
           if (item.product.type === 'product') {
-            const cat = item.stockCategory ?? 'sale';
-            const key = `${item.product.id}|${cat}`;
-            const prev = qtyByKey.get(key);
+            const prev = qtyByProduct.get(item.product.id);
             if (prev) {
               prev.qty += item.quantity;
             } else {
-              qtyByKey.set(key, { qty: item.quantity, name: item.product.name, stockCat: cat });
+              qtyByProduct.set(item.product.id, { qty: item.quantity, name: item.product.name });
             }
           }
         }
-        for (const [key, { qty: totalQty, name, stockCat }] of qtyByKey) {
-          const productId = key.split('|')[0];
-          const stockColumn = stockCat === 'technical' ? 'stock_technical' : 'stock';
+        for (const [productId, { qty: totalQty, name }] of qtyByProduct) {
           const { data: productRow, error: fetchErr } = await supabase
             .from('products')
-            .select(`${stockColumn}`)
+            .select('stock')
             .eq('id', productId)
             .single();
 
@@ -331,10 +316,10 @@ export function useSales() {
             throw new Error(`Produit ${name} introuvable`);
           }
 
-          const currentStock = (productRow as Record<string, number>)[stockColumn] ?? 0;
+          const currentStock = (productRow as Record<string, number>).stock ?? 0;
           if (currentStock < totalQty) {
             throw new Error(
-              `Stock insuffisant pour "${name}" (${stockCat === 'technical' ? 'technique' : 'vente'}) : ${currentStock} en stock, ${totalQty} demandé`
+              `Stock insuffisant pour "${name}" : ${currentStock} en stock, ${totalQty} demandé`
             );
           }
         }
@@ -375,7 +360,7 @@ export function useSales() {
       // Créer l'objet vente (avec hash NF525)
       const saleData = {
         ticket_number: ticketNumber,
-        vendor_id: vendorId,
+        vendor_id: vendorId || null,
         client_id: clientId || null,
         subtotal_ht: subtotalHT.value,
         total_tva: totalTVA.value,
@@ -394,7 +379,7 @@ export function useSales() {
       const saleItems = cartItems.value.map(item => ({
         product_id: item.product.id,
         variant_id: item.variant?.id || null,
-        vendor_id: item.vendor_id || vendorId, // Utiliser le vendeur de l'article ou le vendeur principal
+        vendor_id: item.vendor_id || vendorId || null,
         product_name: item.product.name,
         price_ht: item.price_ht,
         tva_rate: item.tva_rate,
@@ -405,10 +390,12 @@ export function useSales() {
       }));
 
       // Créer les paiements
-      const payments = selectedPaymentMethods.value.map(p => ({
-        method: p.method,
-        amount: p.amount,
-      }));
+      const payments = selectedPaymentMethods.value
+        .filter(p => p.method !== 'free')
+        .map(p => ({
+          method: p.method,
+          amount: p.amount,
+        }));
 
       if (!isSupabaseConfigured()) {
         const mockSale: Sale = {
@@ -446,27 +433,26 @@ export function useSales() {
 
       if (itemsError) throw itemsError;
 
-      // 3. Créer les paiements
-      const paymentsWithSaleId = payments.map(p => ({
-        ...p,
-        sale_id: sale.id,
-      }));
+      // 3. Créer les paiements (sauf si gratuit — aucun enregistrement)
+      if (payments.length > 0) {
+        const paymentsWithSaleId = payments.map(p => ({
+          ...p,
+          sale_id: sale.id,
+        }));
 
-      const { error: paymentsError } = await supabase
-        .from('payments')
-        .insert(paymentsWithSaleId);
+        const { error: paymentsError } = await supabase
+          .from('payments')
+          .insert(paymentsWithSaleId);
 
-      if (paymentsError) throw paymentsError;
+        if (paymentsError) throw paymentsError;
+      }
 
       // 4. Mettre à jour le stock (produits physiques uniquement)
       for (const item of cartItems.value) {
         if (item.product.type === 'product') {
-          const stockCat = item.stockCategory ?? 'sale';
-          const stockColumn = stockCat === 'technical' ? 'stock_technical' : 'stock';
-
           const { data: productRow, error: fetchErr } = await supabase
             .from('products')
-            .select(`${stockColumn}`)
+            .select('stock')
             .eq('id', item.product.id)
             .single();
 
@@ -474,17 +460,17 @@ export function useSales() {
             throw new Error(`Produit ${item.product.name} introuvable`);
           }
 
-          const currentStock = (productRow as Record<string, number>)[stockColumn] ?? 0;
+          const currentStock = (productRow as Record<string, number>).stock ?? 0;
           if (currentStock < item.quantity) {
             throw new Error(
-              `Stock insuffisant pour "${item.product.name}" (${stockCat === 'technical' ? 'technique' : 'vente'}) : ${currentStock} en stock, ${item.quantity} demandé`
+              `Stock insuffisant pour "${item.product.name}" : ${currentStock} en stock, ${item.quantity} demandé`
             );
           }
 
           const newStock = currentStock - item.quantity;
           const { error: updateErr } = await supabase
             .from('products')
-            .update({ [stockColumn]: newStock, updated_at: new Date().toISOString() } as Record<string, unknown>)
+            .update({ stock: newStock, updated_at: new Date().toISOString() } as Record<string, unknown>)
             .eq('id', item.product.id);
 
           if (updateErr) throw updateErr;
@@ -494,10 +480,10 @@ export function useSales() {
             variant_id: item.variant?.id || null,
             type: 'out',
             quantity: -item.quantity,
-            reason: stockCat === 'technical' ? 'Utilisation technique' : 'Vente',
+            reason: 'Vente',
             reference_id: sale.id,
-            vendor_id: vendorId,
-            stock_type: stockCat,
+            vendor_id: vendorId || null,
+            stock_type: 'sale',
           } as Record<string, unknown>);
 
           if (moveErr) throw moveErr;
@@ -550,7 +536,7 @@ export function useSales() {
           record_id: sale.id,
           old_data: null,
           new_data: { ticket_number: ticketNumber, total: total.value } as any,
-          vendor_id: vendorId,
+          vendor_id: vendorId || null,
           hash: auditHash,
           previous_hash: lastAudit?.hash ?? null,
         } as Record<string, unknown>);
@@ -719,7 +705,7 @@ export function useSales() {
   // Quantité max pour une ligne (pour désactiver le bouton +)
   const getMaxQuantityForItem = (item: CartItem) => {
     if (item.product.type !== 'product') return Infinity;
-    return getAvailableStock(item.product, item.lineId, item.stockCategory) + item.quantity;
+    return getAvailableStock(item.product, item.lineId) + item.quantity;
   };
 
   return {

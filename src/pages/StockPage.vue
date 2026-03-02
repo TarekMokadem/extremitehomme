@@ -20,8 +20,7 @@ import {
 import { useStock } from '../composables/useStock';
 import { useAuth } from '../composables/useAuth';
 import { printBarcodeLabels, generateEAN13 } from '../lib/printBarcodeLabels';
-import { categoryUsesTechnicalStock } from '../lib/stockTechnicalCategories';
-import type { Product, StockCategory } from '../types/database';
+import type { Product } from '../types/database';
 import type { StockMovementType } from '../types/database';
 
 const {
@@ -84,16 +83,18 @@ interface ProductGroup {
   sizes: string[];
   barcodes: string[];
   totalStock: number;
-  totalStockTech: number;
   alertThreshold: number;
   hasAlert: boolean;
-  hasTechnicalStock: boolean;
 }
 const groupedProducts = computed(() => {
   const list = filteredProducts.value;
   const map = new Map<string, Product[]>();
   for (const p of list) {
-    const key = `${p.name}|${p.code ?? ''}|${p.category_id ?? ''}`;
+    const size = (p as Product & { size?: string | null }).size;
+    // Produits avec taille : groupés par modèle. Sans taille : chacun dans son propre groupe (évite 2x "Sans taille")
+    const key = size
+      ? `${p.name}|${p.code ?? ''}|${p.category_id ?? ''}`
+      : `${p.name}|${p.code ?? ''}|${p.category_id ?? ''}|${p.id}`;
     if (!map.has(key)) map.set(key, []);
     map.get(key)!.push(p);
   }
@@ -109,10 +110,8 @@ const groupedProducts = computed(() => {
     });
     const barcodes = products.map((p) => p.barcode).filter(Boolean) as string[];
     const totalStock = products.reduce((s, p) => s + p.stock, 0);
-    const totalStockTech = products.reduce((s, p) => s + (p.stock_technical ?? 0), 0);
     const alertThreshold = first.alert_threshold ?? 5;
     const hasAlert = products.some((p) => p.stock <= (p.alert_threshold ?? 5));
-    const hasTechnicalStock = categoryUsesTechnicalStock(first.category?.slug);
     groups.push({
       key: `${first.id}-${products.length}`,
       products,
@@ -126,10 +125,8 @@ const groupedProducts = computed(() => {
       sizes,
       barcodes,
       totalStock,
-      totalStockTech,
       alertThreshold,
       hasAlert,
-      hasTechnicalStock,
     });
   }
   return groups;
@@ -168,6 +165,16 @@ const goToPage = (p: number) => {
   currentPage.value = Math.max(1, Math.min(p, totalPages.value));
 };
 const pageInputValue = ref('');
+
+// Dialog stock par taille (produits avec tailles)
+const stockDetailGroup = ref<ProductGroup | null>(null);
+const openStockDetail = (group: ProductGroup) => {
+  if (group.sizes.length === 0) return;
+  stockDetailGroup.value = group;
+};
+const closeStockDetail = () => {
+  stockDetailGroup.value = null;
+};
 const syncPageInput = () => {
   pageInputValue.value = String(currentPage.value);
 };
@@ -180,6 +187,36 @@ watch(currentPage, () => syncPageInput(), { immediate: true });
 watch([filter, searchQuery], () => {
   currentPage.value = 1;
 });
+
+// Étiquettes : sélection de la variante pour les produits groupés
+const showLabelVariantPicker = ref(false);
+const labelGroup = ref<ProductGroup | null>(null);
+
+function openLabelForGroup(group: ProductGroup) {
+  if (group.products.length === 1) {
+    printLabelsForProduct(group.products[0]!);
+  } else {
+    labelGroup.value = group;
+    showLabelVariantPicker.value = true;
+  }
+}
+
+function pickLabelVariant(product: Product) {
+  showLabelVariantPicker.value = false;
+  labelGroup.value = null;
+  printLabelsForProduct(product);
+}
+
+function printLabelsForProduct(product: Product) {
+  const stock = Math.max(0, product.stock);
+  const maxLabels = 24;
+  const qty = Math.min(stock, maxLabels);
+  if (qty <= 0) {
+    alert('Aucun stock pour ce produit.');
+    return;
+  }
+  printBarcodeLabels(product, qty);
+}
 
 // Mouvement : sélection de la variante pour les produits groupés
 const showMovementVariantPicker = ref(false);
@@ -204,26 +241,16 @@ const movementProduct = ref<Product | null>(null);
 const movementType = ref<StockMovementType>('in');
 const movementQuantity = ref<number>(1);
 const movementReason = ref('');
-const movementStockType = ref<StockCategory>('sale');
-
-// Stock actuel du produit selon le type de stock sélectionné
 const currentStockForMovement = computed(() => {
   if (!movementProduct.value) return 0;
-  return movementStockType.value === 'technical'
-    ? (movementProduct.value.stock_technical ?? 0)
-    : movementProduct.value.stock;
+  return movementProduct.value.stock;
 });
-
-const movementProductUsesTechnicalStock = computed(() =>
-  movementProduct.value ? categoryUsesTechnicalStock(movementProduct.value.category?.slug) : false
-);
 
 function openMovementModal(product: Product) {
   movementProduct.value = product;
   movementType.value = 'in';
   movementQuantity.value = 1;
   movementReason.value = '';
-  movementStockType.value = 'sale';
   showMovementModal.value = true;
 }
 
@@ -250,7 +277,6 @@ async function submitMovement() {
       quantity: movementQuantity.value,
       reason: movementReason.value || defaultReason,
       vendor_id: currentVendor.value?.id ?? null,
-      stock_type: movementStockType.value,
     });
     closeMovementModal();
   } catch (e) {
@@ -343,8 +369,6 @@ const movementLabel = (type: string, quantity: number) => {
   return quantity >= 0 ? `+${quantity}` : `${quantity}`;
 };
 
-const stockTypeLabel = (st: string) => st === 'technical' ? 'Technique' : 'Vente';
-
 // Grilles de taille par catégorie (slug)
 const SHOE_CATEGORY_SLUGS = ['chaussures', 'boots', 'bottines', 'mocassins', 'souliers', 'tennis', 'baskets'];
 const FRENCH_SIZES = [36, 36.5, 37, 37.5, 38, 38.5, 39, 39.5, 40, 40.5, 41, 41.5, 42, 42.5, 43, 43.5, 44, 44.5, 45, 45.5, 46, 46.5, 47];
@@ -359,7 +383,6 @@ const selectedCategorySlug = computed(() => {
   return categories.value.find(c => c.id === id)?.slug || '';
 });
 const showShoeSizeChoice = computed(() => SHOE_CATEGORY_SLUGS.includes(selectedCategorySlug.value));
-const showTechnicalStock = computed(() => categoryUsesTechnicalStock(selectedCategorySlug.value));
 const shoeSizeType = ref<'fr' | 'uk'>('fr');
 const selectedSize = ref<string | null>(null);
 const selectedSizes = ref<string[]>([]);
@@ -372,7 +395,7 @@ const sizeGridForCategory = computed(() => {
       : ENGLISH_SIZES.map(s => `${s.fr} (${s.uk} UK)`);
   }
   if (slug === 'ceintures') return BELT_SIZES.map(s => String(s));
-  if (slug && !['echarpes', 'chaussettes', 'ceintures-tressees'].includes(slug)) return ['TU'];
+  if (slug && !['echarpes', 'chaussettes', 'ceintures-tressees', 'trousses'].includes(slug)) return ['TU'];
   return [];
 });
 
@@ -390,7 +413,6 @@ const newProduct = ref({
   price_ttc: 0,
   tva_rate: 0.2,
   stock: 0,
-  stock_technical: 0,
   alert_threshold: 5,
 });
 
@@ -409,7 +431,6 @@ function openAddProductModal() {
     price_ttc: 0,
     tva_rate: 0.2,
     stock: 0,
-    stock_technical: 0,
     alert_threshold: 5,
   };
   selectedSize.value = null;
@@ -454,14 +475,14 @@ function selectSize(size: string) {
 }
 
 function toggleSizeMulti(size: string) {
-  const idx = selectedSizes.value.indexOf(size);
-  if (idx >= 0) {
-    selectedSizes.value.splice(idx, 1);
-    delete sizeDetails.value[size];
+  if (selectedSizes.value.includes(size)) {
+    selectedSizes.value = selectedSizes.value.filter(s => s !== size);
+    const { [size]: _, ...rest } = sizeDetails.value;
+    sizeDetails.value = rest;
   } else {
-    selectedSizes.value.push(size);
+    selectedSizes.value = [...selectedSizes.value, size];
     if (!sizeDetails.value[size]) {
-      sizeDetails.value[size] = { barcode: '', stock: 0 };
+      sizeDetails.value = { ...sizeDetails.value, [size]: { barcode: '', stock: 0 } };
     }
   }
 }
@@ -501,7 +522,6 @@ async function submitAddProduct() {
           tva_rate: 0.2,
           size: size,
           stock: Math.max(0, Number(details.stock) || 0),
-          stock_technical: showTechnicalStock.value ? 0 : undefined,
           alert_threshold: Math.max(0, Number(newProduct.value.alert_threshold) || 5),
         });
       }
@@ -519,7 +539,6 @@ async function submitAddProduct() {
         tva_rate: 0.2,
         size: null,
         stock: Math.max(0, Number(newProduct.value.stock) || 0),
-        stock_technical: showTechnicalStock.value ? Math.max(0, Number(newProduct.value.stock_technical) || 0) : undefined,
         alert_threshold: Math.max(0, Number(newProduct.value.alert_threshold) || 5),
       });
     }
@@ -644,7 +663,6 @@ async function submitEditProduct() {
             barcode: details.barcode.trim() || null,
             size,
             stock: Math.max(0, Number(details.stock) || 0),
-            stock_technical: 0,
           });
         }
       }
@@ -655,6 +673,7 @@ async function submitEditProduct() {
         size: null,
       });
     }
+    await loadProducts();
     closeEditProductModal();
   } catch (e) {
     alert(e instanceof Error ? e.message : 'Erreur lors de la mise à jour');
@@ -782,7 +801,6 @@ onMounted(() => {
               <tr>
                 <th class="px-4 py-3 text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">Date</th>
                 <th class="px-4 py-3 text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">Produit</th>
-                <th class="px-4 py-3 text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">Stock</th>
                 <th class="px-4 py-3 text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">Type</th>
                 <th class="px-4 py-3 text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">Quantité</th>
                 <th class="px-4 py-3 text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">Motif</th>
@@ -797,11 +815,6 @@ onMounted(() => {
                 <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">{{ formatDate(m.created_at) }}</td>
                 <td class="px-4 py-3 text-sm font-medium text-gray-900 dark:text-white">
                   {{ getProductName(m.product_id) }}
-                </td>
-                <td class="px-4 py-3">
-                  <span :class="['inline-flex px-2 py-0.5 rounded text-xs font-medium', m.stock_type === 'technical' ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300' : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300']">
-                    {{ stockTypeLabel(m.stock_type) }}
-                  </span>
                 </td>
                 <td class="px-4 py-3">
                   <span
@@ -843,8 +856,7 @@ onMounted(() => {
                 <th class="px-3 py-3 text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider min-w-[90px]">Modèle</th>
                 <th class="px-3 py-3 text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider min-w-[110px]">Catégorie</th>
                 <th class="px-3 py-3 text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider min-w-[100px]">Empl.</th>
-                <th class="px-3 py-3 text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider text-center min-w-[50px]" title="Stock de vente">Vente</th>
-                <th class="px-3 py-3 text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider text-center min-w-[50px]" title="Stock technique">Tech.</th>
+                <th class="px-3 py-3 text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider text-center min-w-[50px]">Stock</th>
                 <th class="px-3 py-3 text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider text-center min-w-[55px]">Seuil</th>
                 <th class="px-3 py-3 text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider min-w-[200px]">Actions</th>
               </tr>
@@ -874,12 +886,18 @@ onMounted(() => {
                 <td class="px-3 py-3 text-sm text-gray-600 dark:text-gray-300">{{ group.model || '—' }}</td>
                 <td class="px-3 py-3 text-sm text-gray-500 dark:text-gray-400">{{ group.category?.name || '—' }}</td>
                 <td class="px-3 py-3 text-sm text-gray-500 dark:text-gray-400">{{ group.location || '—' }}</td>
-                <td class="px-3 py-3 text-center font-semibold" :class="group.hasAlert ? 'text-amber-600 dark:text-amber-400' : 'text-gray-900 dark:text-white'">
-                  {{ group.totalStock }}
-                </td>
-                <td class="px-3 py-3 text-center">
-                  <span v-if="group.hasTechnicalStock" class="font-semibold text-blue-600 dark:text-blue-400">{{ group.totalStockTech }}</span>
-                  <span v-else class="text-gray-400 dark:text-gray-500">—</span>
+                <td class="px-3 py-3 text-center" :class="group.hasAlert ? 'text-amber-600 dark:text-amber-400' : 'text-gray-900 dark:text-white'">
+                  <button
+                    v-if="group.sizes.length > 0"
+                    type="button"
+                    @click="openStockDetail(group)"
+                    class="font-semibold cursor-pointer hover:underline focus:outline-none focus:ring-2 focus:ring-gray-400 dark:focus:ring-emerald-500 rounded px-1"
+                    :class="group.hasAlert ? 'text-amber-600 dark:text-amber-400' : 'text-gray-900 dark:text-white'"
+                    title="Cliquer pour voir le stock par taille"
+                  >
+                    {{ group.totalStock }}
+                  </button>
+                  <span v-else class="font-semibold">{{ group.totalStock }}</span>
                 </td>
                 <td class="px-3 py-3 text-center text-gray-600 dark:text-gray-300">
                   {{ group.alertThreshold }}
@@ -911,7 +929,7 @@ onMounted(() => {
                       Modifier
                     </button>
                     <button
-                      @click="group.products.forEach(p => printBarcodeLabels(p))"
+                      @click="openLabelForGroup(group)"
                       class="inline-flex items-center gap-1 px-2 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600"
                       title="Imprimer étiquettes"
                     >
@@ -1044,6 +1062,79 @@ onMounted(() => {
         </div>
       </Teleport>
 
+      <!-- Dialog stock par taille -->
+      <Teleport to="body">
+        <div
+          v-if="stockDetailGroup"
+          class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
+          @click.self="closeStockDetail"
+        >
+          <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl max-w-sm w-full p-6 border border-gray-200 dark:border-gray-700" @click.stop>
+            <div class="flex items-center justify-between mb-4">
+              <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Stock par taille</h3>
+              <button
+                @click="closeStockDetail"
+                class="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
+                aria-label="Fermer"
+              >
+                <X class="w-5 h-5" />
+              </button>
+            </div>
+            <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">{{ stockDetailGroup.name }}</p>
+            <div class="space-y-2 mb-4">
+              <div
+                v-for="p in stockDetailGroup.products"
+                :key="p.id"
+                class="flex justify-between items-center py-2 px-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg"
+              >
+                <span class="text-gray-700 dark:text-gray-300">{{ (p as Product & { size?: string | null }).size || 'Sans taille' }}</span>
+                <span class="font-semibold tabular-nums text-gray-900 dark:text-white">{{ p.stock }}</span>
+              </div>
+            </div>
+            <div class="flex justify-between items-center pt-3 border-t border-gray-200 dark:border-gray-600">
+              <span class="font-medium text-gray-700 dark:text-gray-300">Total</span>
+              <span class="text-lg font-bold text-gray-900 dark:text-white">{{ stockDetailGroup.totalStock }}</span>
+            </div>
+            <button
+              @click="closeStockDetail"
+              class="mt-6 w-full px-4 py-2.5 bg-gray-900 dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white rounded-xl hover:bg-gray-800 font-medium"
+            >
+              Fermer
+            </button>
+          </div>
+        </div>
+      </Teleport>
+
+      <!-- Modal choix variante pour étiquettes -->
+      <Teleport to="body">
+        <div
+          v-if="showLabelVariantPicker && labelGroup"
+          class="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50"
+          @click.self="showLabelVariantPicker = false; labelGroup = null"
+        >
+          <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl max-w-sm w-full p-6 border border-gray-200 dark:border-gray-700" @click.stop>
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">Imprimer étiquettes — Choisir la taille</h3>
+            <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">{{ labelGroup.name }}</p>
+            <div class="flex flex-wrap gap-2">
+              <button
+                v-for="p in labelGroup.products"
+                :key="p.id"
+                @click="pickLabelVariant(p)"
+                class="px-4 py-2 rounded-xl bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 font-medium transition-colors"
+              >
+                {{ (p as any).size || 'Sans taille' }} (stock: {{ p.stock }})
+              </button>
+            </div>
+            <button
+              @click="showLabelVariantPicker = false; labelGroup = null"
+              class="mt-4 w-full px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700"
+            >
+              Annuler
+            </button>
+          </div>
+        </div>
+      </Teleport>
+
       <!-- Modal mouvement -->
       <Teleport to="body">
         <div
@@ -1059,25 +1150,10 @@ onMounted(() => {
             </div>
             <p class="text-sm text-gray-600 dark:text-gray-300 mb-4">
               {{ movementProduct.name }}
-              — Stock {{ movementStockType === 'technical' ? 'technique' : 'vente' }} actuel : <strong>{{ currentStockForMovement }}</strong>
+              — Stock actuel : <strong>{{ currentStockForMovement }}</strong>
             </p>
 
             <div class="space-y-4">
-              <div v-if="movementProductUsesTechnicalStock">
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Type de stock</label>
-                <div class="flex rounded-xl border border-gray-200 dark:border-gray-600 overflow-hidden">
-                  <button
-                    type="button"
-                    @click="movementStockType = 'sale'"
-                    :class="['flex-1 px-4 py-2 text-sm font-medium transition-colors', movementStockType === 'sale' ? 'bg-gray-900 dark:bg-emerald-600 text-white' : 'bg-gray-50 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600']"
-                  >Vente</button>
-                  <button
-                    type="button"
-                    @click="movementStockType = 'technical'"
-                    :class="['flex-1 px-4 py-2 text-sm font-medium transition-colors', movementStockType === 'technical' ? 'bg-blue-600 text-white' : 'bg-gray-50 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600']"
-                  >Technique</button>
-                </div>
-              </div>
               <div>
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Type</label>
                 <select
@@ -1385,20 +1461,11 @@ onMounted(() => {
                   />
                 </div>
               </div>
-              <div v-if="selectedSizes.length === 0" :class="['grid gap-4', showTechnicalStock ? 'grid-cols-3' : 'grid-cols-2']">
+              <div v-if="selectedSizes.length === 0" class="grid grid-cols-2 gap-4">
                 <div>
-                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Stock vente</label>
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Stock</label>
                   <input
                     v-model.number="newProduct.stock"
-                    type="number"
-                    min="0"
-                    class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-xl focus:ring-2 focus:ring-gray-900 dark:focus:ring-emerald-500 focus:border-transparent"
-                  />
-                </div>
-                <div v-if="showTechnicalStock">
-                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Stock technique</label>
-                  <input
-                    v-model.number="newProduct.stock_technical"
                     type="number"
                     min="0"
                     class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-xl focus:ring-2 focus:ring-gray-900 dark:focus:ring-emerald-500 focus:border-transparent"
