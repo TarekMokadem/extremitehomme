@@ -21,19 +21,24 @@ import {
   X
 } from 'lucide-vue-next';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import { useAuth } from '../composables/useAuth';
 import type { Sale, PaymentMethod, SaleStatus } from '../types/database';
+import type { Vendor } from '../types/database';
 
 // Types (vendor/client partiels depuis l'API)
-interface SaleWithDetails extends Omit<Sale, 'vendor' | 'client'> {
-  items?: {
-    id: string;
-    product_name: string;
-    quantity: number;
-    price_ht: number;
-    subtotal_ttc: number;
-    vendor_id?: string | null;
-    vendor?: { first_name: string; last_name: string };
-  }[];
+interface SaleItemWithVendor {
+  id: string;
+  product_name: string;
+  quantity: number;
+  price_ht: number;
+  subtotal_ht?: number;
+  tva?: number;
+  subtotal_ttc: number;
+  vendor_id?: string | null;
+  vendor?: { first_name: string; last_name: string };
+}
+interface SaleWithDetails extends Omit<Sale, 'vendor' | 'client' | 'items' | 'payments'> {
+  items?: SaleItemWithVendor[];
   payments?: {
     method: PaymentMethod;
     amount: number;
@@ -59,6 +64,8 @@ const expandedSaleId = ref<string | null>(null);
 const saleToEditPayment = ref<SaleWithDetails | null>(null);
 const editPaymentMethod = ref<PaymentMethod>('card');
 const isSavingPayment = ref(false);
+const vendorsList = ref<Vendor[]>([]);
+const { loadVendors } = useAuth();
 
 // Moyens de paiement (aligné avec la caisse)
 const paymentMethodsList: { id: PaymentMethod; label: string; icon: typeof Banknote }[] = [
@@ -196,7 +203,7 @@ const loadSales = async () => {
         *,
         vendor:vendors(first_name, last_name),
         client:clients(first_name, last_name),
-        items:sale_items(id, product_name, quantity, price_ht, subtotal_ttc, vendor_id, vendor:vendors(first_name, last_name)),
+        items:sale_items(id, product_name, quantity, price_ht, subtotal_ht, tva, subtotal_ttc, vendor_id, vendor:vendors(first_name, last_name)),
         payments(method, amount)
       `)
       .order('created_at', { ascending: false })
@@ -361,6 +368,8 @@ const saveEditPayment = async () => {
 
   isSavingPayment.value = true;
   const needsStatusToggle = sale.status === 'completed';
+  const isFree = editPaymentMethod.value === 'free';
+  const effectiveTotal = isFree ? 0 : getSaleEffectiveTotal(sale);
 
   try {
     if (needsStatusToggle) {
@@ -378,12 +387,50 @@ const saveEditPayment = async () => {
         .eq('sale_id', sale.id);
       if (deleteError) throw deleteError;
 
-      // Gratuit : pas d'enregistrement en base (comme à la validation)
-      if (editPaymentMethod.value !== 'free') {
+      // Gratuit : mettre la vente à 0€ (non compté dans le CA)
+      if (isFree) {
+        const { error: saleErr } = await supabase
+          .from('sales')
+          .update({
+            total: 0,
+            subtotal_ht: 0,
+            total_tva: 0,
+            subtotal_ttc: 0,
+            discount_amount: 0,
+          } as any)
+          .eq('id', sale.id);
+        if (saleErr) throw saleErr;
+        sale.total = 0;
+        sale.subtotal_ht = 0;
+        sale.total_tva = 0;
+        sale.subtotal_ttc = 0;
+        sale.discount_amount = 0;
+      } else {
+        // Restaurer les totaux depuis les sale_items si la vente était à 0 (ex. après Gratuit)
+        if (sale.total === 0) {
+          const items = sale.items || [];
+          const newSubtotalTtc = items.reduce((s, i) => s + (i.subtotal_ttc ?? 0), 0);
+          const newSubtotalHt = items.reduce((s, i) => s + (i.subtotal_ht ?? 0), 0);
+          const newTva = items.reduce((s, i) => s + (i.tva ?? 0), 0);
+          const { error: saleErr } = await supabase
+            .from('sales')
+            .update({
+              total: newSubtotalTtc,
+              subtotal_ht: newSubtotalHt,
+              total_tva: newTva,
+              subtotal_ttc: newSubtotalTtc,
+            } as any)
+            .eq('id', sale.id);
+          if (saleErr) throw saleErr;
+          sale.total = newSubtotalTtc;
+          sale.subtotal_ht = newSubtotalHt;
+          sale.total_tva = newTva;
+          sale.subtotal_ttc = newSubtotalTtc;
+        }
         const { error: insertError } = await supabase.from('payments').insert({
           sale_id: sale.id,
           method: editPaymentMethod.value,
-          amount: sale.total,
+          amount: effectiveTotal,
         } as any);
         if (insertError) throw insertError;
       }
@@ -396,7 +443,7 @@ const saveEditPayment = async () => {
       }
     }
 
-    sale.payments = [{ method: editPaymentMethod.value, amount: sale.total }];
+    sale.payments = [{ method: editPaymentMethod.value, amount: effectiveTotal }];
     closeEditPayment();
   } catch (err) {
     console.error('Erreur modification paiement:', err);
@@ -406,8 +453,50 @@ const saveEditPayment = async () => {
   }
 };
 
+// Modifier le vendeur d'un article
+const updateItemVendor = async (itemId: string, vendorId: string | null) => {
+  if (!isSupabaseConfigured()) return;
+  try {
+    const { error } = await supabase
+      .from('sale_items')
+      .update({ vendor_id: vendorId } as any)
+      .eq('id', itemId);
+    if (error) throw error;
+    // Mettre à jour localement
+    for (const sale of sales.value) {
+      const item = sale.items?.find((i) => i.id === itemId);
+      if (item) {
+        item.vendor_id = vendorId;
+        const v = vendorId ? vendorsList.value.find((x) => x.id === vendorId) : null;
+        item.vendor = v ? { first_name: v.first_name, last_name: v.last_name } : undefined;
+        break;
+      }
+    }
+  } catch (err) {
+    console.error('Erreur modification vendeur:', err);
+    alert('Impossible de modifier le vendeur.');
+  }
+};
+
+// Total "réel" d'une vente (somme des items si sale.total=0, ex. après Gratuit)
+const getSaleEffectiveTotal = (sale: SaleWithDetails) => {
+  if (sale.total > 0) return sale.total;
+  const items = sale.items || [];
+  return items.reduce((sum, i) => sum + (i.subtotal_ttc ?? 0), 0);
+};
+
+// Affichage du total dans le modal paiement : 0 si Gratuit, sinon total réel
+const editPaymentDisplayTotal = computed(() => {
+  const sale = saleToEditPayment.value;
+  if (!sale) return 0;
+  return editPaymentMethod.value === 'free' ? 0 : getSaleEffectiveTotal(sale);
+});
+
 // Lifecycle
-onMounted(loadSales);
+onMounted(async () => {
+  vendorsList.value = await loadVendors();
+  loadSales();
+});
 
 // Recharger quand page ou pageSize change
 watch([currentPage, pageSize], () => loadSales());
@@ -638,15 +727,23 @@ watch([dateFilter, statusFilter], () => {
                       <div
                         v-for="item in sale.items"
                         :key="item.id"
-                        class="flex items-center justify-between text-sm gap-2"
+                        class="flex items-center justify-between text-sm gap-2 flex-wrap"
                       >
                         <span class="text-gray-700 dark:text-gray-300 flex-1 min-w-0">
                           {{ item.quantity }}x {{ item.product_name }}
-                          <span v-if="(item as any).vendor" class="text-gray-500 dark:text-gray-400 text-xs">
-                            ({{ (item as any).vendor.first_name }} {{ (item as any).vendor.last_name }})
-                          </span>
                         </span>
-                        <span class="font-medium text-gray-900 dark:text-white shrink-0">{{ item.subtotal_ttc.toFixed(2) }}€</span>
+                        <select
+                          :value="item.vendor_id ?? ''"
+                          @change="updateItemVendor(item.id, ($event.target as HTMLSelectElement).value || null)"
+                          class="text-xs px-2 py-1 rounded border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-gray-400 min-w-0 max-w-[140px]"
+                          title="Modifier le vendeur"
+                        >
+                          <option value="">—</option>
+                          <option v-for="v in vendorsList" :key="v.id" :value="v.id">
+                            {{ v.first_name }} {{ v.last_name }}
+                          </option>
+                        </select>
+                        <span class="font-medium text-gray-900 dark:text-white shrink-0 w-16 text-right">{{ item.subtotal_ttc.toFixed(2) }}€</span>
                       </div>
                     </div>
                   </div>
@@ -785,7 +882,7 @@ watch([dateFilter, statusFilter], () => {
           <div class="p-4 space-y-4">
             <p class="text-sm text-gray-600 dark:text-gray-300">
               Ticket <span class="font-mono font-semibold">{{ saleToEditPayment.ticket_number }}</span>
-              — Total <span class="font-bold">{{ saleToEditPayment.total.toFixed(2) }}€</span>
+              — Total <span class="font-bold">{{ editPaymentDisplayTotal.toFixed(2) }}€</span>
             </p>
             <div>
               <label class="block text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-2">Nouveau mode de paiement</label>
