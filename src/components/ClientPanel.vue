@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
-import { Search, Save, Trash2, History, MapPin, UserPlus, UserPen } from 'lucide-vue-next';
+import { Search, Save, Trash2, History, MapPin, UserPlus, UserPen, X, RefreshCw } from 'lucide-vue-next';
 import { useClient } from '../composables/useClient';
 import { useClients } from '../composables/useClients';
 import { formatPhoneFR, formatPostalCode, INPUT_LENGTHS } from '../utils/formatInputs';
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import type { Client } from '../types';
 import type { Client as DBClient } from '../types/database';
+import type { Sale } from '../types/database';
 
 // Composables
 const { currentClient, isEditMode, clearClient, loadClient, hasClientInfo, saveClient } = useClient();
@@ -15,6 +17,9 @@ const { searchClients, selectClient: setSelectedClient, clearSelection, selected
 const searchQuery = ref<string>('');
 const clientSearchResults = ref<DBClient[]>([]);
 const isSearching = ref(false);
+const showHistoryDialog = ref(false);
+const clientSales = ref<Sale[]>([]);
+const isLoadingSales = ref(false);
 
 // Recherche de clients avec debounce
 let searchDebounceTimer: number | null = null;
@@ -61,8 +66,46 @@ const handleClear = (): void => {
   clearSelection();
 };
 
-const handleShowHistory = (): void => {
-  alert('Historique client à implémenter');
+const loadClientSales = async (clientId: string) => {
+  if (!isSupabaseConfigured()) return;
+  isLoadingSales.value = true;
+  try {
+    const { data, error } = await supabase
+      .from('sales')
+      .select(`
+        id,
+        total,
+        created_at,
+        items:sale_items(product_name, quantity, subtotal_ttc)
+      `)
+      .eq('client_id', clientId)
+      .order('created_at', { ascending: false })
+      .limit(200);
+    if (error) throw error;
+    clientSales.value = data || [];
+  } catch (err) {
+    console.error('Erreur chargement ventes client:', err);
+    clientSales.value = [];
+  } finally {
+    isLoadingSales.value = false;
+  }
+};
+
+const formatSaleDate = (dateStr: string) => {
+  return new Date(dateStr).toLocaleDateString('fr-FR', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+};
+
+const handleShowHistory = async (): Promise<void> => {
+  const clientId = currentClient.value?.id;
+  if (!clientId) return;
+  showHistoryDialog.value = true;
+  await loadClientSales(clientId);
 };
 
 const selectClient = (dbClient: DBClient): void => {
@@ -335,5 +378,65 @@ function onPostalCodeInput(value: string): void {
         </button>
       </div>
     </div>
+
+    <!-- Dialog Historique d'achat -->
+    <Teleport to="body">
+      <Transition
+        enter-active-class="transition-opacity duration-200"
+        enter-from-class="opacity-0"
+        enter-to-class="opacity-100"
+        leave-active-class="transition-opacity duration-150"
+        leave-from-class="opacity-100"
+        leave-to-class="opacity-0"
+      >
+        <div
+          v-if="showHistoryDialog"
+          class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
+          @click.self="showHistoryDialog = false"
+        >
+          <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-lg max-h-[85vh] flex flex-col overflow-hidden">
+            <div class="p-4 md:p-5 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between flex-shrink-0">
+              <h3 class="text-base md:text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                <History class="w-5 h-5" />
+                Historique d'achat — {{ currentClient.firstName }} {{ currentClient.lastName }}
+              </h3>
+              <button
+                @click="showHistoryDialog = false"
+                class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                aria-label="Fermer"
+              >
+                <X class="w-5 h-5 text-gray-500 dark:text-gray-400" />
+              </button>
+            </div>
+            <div class="flex-1 overflow-y-auto p-4 md:p-5">
+              <div v-if="isLoadingSales" class="py-8 text-center">
+                <RefreshCw class="w-8 h-8 text-gray-400 dark:text-gray-500 animate-spin mx-auto" />
+              </div>
+              <div v-else-if="clientSales.length === 0" class="py-8 text-center text-gray-500 dark:text-gray-400 text-sm">
+                Aucun achat enregistré
+              </div>
+              <div v-else class="space-y-3">
+                <div
+                  v-for="sale in clientSales"
+                  :key="sale.id"
+                  class="bg-gray-50 dark:bg-gray-700 rounded-xl p-3 md:p-4"
+                >
+                  <div class="flex items-center justify-between mb-2">
+                    <span class="text-xs text-gray-500 dark:text-gray-400">{{ formatSaleDate(sale.created_at) }}</span>
+                    <span class="font-semibold text-gray-900 dark:text-white">{{ Number(sale.total).toFixed(2) }}€</span>
+                  </div>
+                  <ul v-if="sale.items?.length" class="mt-1 space-y-0.5 text-sm text-gray-600 dark:text-gray-300">
+                    <li v-for="(item, i) in sale.items" :key="i">
+                      {{ item.quantity }}× {{ item.product_name }}
+                    </li>
+                  </ul>
+                  <p v-else class="text-xs text-gray-500 dark:text-gray-400 italic mt-1">Détails non disponibles</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
   </div>
 </template>

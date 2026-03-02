@@ -206,11 +206,9 @@ onUnmounted(() => {
             :style="{ backgroundColor: currentVendor?.color || '#10B981' }"
             class="w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center ring-2 ring-gray-600 font-semibold text-sm md:text-base text-white"
           >
-            {{ currentVendor?.initials || (user?.email?.[0]?.toUpperCase() ?? '?') }}
           </div>
           <div class="text-left hidden md:block">
-            <p class="text-sm font-medium leading-tight">{{ currentVendor ? `${currentVendor.first_name} ${currentVendor.last_name}` : user?.email }}</p>
-            <p class="text-xs text-emerald-400 mt-0.5">● Connecté</p>
+            <p class="text-sm font-medium leading-tight text-emerald-400">Connecté</p>
           </div>
           <ChevronDown class="w-4 h-4 text-gray-400" />
         </button>

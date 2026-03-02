@@ -259,6 +259,16 @@ export function useSales() {
     return totalPaid.value >= total.value && total.value > 0;
   });
 
+  // Mode Gratuit : tout le panier affiché à 0€, vente enregistrée avec total 0 (non compté dans le CA)
+  const isFreeSale = computed(() =>
+    selectedPaymentMethods.value.some(p => p.method === 'free')
+  );
+  const effectiveTotal = computed(() => (isFreeSale.value ? 0 : total.value));
+  const effectiveSubtotalHT = computed(() => (isFreeSale.value ? 0 : subtotalHT.value));
+  const effectiveTotalTVA = computed(() => (isFreeSale.value ? 0 : totalTVA.value));
+  const effectiveSubtotalTTC = computed(() => (isFreeSale.value ? 0 : subtotalTTC.value));
+  const effectiveDiscountAmount = computed(() => (isFreeSale.value ? 0 : discountAmount.value));
+
   // =====================================================
   // VALIDATION DE LA VENTE
   // =====================================================
@@ -350,43 +360,44 @@ export function useSales() {
         previousHash = lastSale?.hash ?? null;
       }
 
+      const saleTotal = isFreeSale.value ? 0 : total.value;
       const saleHash = await computeSaleHash(
         ticketNumber,
         createdAt,
-        total.value,
+        saleTotal,
         previousHash,
       );
 
-      // Créer l'objet vente (avec hash NF525)
+      // Créer l'objet vente (avec hash NF525). Mode Gratuit : total 0, non compté dans le CA
       const saleData = {
         ticket_number: ticketNumber,
         vendor_id: vendorId || null,
         client_id: clientId || null,
-        subtotal_ht: subtotalHT.value,
-        total_tva: totalTVA.value,
-        subtotal_ttc: subtotalTTC.value,
+        subtotal_ht: isFreeSale.value ? 0 : subtotalHT.value,
+        total_tva: isFreeSale.value ? 0 : totalTVA.value,
+        subtotal_ttc: isFreeSale.value ? 0 : subtotalTTC.value,
         discount_type: discountType.value,
         discount_value: discountValue.value,
-        discount_amount: discountAmount.value,
-        total: total.value,
+        discount_amount: isFreeSale.value ? 0 : discountAmount.value,
+        total: saleTotal,
         status: 'completed' as const,
         hash: saleHash,
         previous_hash: previousHash,
         created_at: createdAt,
       };
 
-      // Créer les lignes de vente (avec vendeur par article si spécifié)
+      // Créer les lignes de vente (avec vendeur par article si spécifié). Mode Gratuit : montants à 0
       const saleItems = cartItems.value.map(item => ({
         product_id: item.product.id,
         variant_id: item.variant?.id || null,
         vendor_id: item.vendor_id || vendorId || null,
         product_name: item.product.name,
-        price_ht: item.price_ht,
+        price_ht: isFreeSale.value ? 0 : item.price_ht,
         tva_rate: item.tva_rate,
         quantity: item.quantity,
-        subtotal_ht: item.subtotal_ht,
-        tva: item.tva,
-        subtotal_ttc: item.subtotal_ttc,
+        subtotal_ht: isFreeSale.value ? 0 : item.subtotal_ht,
+        tva: isFreeSale.value ? 0 : item.tva,
+        subtotal_ttc: isFreeSale.value ? 0 : item.subtotal_ttc,
       }));
 
       // Créer les paiements
@@ -723,6 +734,12 @@ export function useSales() {
     subtotalTTC,
     discountAmount,
     total,
+    isFreeSale,
+    effectiveTotal,
+    effectiveSubtotalHT,
+    effectiveTotalTVA,
+    effectiveSubtotalTTC,
+    effectiveDiscountAmount,
     itemCount,
     isEmpty,
     // Computed - Paiement

@@ -28,13 +28,14 @@ import type { PaymentMethod } from '../types/database';
 
 const { 
   cartItems, 
-  subtotalHT,
-  totalTVA,
   subtotalTTC,
   total, 
-  discountValue,
-  discountType,
-  discountAmount,
+  isFreeSale,
+  effectiveTotal,
+  effectiveSubtotalHT,
+  effectiveTotalTVA,
+  effectiveSubtotalTTC,
+  effectiveDiscountAmount,
   fixedTotal,
   setFixedTotal,
   updateQuantity,
@@ -111,13 +112,13 @@ const handleDiscountChange = (event: Event): void => {
 const selectPaymentMethod = (method: PaymentMethod) => {
   selectedPaymentMethod.value = method;
   clearPayments();
-  setPayment(method, total.value);
+  setPayment(method, method === 'free' ? 0 : total.value);
 };
 
 // Synchroniser le montant du paiement quand le total change (ajout/suppression d'articles, réduction, etc.)
-watch([total, selectedPaymentMethod], () => {
-  if (total.value > 0 && selectedPaymentMethod.value) {
-    setPayment(selectedPaymentMethod.value, total.value);
+watch([total, selectedPaymentMethod, isFreeSale], () => {
+  if (selectedPaymentMethod.value) {
+    setPayment(selectedPaymentMethod.value, isFreeSale.value ? 0 : total.value);
   }
 }, { immediate: true });
 
@@ -130,7 +131,7 @@ const handleValidate = async (): Promise<void> => {
   }
   
   // Toujours synchroniser le paiement avec le total actuel (au cas où il a changé)
-  setPayment(selectedPaymentMethod.value, total.value);
+  setPayment(selectedPaymentMethod.value, isFreeSale.value ? 0 : total.value);
 
   const sale = await validateSale(
     vendor.value?.id,
@@ -184,17 +185,19 @@ const handleEmail = () => {
       ? ` (${item.vendor.initials || `${item.vendor.first_name?.[0] ?? ''}${item.vendor.last_name?.[0] ?? ''}`})`
       : '';
     lines.push(`  ${item.product.name}${vendorLabel}`);
-    lines.push(`    ${item.quantity} x ${formatPrice(item.subtotal_ttc / item.quantity)}€ = ${formatPrice(item.subtotal_ttc)}€`);
+    const itemAmount = isFreeSale.value ? 0 : item.subtotal_ttc;
+    const unitPrice = item.quantity > 0 ? itemAmount / item.quantity : 0;
+    lines.push(`    ${item.quantity} x ${formatPrice(unitPrice)}€ = ${formatPrice(itemAmount)}€`);
   }
   lines.push('');
-  lines.push(`Sous-total HT : ${formatPrice(subtotalHT.value)}€`);
-  lines.push(`TVA (20%) : ${formatPrice(totalTVA.value)}€`);
-  lines.push(`Sous-total TTC : ${formatPrice(subtotalTTC.value)}€`);
-  if (discountAmount.value > 0) {
-    lines.push(`Réduction : -${formatPrice(discountAmount.value)}€`);
+  lines.push(`Sous-total HT : ${formatPrice(effectiveSubtotalHT.value)}€`);
+  lines.push(`TVA (20%) : ${formatPrice(effectiveTotalTVA.value)}€`);
+  lines.push(`Sous-total TTC : ${formatPrice(effectiveSubtotalTTC.value)}€`);
+  if (effectiveDiscountAmount.value > 0) {
+    lines.push(`Réduction : -${formatPrice(effectiveDiscountAmount.value)}€`);
   }
   lines.push('─'.repeat(30));
-  lines.push(`TOTAL : ${formatPrice(total.value)}€`);
+  lines.push(`TOTAL : ${formatPrice(effectiveTotal.value)}€`);
   lines.push('');
 
   const currentMethod = paymentMethods.find(m => m.id === selectedPaymentMethod.value);
@@ -226,7 +229,7 @@ const handlePrintTicket = () => {
     return {
       label: item.product.name,
       vendorName: vendorName || undefined,
-      amount: item.subtotal_ttc,
+      amount: isFreeSale.value ? 0 : item.subtotal_ttc,
     };
   });
   printReceipt({
@@ -239,11 +242,11 @@ const handlePrintTicket = () => {
     clientCompany: invoiceInCompanyName.value && selectedClient.value?.company ? selectedClient.value.company : undefined,
     dateTime: `${dateStr} ${timeStr}`,
     items,
-    subtotalHT: subtotalHT.value,
-    totalTVA: totalTVA.value,
-    subtotal: subtotalTTC.value,
-    discount: discountAmount.value > 0 ? discountAmount.value : undefined,
-    total: total.value,
+    subtotalHT: effectiveSubtotalHT.value,
+    totalTVA: effectiveTotalTVA.value,
+    subtotal: effectiveSubtotalTTC.value,
+    discount: effectiveDiscountAmount.value > 0 ? effectiveDiscountAmount.value : undefined,
+    total: effectiveTotal.value,
     footer: ticketFooter.value.line1 || 'Merci de votre visite',
   });
 };
@@ -295,7 +298,7 @@ const handlePrintTicket = () => {
               </div>
             </div>
             <p class="font-bold text-gray-900 dark:text-gray-100 whitespace-nowrap text-sm md:text-base tabular-nums">
-              {{ formatPrice(item.subtotal_ttc) }}€
+              {{ formatPrice(isFreeSale ? 0 : item.subtotal_ttc) }}€
             </p>
           </div>
           <!-- Prix unitaire fixe (ex. Bon cadeau) -->
@@ -452,30 +455,30 @@ const handlePrintTicket = () => {
         <!-- Sous-total HT -->
         <div class="flex justify-between text-xs md:text-sm">
           <span class="text-gray-500 dark:text-gray-400">Sous-total HT</span>
-          <span class="text-gray-700 dark:text-gray-300 tabular-nums">{{ formatPrice(subtotalHT) }}€</span>
+          <span class="text-gray-700 dark:text-gray-300 tabular-nums">{{ formatPrice(effectiveSubtotalHT) }}€</span>
         </div>
         <!-- TVA -->
         <div class="flex justify-between text-xs md:text-sm">
           <span class="text-gray-500 dark:text-gray-400">TVA (20%)</span>
-          <span class="text-gray-700 dark:text-gray-300 tabular-nums">{{ formatPrice(totalTVA) }}€</span>
+          <span class="text-gray-700 dark:text-gray-300 tabular-nums">{{ formatPrice(effectiveTotalTVA) }}€</span>
         </div>
         <!-- Sous-total TTC -->
         <div class="flex justify-between text-xs md:text-sm font-medium">
           <span class="text-gray-600 dark:text-gray-400">Sous-total TTC</span>
-          <span class="text-gray-900 dark:text-gray-100 tabular-nums">{{ formatPrice(subtotalTTC) }}€</span>
+          <span class="text-gray-900 dark:text-gray-100 tabular-nums">{{ formatPrice(effectiveSubtotalTTC) }}€</span>
         </div>
         <!-- Réduction -->
-        <div v-if="localDiscount > 0" class="flex justify-between text-xs md:text-sm">
+        <div v-if="localDiscount > 0 && !isFreeSale" class="flex justify-between text-xs md:text-sm">
           <span class="text-gray-600 dark:text-gray-400">
             Réduction 
             <span class="text-[10px] md:text-xs">({{ localDiscountType === 'percent' ? `${localDiscount}%` : `${formatPrice(localDiscount)}€` }})</span>
           </span>
-          <span class="text-red-600 dark:text-red-400 font-medium tabular-nums">-{{ formatPrice(discountAmount) }}€</span>
+          <span class="text-red-600 dark:text-red-400 font-medium tabular-nums">-{{ formatPrice(effectiveDiscountAmount) }}€</span>
         </div>
         <!-- Total -->
         <div class="flex justify-between text-xl md:text-2xl font-bold pt-2 md:pt-3 border-t border-gray-200 dark:border-gray-600">
           <span class="text-gray-900 dark:text-gray-100">Total</span>
-          <span class="text-gray-900 dark:text-gray-100 tabular-nums">{{ formatPrice(total) }}€</span>
+          <span class="text-gray-900 dark:text-gray-100 tabular-nums">{{ formatPrice(effectiveTotal) }}€</span>
         </div>
       </div>
 
