@@ -25,8 +25,23 @@ const recentSales = ref<Sale[]>([]);
 const isProcessing = ref(false);
 const error = ref<string | null>(null);
 
+/** Nombre de ventes du jour (pour affichage du prochain numéro de ticket) */
+const todaySalesCount = ref(0);
+
 // Taux de TVA par défaut
 const DEFAULT_TVA_RATE = 0.20;
+
+/** Début et fin du jour local (pour filtrer les ventes du jour) */
+function getTodayBounds(): { start: string; end: string } {
+  const now = new Date();
+  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const end = new Date(start);
+  end.setDate(end.getDate() + 1);
+  return {
+    start: start.toISOString(),
+    end: end.toISOString(),
+  };
+}
 
 export function useSales() {
   // =====================================================
@@ -418,6 +433,7 @@ export function useSales() {
         
         recentSales.value.unshift(mockSale);
         clearCart();
+        loadTodaySalesCount();
         
         return mockSale;
       }
@@ -581,6 +597,9 @@ export function useSales() {
       // Vider le panier
       clearCart();
 
+      // Rafraîchir le compteur de tickets du jour pour l'affichage
+      loadTodaySalesCount();
+
       return sale;
 
     } catch (err: any) {
@@ -591,6 +610,42 @@ export function useSales() {
       isProcessing.value = false;
     }
   };
+
+  // =====================================================
+  // VENTES DU JOUR (numéro de ticket)
+  // =====================================================
+
+  const loadTodaySalesCount = async (): Promise<number> => {
+    if (!isSupabaseConfigured()) {
+      todaySalesCount.value = recentSales.value.filter((s) => {
+        const d = new Date(s.created_at);
+        const { start, end } = getTodayBounds();
+        return d >= new Date(start) && d < new Date(end);
+      }).length;
+      return todaySalesCount.value;
+    }
+    try {
+      const { start, end } = getTodayBounds();
+      const { count, error: countError } = await supabase
+        .from('sales')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'completed')
+        .gte('created_at', start)
+        .lt('created_at', end);
+
+      if (countError) throw countError;
+      todaySalesCount.value = count ?? 0;
+      return todaySalesCount.value;
+    } catch (err) {
+      console.error('Erreur chargement ventes du jour:', err);
+      return todaySalesCount.value;
+    }
+  };
+
+  /** Numéro de ticket à afficher (prochain) : #001, #008, etc. */
+  const nextTicketDisplayNumber = computed(() =>
+    '#' + String(todaySalesCount.value + 1).padStart(3, '0')
+  );
 
   // =====================================================
   // HISTORIQUE DES VENTES
@@ -722,6 +777,8 @@ export function useSales() {
   return {
     // State
     cartItems,
+    nextTicketDisplayNumber,
+    loadTodaySalesCount,
     discountType,
     discountValue,
     selectedPaymentMethods,

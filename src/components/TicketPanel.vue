@@ -49,6 +49,8 @@ const {
   validateSale,
   isProcessing,
   getMaxQuantityForItem,
+  nextTicketDisplayNumber,
+  loadTodaySalesCount,
   error: saleError,
 } = useSales();
 
@@ -57,6 +59,7 @@ const { selectedClient, invoiceInCompanyName } = useClients();
 const vendorsList = ref<import('../types/database').Vendor[]>([]);
 onMounted(async () => {
   vendorsList.value = await loadVendors();
+  await loadTodaySalesCount();
 });
 const { loadProducts } = useProducts();
 const { saveStamps, loadClientStamps } = useLoyalty();
@@ -265,7 +268,7 @@ const handlePrintTicket = () => {
         </div>
         <div class="text-right">
           <p class="text-[10px] md:text-[11px] text-gray-500 uppercase tracking-wider font-semibold mb-1 dark:text-gray-400">Ticket</p>
-          <p class="text-xs md:text-sm font-semibold text-gray-900 dark:text-gray-100">#001</p>
+          <p class="text-xs md:text-sm font-semibold text-gray-900 dark:text-gray-100">{{ nextTicketDisplayNumber }}</p>
         </div>
       </div>
     </div>
