@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 import { Search, Save, Trash2, History, MapPin, UserPlus, UserPen, X, RefreshCw } from 'lucide-vue-next';
 import { useClient } from '../composables/useClient';
 import { useClients } from '../composables/useClients';
@@ -65,6 +65,17 @@ const handleClear = (): void => {
   searchQuery.value = '';
   clearSelection();
 };
+
+// Écouter l'événement déclenché après validation d'un paiement (TicketPanel)
+const handleClearClientForm = (): void => {
+  handleClear();
+};
+onMounted(() => {
+  window.addEventListener('clear-client-form', handleClearClientForm);
+});
+onUnmounted(() => {
+  window.removeEventListener('clear-client-form', handleClearClientForm);
+});
 
 const loadClientSales = async (clientId: string) => {
   if (!isSupabaseConfigured()) return;

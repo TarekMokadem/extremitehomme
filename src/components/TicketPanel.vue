@@ -145,6 +145,8 @@ const handleValidate = async (): Promise<void> => {
       await loadClientStamps(selectedClient.value.id);
     }
     await loadProducts();
+    // Effacer la fiche client comme le bouton Effacer du panneau client
+    window.dispatchEvent(new CustomEvent('clear-client-form'));
     alert(`✅ Vente validée !\nTicket: ${sale.ticket_number}\nTotal: ${formatPrice(sale.total)}€`);
   } else if (saleError.value) {
     alert(`❌ Erreur : ${saleError.value}`);
