@@ -88,10 +88,10 @@ const loadCashSales = async (date: string) => {
   }
 };
 
-// Montant théorique attendu
+// Montant théorique attendu (les ventes espèces créent des mouvements auto)
 const expectedAmount = computed(() => {
   if (!currentRegister.value) return 0;
-  return currentRegister.value.opening_amount + cashSalesTotal.value + totalIn.value - totalOut.value;
+  return currentRegister.value.opening_amount + totalIn.value - totalOut.value;
 });
 
 // État de la caisse

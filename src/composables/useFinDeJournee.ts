@@ -110,7 +110,6 @@ export function useFinDeJournee() {
         .maybeSingle();
 
       fondDeCaisse.value = register?.opening_amount ?? 0;
-      caisseTotal.value = register?.closing_amount ?? register?.opening_amount ?? 0;
 
       let movements: { type: string; amount: number; label: string; created_at: string }[] = [];
       if (register?.id) {
@@ -149,6 +148,15 @@ export function useFinDeJournee() {
         amount: m.amount,
         createdAt: m.created_at,
       }));
+
+      // Caisse : fermée = closing_amount ; ouverte = fond + entrées - sorties (les ventes espèces créent des mouvements auto)
+      const totalIn = movements.filter((m: any) => m.type === 'in').reduce((s: number, m: any) => s + m.amount, 0);
+      const totalOut = movements.filter((m: any) => m.type === 'out').reduce((s: number, m: any) => s + m.amount, 0);
+      if (register?.status === 'closed' && register?.closing_amount != null) {
+        caisseTotal.value = register.closing_amount;
+      } else {
+        caisseTotal.value = fondDeCaisse.value + totalIn - totalOut;
+      }
 
       // 5. Agrégation par catégorie (nécessite products pour category)
       const byCategory = new Map<string, { ca: number; nb: number; reduction: number }>();

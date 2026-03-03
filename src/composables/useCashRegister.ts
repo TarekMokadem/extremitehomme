@@ -223,14 +223,13 @@ export function useCashRegister() {
     }
   };
 
-  const closeRegister = async (closingAmount: number, cashSalesTotal: number, notes?: string) => {
+  const closeRegister = async (closingAmount: number, _cashSalesTotal?: number, notes?: string) => {
     if (!currentRegister.value || !isSupabaseConfigured()) return null;
 
     try {
-      // Montant théorique = fond + ventes espèces + entrées - sorties
+      // Montant théorique = fond + entrées - sorties (les ventes espèces créent des mouvements auto)
       const expectedAmount = 
         currentRegister.value.opening_amount + 
-        cashSalesTotal + 
         totalIn.value - 
         totalOut.value;
 

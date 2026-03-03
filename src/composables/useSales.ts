@@ -472,6 +472,29 @@ export function useSales() {
           .insert(paymentsWithSaleId);
 
         if (paymentsError) throw paymentsError;
+
+        // 3b. Mouvement caisse automatique pour paiements en espèces
+        const cashAmount = payments
+          .filter(p => p.method === 'cash')
+          .reduce((sum, p) => sum + p.amount, 0);
+        if (cashAmount > 0) {
+          const saleDate = createdAt.split('T')[0];
+          const { data: register } = await supabase
+            .from('cash_registers')
+            .select('id')
+            .eq('date', saleDate)
+            .eq('status', 'open')
+            .maybeSingle();
+          if (register?.id) {
+            await supabase.from('cash_movements').insert({
+              cash_register_id: register.id,
+              type: 'in',
+              amount: cashAmount,
+              label: `Vente espèces ${ticketNumber}`,
+              vendor_id: vendorId || null,
+            } as Record<string, unknown>);
+          }
+        }
       }
 
       // 4. Mettre à jour le stock (produits physiques uniquement)
