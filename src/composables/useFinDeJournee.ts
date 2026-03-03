@@ -149,13 +149,18 @@ export function useFinDeJournee() {
         createdAt: m.created_at,
       }));
 
-      // Caisse : fermée = closing_amount ; ouverte = fond + entrées - sorties (les ventes espèces créent des mouvements auto)
-      const totalIn = movements.filter((m: any) => m.type === 'in').reduce((s: number, m: any) => s + m.amount, 0);
+      // Caisse : fermée = closing_amount ; ouverte = fond + ventes espèces + entrées manuelles - sorties
+      const cashSalesAmount = (sales || []).reduce((sum: number, s: any) => {
+        const cashPay = (s.payments || []).filter((p: any) => p.method === 'cash').reduce((a: number, p: any) => a + (p.amount ?? 0), 0);
+        return sum + cashPay;
+      }, 0);
+      // Entrées manuelles (hors "Vente espèces" qui sont déjà dans cashSalesAmount)
+      const totalInManual = movements.filter((m: any) => m.type === 'in' && !(m.label || '').startsWith('Vente espèces')).reduce((s: number, m: any) => s + m.amount, 0);
       const totalOut = movements.filter((m: any) => m.type === 'out').reduce((s: number, m: any) => s + m.amount, 0);
       if (register?.status === 'closed' && register?.closing_amount != null) {
         caisseTotal.value = register.closing_amount;
       } else {
-        caisseTotal.value = fondDeCaisse.value + totalIn - totalOut;
+        caisseTotal.value = fondDeCaisse.value + cashSalesAmount + totalInManual - totalOut;
       }
 
       // 5. Agrégation par catégorie (nécessite products pour category)

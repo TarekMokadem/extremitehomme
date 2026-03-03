@@ -25,6 +25,7 @@ const {
   isLoading,
   error,
   totalIn,
+  totalInManual,
   totalOut,
   movementsBalance,
   canReopen,
@@ -88,10 +89,10 @@ const loadCashSales = async (date: string) => {
   }
 };
 
-// Montant théorique attendu (les ventes espèces créent des mouvements auto)
+// Montant théorique attendu = fond + ventes espèces + entrées manuelles - sorties
 const expectedAmount = computed(() => {
   if (!currentRegister.value) return 0;
-  return currentRegister.value.opening_amount + totalIn.value - totalOut.value;
+  return currentRegister.value.opening_amount + cashSalesTotal.value + totalInManual.value - totalOut.value;
 });
 
 // État de la caisse

@@ -161,9 +161,16 @@ export function useCashRegister() {
   // CALCULS
   // =====================================================
 
-  // Total des entrées manuelles
+  // Total des entrées
   const totalIn = computed(() => 
     movements.value.filter(m => m.type === 'in').reduce((sum, m) => sum + m.amount, 0)
+  );
+
+  // Entrées manuelles uniquement (hors "Vente espèces" auto, pour éviter double comptage)
+  const totalInManual = computed(() =>
+    movements.value
+      .filter(m => m.type === 'in' && !(m.label || '').startsWith('Vente espèces'))
+      .reduce((sum, m) => sum + m.amount, 0)
   );
 
   // Total des sorties/dépenses
@@ -223,14 +230,15 @@ export function useCashRegister() {
     }
   };
 
-  const closeRegister = async (closingAmount: number, _cashSalesTotal?: number, notes?: string) => {
+  const closeRegister = async (closingAmount: number, cashSalesTotal: number = 0, notes?: string) => {
     if (!currentRegister.value || !isSupabaseConfigured()) return null;
 
     try {
-      // Montant théorique = fond + entrées - sorties (les ventes espèces créent des mouvements auto)
+      // Montant théorique = fond + ventes espèces + entrées manuelles - sorties
       const expectedAmount = 
         currentRegister.value.opening_amount + 
-        totalIn.value - 
+        cashSalesTotal + 
+        totalInManual.value - 
         totalOut.value;
 
       const difference = closingAmount - expectedAmount;
@@ -299,6 +307,7 @@ export function useCashRegister() {
     error,
     // Computed
     totalIn,
+    totalInManual,
     totalOut,
     movementsBalance,
     canReopen,
