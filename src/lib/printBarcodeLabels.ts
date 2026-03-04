@@ -40,32 +40,60 @@ function generateBarcodeSvg(barcode: string): string {
   }
 }
 
-export function printBarcodeLabels(product: Product, quantity: number = 24): void {
+const LABELS_PER_PAGE = 24;
+
+function generateLabelHtml(product: Product): string {
   const priceTtc = (product.price_ttc ?? 0).toFixed(2);
   const barcodeStr = product.barcode || '';
   const barcodeSvg = barcodeStr ? generateBarcodeSvg(barcodeStr) : '';
-
-  let labelsHtml = '';
-  for (let i = 0; i < quantity; i++) {
-    labelsHtml += `<div class="label">
+  return `<div class="label">
   <div class="price">${priceTtc} &euro;</div>
   ${product.size ? `<div class="size">Taille : ${escapeHtml(product.size)}</div>` : ''}
   <div class="name">${escapeHtml(product.name)}</div>
   ${product.brand ? `<div class="brand">${escapeHtml(product.brand)}</div>` : ''}
   ${barcodeSvg ? `<div class="barcode-container">${barcodeSvg}</div>` : ''}
   ${barcodeStr ? `<div class="barcode-num">${barcodeStr}</div>` : ''}
-</div>\n`;
-  }
+</div>`;
+}
 
-  if (quantity < 24) {
-    for (let i = quantity; i < 24; i++) {
-      labelsHtml += '<div class="label"></div>\n';
+export function printBarcodeLabels(product: Product, quantity: number = 24): void {
+  printBarcodeLabelsMultiple([{ product, quantity }]);
+}
+
+export interface LabelItem {
+  product: Product;
+  quantity: number;
+}
+
+/** Imprime les étiquettes de plusieurs produits/tailles à la suite (une page A4 = 24 étiquettes) */
+export function printBarcodeLabelsMultiple(items: LabelItem[]): void {
+  const labelHtml = generateLabelHtml;
+  const allLabels: string[] = [];
+  for (const { product, quantity } of items) {
+    const singleLabel = labelHtml(product);
+    for (let i = 0; i < quantity; i++) {
+      allLabels.push(singleLabel);
     }
   }
 
+  if (allLabels.length === 0) return;
+
+  const pageHtmls: string[] = [];
+  for (let p = 0; p < allLabels.length; p += LABELS_PER_PAGE) {
+    const pageLabels = allLabels.slice(p, p + LABELS_PER_PAGE);
+    let gridHtml = pageLabels.join('\n');
+    for (let i = pageLabels.length; i < LABELS_PER_PAGE; i++) {
+      gridHtml += '\n<div class="label"></div>';
+    }
+    pageHtmls.push(`<div class="labels-grid"${p + LABELS_PER_PAGE < allLabels.length ? ' style="page-break-after: always;"' : ''}>
+${gridHtml}
+</div>`);
+  }
+
+  const productNames = [...new Set(items.map((i) => i.product.name))].join(', ');
   const html = `<!DOCTYPE html>
 <html><head><meta charset="utf-8">
-<title>Étiquettes - ${escapeHtml(product.name)}</title>
+<title>Étiquettes - ${escapeHtml(productNames)}</title>
 <style>
 @page { size: A4; margin: 5mm; }
 body { margin: 0; padding: 0; }
@@ -80,9 +108,7 @@ body { margin: 0; padding: 0; }
 .label .barcode-container svg { max-width: 100%; height: auto; }
 </style>
 </head><body>
-<div class="labels-grid">
-${labelsHtml}
-</div>
+${pageHtmls.join('\n')}
 </body></html>`;
 
   const printWindow = window.open('', '_blank');

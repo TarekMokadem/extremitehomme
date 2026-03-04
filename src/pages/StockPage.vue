@@ -19,7 +19,7 @@ import {
 } from 'lucide-vue-next';
 import { useStock } from '../composables/useStock';
 import { useAuth } from '../composables/useAuth';
-import { printBarcodeLabels, generateEAN13 } from '../lib/printBarcodeLabels';
+import { printBarcodeLabelsMultiple, generateEAN13 } from '../lib/printBarcodeLabels';
 import type { Product } from '../types/database';
 import type { StockMovementType } from '../types/database';
 
@@ -196,16 +196,20 @@ function openLabelForGroup(group: ProductGroup) {
   if (group.products.length === 1) {
     printLabelsForProduct(group.products[0]!);
   } else {
+    labelSelectedQtys.value = {};
+    for (const p of group.products) {
+      const stock = Math.max(0, p.stock);
+      if (stock > 0) {
+        labelSelectedQtys.value[p.id] = Math.min(stock, 24);
+      }
+    }
     labelGroup.value = group;
     showLabelVariantPicker.value = true;
   }
 }
 
-function pickLabelVariant(product: Product) {
-  showLabelVariantPicker.value = false;
-  labelGroup.value = null;
-  printLabelsForProduct(product);
-}
+// Sélection multiple pour étiquettes : { productId -> quantity }
+const labelSelectedQtys = ref<Record<string, number>>({});
 
 function printLabelsForProduct(product: Product) {
   const stock = Math.max(0, product.stock);
@@ -215,7 +219,45 @@ function printLabelsForProduct(product: Product) {
     alert('Aucun stock pour ce produit.');
     return;
   }
-  printBarcodeLabels(product, qty);
+  printBarcodeLabelsMultiple([{ product, quantity: qty }]);
+}
+
+function toggleLabelProduct(product: Product, checked: boolean) {
+  if (checked) {
+    const stock = Math.max(0, product.stock);
+    labelSelectedQtys.value[product.id] = Math.min(stock, 24);
+  } else {
+    delete labelSelectedQtys.value[product.id];
+  }
+}
+
+function setLabelQty(productId: string, qty: number) {
+  const v = Math.max(0, Math.min(24, Math.floor(qty)));
+  if (v > 0) {
+    labelSelectedQtys.value[productId] = v;
+  } else {
+    delete labelSelectedQtys.value[productId];
+  }
+}
+
+function printSelectedLabels() {
+  if (!labelGroup.value) return;
+  const items = Object.entries(labelSelectedQtys.value)
+    .filter(([, qty]) => qty > 0)
+    .map(([id, qty]) => {
+      const p = labelGroup.value!.products.find((x) => x.id === id);
+      return p ? { product: p, quantity: qty } : null;
+    })
+    .filter((x): x is { product: Product; quantity: number } => x !== null);
+
+  if (items.length === 0) {
+    alert('Sélectionnez au moins une taille avec une quantité > 0.');
+    return;
+  }
+
+  showLabelVariantPicker.value = false;
+  labelGroup.value = null;
+  printBarcodeLabelsMultiple(items);
 }
 
 // Mouvement : sélection de la variante pour les produits groupés
@@ -1105,32 +1147,56 @@ onMounted(() => {
         </div>
       </Teleport>
 
-      <!-- Modal choix variante pour étiquettes -->
+      <!-- Modal choix variantes pour étiquettes (sélection multiple) -->
       <Teleport to="body">
         <div
           v-if="showLabelVariantPicker && labelGroup"
           class="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50"
           @click.self="showLabelVariantPicker = false; labelGroup = null"
         >
-          <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl max-w-sm w-full p-6 border border-gray-200 dark:border-gray-700" @click.stop>
-            <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">Imprimer étiquettes — Choisir la taille</h3>
+          <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl max-w-md w-full p-6 border border-gray-200 dark:border-gray-700" @click.stop>
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">Imprimer étiquettes — Sélectionner les tailles</h3>
             <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">{{ labelGroup.name }}</p>
-            <div class="flex flex-wrap gap-2">
-              <button
+            <p class="text-xs text-gray-500 dark:text-gray-400 mb-3">Cochez les tailles à imprimer. Les étiquettes s'afficheront à la suite.</p>
+            <div class="space-y-2 mb-4 max-h-60 overflow-y-auto">
+              <label
                 v-for="p in labelGroup.products"
                 :key="p.id"
-                @click="pickLabelVariant(p)"
-                class="px-4 py-2 rounded-xl bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 font-medium transition-colors"
+                class="flex items-center gap-3 py-2 px-3 rounded-xl bg-gray-50 dark:bg-gray-700/50 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
               >
-                {{ (p as any).size || 'Sans taille' }} (stock: {{ p.stock }})
+                <input
+                  type="checkbox"
+                  :checked="!!labelSelectedQtys[p.id]"
+                  @change="toggleLabelProduct(p, ($event.target as HTMLInputElement).checked)"
+                  class="w-4 h-4 rounded border-gray-300 dark:border-gray-500 text-emerald-600 focus:ring-emerald-500"
+                />
+                <span class="flex-1 font-medium text-gray-700 dark:text-gray-200">{{ (p as any).size || 'Sans taille' }}</span>
+                <span class="text-xs text-gray-500 dark:text-gray-400">stock: {{ p.stock }}</span>
+                <input
+                  v-if="labelSelectedQtys[p.id]"
+                  type="number"
+                  :value="labelSelectedQtys[p.id]"
+                  min="1"
+                  max="24"
+                  @input="setLabelQty(p.id, Number(($event.target as HTMLInputElement).value))"
+                  class="w-14 px-2 py-1 text-sm text-right border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-lg"
+                />
+              </label>
+            </div>
+            <div class="flex gap-2">
+              <button
+                @click="printSelectedLabels"
+                class="flex-1 px-4 py-2.5 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 font-medium"
+              >
+                Imprimer
+              </button>
+              <button
+                @click="showLabelVariantPicker = false; labelGroup = null"
+                class="px-4 py-2.5 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700"
+              >
+                Annuler
               </button>
             </div>
-            <button
-              @click="showLabelVariantPicker = false; labelGroup = null"
-              class="mt-4 w-full px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700"
-            >
-              Annuler
-            </button>
           </div>
         </div>
       </Teleport>
