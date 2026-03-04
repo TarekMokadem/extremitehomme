@@ -132,6 +132,12 @@ const handleValidate = async (): Promise<void> => {
     alert('Veuillez sélectionner ou créer un client avant de valider la vente.');
     return;
   }
+
+  const itemWithoutVendor = cartItems.value.find((item) => !item.vendor_id);
+  if (itemWithoutVendor) {
+    alert(`Chaque article doit être assigné à un vendeur.\nArticle sans vendeur : ${itemWithoutVendor.product.name}`);
+    return;
+  }
   
   // Toujours synchroniser le paiement avec le total actuel (au cas où il a changé)
   setPayment(selectedPaymentMethod.value, isFreeSale.value ? 0 : total.value);
