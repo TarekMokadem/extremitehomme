@@ -46,11 +46,20 @@ const { vendor: currentVendor } = useAuth();
 // Onglet principal : Produits ou Historique global
 const stockTab = ref<'products' | 'history'>('products');
 
-// Filtre liste (uniquement des produits, pas de services)
-const filter = ref<'all' | 'alert'>('all');
+// Filtres liste (produits uniquement)
+const filter = ref<'all' | 'alert' | 'in_stock' | 'out_of_stock'>('all');
+const filterCategoryId = ref<string>('');
+
 const displayedProducts = computed(() => {
-  if (filter.value === 'alert') return lowStockList.value;
-  return productsWithStock.value;
+  let list = productsWithStock.value;
+  if (filter.value === 'alert') list = lowStockList.value;
+  else if (filter.value === 'in_stock') list = list.filter((p) => p.stock > 0);
+  else if (filter.value === 'out_of_stock') list = list.filter((p) => p.stock <= 0);
+
+  if (filterCategoryId.value) {
+    list = list.filter((p) => p.category_id === filterCategoryId.value);
+  }
+  return list;
 });
 
 // Recherche (nom, code, code-barres, marque, modèle)
@@ -184,7 +193,7 @@ const onPageInputSubmit = () => {
   syncPageInput();
 };
 watch(currentPage, () => syncPageInput(), { immediate: true });
-watch([filter, searchQuery], () => {
+watch([filter, searchQuery, filterCategoryId], () => {
   currentPage.value = 1;
 });
 
@@ -728,6 +737,7 @@ watch(stockTab, (tab) => {
 
 onMounted(() => {
   loadProducts();
+  loadCategories();
   if (stockTab.value === 'history') loadMovements();
 });
 </script>
@@ -784,38 +794,51 @@ onMounted(() => {
 
       <!-- Filtres + recherche (onglet Produits uniquement) -->
       <div v-if="stockTab === 'products'" class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-4">
-        <div class="flex flex-wrap items-center gap-3">
-          <div class="flex rounded-xl border border-gray-200 dark:border-gray-600 overflow-hidden">
-            <button
-              v-for="opt in [
-                { id: 'all', label: 'Tous' },
-                { id: 'alert', label: 'Alerte stock' },
-              ]"
-              :key="opt.id"
-              @click="filter = opt.id as typeof filter"
-              :class="[
-                'px-4 py-2 text-sm font-medium transition-colors',
-                filter === opt.id
-                  ? 'bg-gray-900 dark:bg-emerald-600 text-white'
-                  : 'bg-gray-50 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600'
-              ]"
+        <div class="flex flex-col gap-4">
+          <div class="flex flex-wrap items-center gap-3">
+            <span class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Statut</span>
+            <div class="flex rounded-xl border border-gray-200 dark:border-gray-600 overflow-hidden">
+              <button
+                v-for="opt in [
+                  { id: 'all', label: 'Tous' },
+                  { id: 'alert', label: 'Alerte' },
+                  { id: 'in_stock', label: 'En stock' },
+                  { id: 'out_of_stock', label: 'Rupture' },
+                ]"
+                :key="opt.id"
+                @click="filter = opt.id as typeof filter"
+                :class="[
+                  'px-3 py-2 text-sm font-medium transition-colors',
+                  filter === opt.id
+                    ? 'bg-gray-900 dark:bg-emerald-600 text-white'
+                    : 'bg-gray-50 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600'
+                ]"
+              >
+                {{ opt.label }}
+              </button>
+            </div>
+            <span class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-2">Catégorie</span>
+            <select
+              v-model="filterCategoryId"
+              class="px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-xl text-sm focus:ring-2 focus:ring-gray-900 dark:focus:ring-emerald-500 focus:border-transparent"
             >
-              {{ opt.label }}
+              <option value="">Toutes les catégories</option>
+              <option v-for="c in categories" :key="c.id" :value="c.id">{{ c.name }}</option>
+            </select>
+            <button
+              @click="openAddProductModal"
+              class="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 dark:hover:bg-emerald-500"
+            >
+              <Plus class="w-4 h-4" />
+              Ajouter un produit
             </button>
+            <input
+              v-model="searchQuery"
+              type="text"
+              placeholder="Rechercher (nom, code, code-barres, marque...)"
+              class="flex-1 min-w-[200px] px-4 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:placeholder-gray-400 rounded-xl text-sm focus:ring-2 focus:ring-gray-900 dark:focus:ring-emerald-500 focus:border-transparent"
+            />
           </div>
-          <button
-            @click="openAddProductModal"
-            class="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 dark:hover:bg-emerald-500"
-          >
-            <Plus class="w-4 h-4" />
-            Ajouter un produit
-          </button>
-          <input
-            v-model="searchQuery"
-            type="text"
-            placeholder="Rechercher un produit..."
-            class="flex-1 min-w-[200px] px-4 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:placeholder-gray-400 rounded-xl text-sm focus:ring-2 focus:ring-gray-900 dark:focus:ring-emerald-500 focus:border-transparent"
-          />
         </div>
       </div>
 
