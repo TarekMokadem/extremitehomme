@@ -121,17 +121,25 @@ export function useFinDeJournee() {
         movements = movData || [];
       }
 
-      // 3. Agrégation par mode de paiement
+      // 3. Agrégation par mode de paiement (Gratuit = total 0, pas de paiement enregistré)
       const byPayment = new Map<string, { ca: number; nb: number }>();
       (sales || []).forEach((s: any) => {
         const payments = s.payments || [];
-        payments.forEach((p: { method: PaymentMethod; amount: number }) => {
-          const key = p.method;
-          const prev = byPayment.get(key) || { ca: 0, nb: 0 };
-          prev.ca += p.amount;
+        const isFree = s.total === 0;
+        if (isFree) {
+          const prev = byPayment.get('free') || { ca: 0, nb: 0 };
+          prev.ca += 0;
           prev.nb += 1;
-          byPayment.set(key, prev);
-        });
+          byPayment.set('free', prev);
+        } else {
+          payments.forEach((p: { method: PaymentMethod; amount: number }) => {
+            const key = p.method;
+            const prev = byPayment.get(key) || { ca: 0, nb: 0 };
+            prev.ca += p.amount;
+            prev.nb += 1;
+            byPayment.set(key, prev);
+          });
+        }
       });
 
       paymentModeRows.value = Array.from(byPayment.entries()).map(([method, v]) => ({
@@ -188,8 +196,9 @@ export function useFinDeJournee() {
       (sales || []).forEach((s: any) => {
         const saleTotal = s.total ?? 0;
         const saleDiscount = s.discount_amount ?? 0;
+        const isFree = saleTotal === 0;
         (s.items || []).forEach((item: any) => {
-          const itemTtc = item.subtotal_ttc ?? 0;
+          const itemTtc = isFree ? 0 : (item.subtotal_ttc ?? 0);
           const info = productCategoryMap[item.product_id] || { name: 'PRESTATION', type: 'service' };
           const cat = info.name;
           const prev = byCategory.get(cat) || { ca: 0, nb: 0, reduction: 0 };
@@ -209,6 +218,7 @@ export function useFinDeJournee() {
       }));
 
       // 6. Journal des ventes (une ligne par item, vendeur par article)
+      // Gratuit : montant 0€, moyen de paiement depuis payments ou "Gratuit" si total=0
       const journal: JournalRow[] = [];
       (sales || []).forEach((s: any) => {
         const fallbackVendorName = s.vendor
@@ -217,9 +227,12 @@ export function useFinDeJournee() {
         const clientName = s.client
           ? `${s.client.first_name || ''} ${s.client.last_name || ''}`.trim()
           : null;
-        const paymentMethod = (s.payments?.[0] as { method: string })?.method
-          ? paymentLabels[(s.payments[0] as { method: string }).method] || (s.payments[0] as { method: string }).method
-          : '—';
+        const isFree = s.total === 0;
+        const paymentMethod = isFree
+          ? 'Gratuit'
+          : ((s.payments?.[0] as { method: string })?.method
+              ? paymentLabels[(s.payments[0] as { method: string }).method] || (s.payments[0] as { method: string }).method
+              : '—');
 
         (s.items || []).forEach((item: any) => {
           const product = productCategoryMap[item.product_id];
@@ -232,7 +245,7 @@ export function useFinDeJournee() {
             saleTime: new Date(s.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
             productName: item.product_name || '—',
             size: size ?? null,
-            amount: item.subtotal_ttc ?? 0,
+            amount: isFree ? 0 : (item.subtotal_ttc ?? 0),
             vendorName: itemVendorName,
             paymentMethod,
             clientName,

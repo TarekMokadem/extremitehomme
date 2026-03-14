@@ -202,6 +202,12 @@ const loadData = async () => {
             }
           }
         }
+        // Ventes Gratuit : total=0 sans paiement enregistré → compter dans colonne Gratuit
+        const isFreeNoPayment = sale.total === 0 && (!sale.payments || sale.payments.length === 0);
+        if (isFreeNoPayment) {
+          row.gratuit.montant += 0;
+          row.gratuit.nb += 1;
+        }
       }
 
       for (const [day, ids] of saleCountPerDay) {
