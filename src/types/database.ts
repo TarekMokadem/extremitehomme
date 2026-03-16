@@ -147,6 +147,8 @@ export interface SaleItem {
   subtotal_ht: number;
   tva: number;
   subtotal_ttc: number;
+  /** Article passé en gratuit : montant théorique stocké dans subtotal_ttc pour reporting */
+  is_free?: boolean;
   created_at: string;
   // Relations
   product?: Product;
@@ -365,6 +367,8 @@ export interface CartItem {
   vendor?: Vendor;
   /** Prix unitaire TTC fixé manuellement (ex. Bon cadeau). Si défini, prioritaire sur product.price_ttc */
   fixedPriceTTC?: number;
+  /** Article passé en gratuit : contribue 0€ au total mais conserve le montant théorique */
+  isFree?: boolean;
   stockCategory?: StockCategory;
   // Calculés
   price_ht: number;

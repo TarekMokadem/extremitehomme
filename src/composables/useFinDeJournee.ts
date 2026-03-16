@@ -90,6 +90,7 @@ export function useFinDeJournee() {
             product_name,
             quantity,
             subtotal_ttc,
+            is_free,
             product_id,
             vendor_id,
             vendor:vendors(first_name, last_name)
@@ -193,12 +194,21 @@ export function useFinDeJournee() {
         });
       }
 
+      // CA théorique pour la catégorie Gratuit (articles passés en gratuit)
+      let gratuitTheorique = 0;
+      let gratuitNb = 0;
+
       (sales || []).forEach((s: any) => {
         const saleTotal = s.total ?? 0;
         const saleDiscount = s.discount_amount ?? 0;
         const isFree = saleTotal === 0;
         (s.items || []).forEach((item: any) => {
-          const itemTtc = isFree ? 0 : (item.subtotal_ttc ?? 0);
+          const itemFree = item.is_free === true || isFree;
+          const itemTtc = itemFree ? 0 : (item.subtotal_ttc ?? 0);
+          if (itemFree) {
+            gratuitTheorique += item.subtotal_ttc ?? 0;
+            gratuitNb += item.quantity ?? 1;
+          }
           const info = productCategoryMap[item.product_id] || { name: 'PRESTATION', type: 'service' };
           const cat = info.name;
           const prev = byCategory.get(cat) || { ca: 0, nb: 0, reduction: 0 };
@@ -209,13 +219,27 @@ export function useFinDeJournee() {
         });
       });
 
-      categoryRows.value = Array.from(byCategory.entries()).map(([cat, v]) => ({
-        category: cat,
-        ca: v.ca,
-        nb: v.nb,
-        reduction: v.reduction,
-        reductionPct: v.ca > 0 ? (v.reduction / v.ca) * 100 : 0,
-      }));
+      // Ajouter la catégorie Gratuit (CA théorique des articles passés en gratuit)
+      if (gratuitTheorique > 0) {
+        const prev = byCategory.get('Gratuit') || { ca: 0, nb: 0, reduction: 0 };
+        prev.ca += gratuitTheorique;
+        prev.nb += gratuitNb;
+        byCategory.set('Gratuit', prev);
+      }
+
+      categoryRows.value = Array.from(byCategory.entries())
+        .map(([cat, v]) => ({
+          category: cat,
+          ca: v.ca,
+          nb: v.nb,
+          reduction: v.reduction,
+          reductionPct: v.ca > 0 ? (v.reduction / v.ca) * 100 : 0,
+        }))
+        .sort((a, b) => {
+          if (a.category === 'Gratuit') return 1;
+          if (b.category === 'Gratuit') return -1;
+          return a.category.localeCompare(b.category);
+        });
 
       // 6. Journal des ventes (une ligne par item, vendeur par article)
       // Gratuit : montant 0€, moyen de paiement depuis payments ou "Gratuit" si total=0
@@ -240,12 +264,13 @@ export function useFinDeJournee() {
           const itemVendorName = item.vendor
             ? `${item.vendor.first_name || ''} ${item.vendor.last_name || ''}`.trim()
             : fallbackVendorName;
+          const itemFree = item.is_free === true || isFree;
           journal.push({
             ticketNumber: s.ticket_number || s.id,
             saleTime: new Date(s.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
             productName: item.product_name || '—',
             size: size ?? null,
-            amount: isFree ? 0 : (item.subtotal_ttc ?? 0),
+            amount: itemFree ? 0 : (item.subtotal_ttc ?? 0),
             vendorName: itemVendorName,
             paymentMethod,
             clientName,

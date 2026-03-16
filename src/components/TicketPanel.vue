@@ -42,6 +42,7 @@ const {
   removeFromCart,
   setItemFixedPrice,
   setItemVendor,
+  setItemFree,
   clearCart,
   setDiscount,
   setPayment,
@@ -196,7 +197,7 @@ const handleEmail = () => {
       ? ` (${item.vendor.initials || `${item.vendor.first_name?.[0] ?? ''}${item.vendor.last_name?.[0] ?? ''}`})`
       : '';
     lines.push(`  ${item.product.name}${vendorLabel}`);
-    const itemAmount = isFreeSale.value ? 0 : item.subtotal_ttc;
+    const itemAmount = (isFreeSale.value || item.isFree) ? 0 : item.subtotal_ttc;
     const unitPrice = item.quantity > 0 ? itemAmount / item.quantity : 0;
     lines.push(`    ${item.quantity} x ${formatPrice(unitPrice)}€ = ${formatPrice(itemAmount)}€`);
   }
@@ -240,7 +241,7 @@ const handlePrintTicket = () => {
     return {
       label: item.product.name,
       vendorName: vendorName || undefined,
-      amount: isFreeSale.value ? 0 : item.subtotal_ttc,
+      amount: (isFreeSale.value || item.isFree) ? 0 : item.subtotal_ttc,
     };
   });
   printReceipt({
@@ -309,8 +310,20 @@ const handlePrintTicket = () => {
               </div>
             </div>
             <p class="font-bold text-gray-900 dark:text-gray-100 whitespace-nowrap text-sm md:text-base tabular-nums">
-              {{ formatPrice(isFreeSale ? 0 : item.subtotal_ttc) }}€
+              {{ formatPrice((isFreeSale || item.isFree) ? 0 : item.subtotal_ttc) }}€
             </p>
+          </div>
+          <!-- Case à cocher Gratuit par article -->
+          <div class="flex items-center gap-2 mb-2">
+            <label class="inline-flex items-center gap-1.5 cursor-pointer">
+              <input
+                type="checkbox"
+                :checked="!!item.isFree"
+                @change="(e) => setItemFree(item.lineId, (e.target as HTMLInputElement).checked)"
+                class="rounded border-gray-300 dark:border-gray-600 text-orange-500 focus:ring-orange-500"
+              />
+              <span class="text-[10px] text-gray-600 dark:text-gray-400">Gratuit</span>
+            </label>
           </div>
           <!-- Prix unitaire fixe (ex. Bon cadeau) -->
           <div class="flex items-center gap-2 mb-2">

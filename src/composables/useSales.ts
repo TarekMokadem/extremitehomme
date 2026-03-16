@@ -129,6 +129,14 @@ export function useSales() {
     }
   };
 
+  // Passer un article en gratuit ou non (contribue 0€ au total si coché)
+  const setItemFree = (lineId: string, free: boolean) => {
+    const item = findCartItemByLineId(lineId);
+    if (item) {
+      item.isFree = free;
+    }
+  };
+
   // Modifier la quantité d'un item (par lineId)
   const updateQuantity = (lineId: string, quantity: number) => {
     const item = findCartItemByLineId(lineId);
@@ -163,17 +171,22 @@ export function useSales() {
   // CALCULS
   // =====================================================
 
-  // Sous-total HT
-  const subtotalHT = computed(() => 
-    cartItems.value.reduce((sum, item) => sum + item.subtotal_ht, 0)
+  // Montant effectif d'un item (0 si passé en gratuit)
+  const getItemEffectiveAmount = (item: CartItem) => (item.isFree ? 0 : item.subtotal_ttc);
+  const getItemEffectiveHT = (item: CartItem) => (item.isFree ? 0 : item.subtotal_ht);
+  const getItemEffectiveTVA = (item: CartItem) => (item.isFree ? 0 : item.tva);
+
+  // Sous-total HT (articles gratuits exclus)
+  const subtotalHT = computed(() =>
+    cartItems.value.reduce((sum, item) => sum + getItemEffectiveHT(item), 0)
   );
 
-  // Total TVA
-  const totalTVA = computed(() => 
-    cartItems.value.reduce((sum, item) => sum + item.tva, 0)
+  // Total TVA (articles gratuits exclus)
+  const totalTVA = computed(() =>
+    cartItems.value.reduce((sum, item) => sum + getItemEffectiveTVA(item), 0)
   );
 
-  // Sous-total TTC (avant réduction)
+  // Sous-total TTC (avant réduction, articles gratuits exclus)
   const subtotalTTC = computed(() => subtotalHT.value + totalTVA.value);
 
   // Montant de la réduction
@@ -401,19 +414,23 @@ export function useSales() {
         created_at: createdAt,
       };
 
-      // Créer les lignes de vente (avec vendeur par article si spécifié). Mode Gratuit : montants à 0
-      const saleItems = cartItems.value.map(item => ({
-        product_id: item.product.id,
-        variant_id: item.variant?.id || null,
-        vendor_id: item.vendor_id || vendorId || null,
-        product_name: item.product.name,
-        price_ht: isFreeSale.value ? 0 : item.price_ht,
-        tva_rate: item.tva_rate,
-        quantity: item.quantity,
-        subtotal_ht: isFreeSale.value ? 0 : item.subtotal_ht,
-        tva: isFreeSale.value ? 0 : item.tva,
-        subtotal_ttc: isFreeSale.value ? 0 : item.subtotal_ttc,
-      }));
+      // Créer les lignes de vente (avec vendeur par article). is_free + subtotal_ttc théorique pour reporting
+      const saleItems = cartItems.value.map(item => {
+        const itemFree = isFreeSale.value || item.isFree;
+        return {
+          product_id: item.product.id,
+          variant_id: item.variant?.id || null,
+          vendor_id: item.vendor_id || vendorId || null,
+          product_name: item.product.name,
+          price_ht: itemFree ? 0 : item.price_ht,
+          tva_rate: item.tva_rate,
+          quantity: item.quantity,
+          subtotal_ht: itemFree ? 0 : item.subtotal_ht,
+          tva: itemFree ? 0 : item.tva,
+          subtotal_ttc: item.subtotal_ttc, // Toujours le montant théorique (pour catégorie Gratuit)
+          is_free: itemFree,
+        };
+      });
 
       // Créer les paiements
       const payments = selectedPaymentMethods.value
@@ -834,6 +851,7 @@ export function useSales() {
     getMaxQuantityForItem,
     setItemFixedPrice,
     setItemVendor,
+    setItemFree,
     clearCart,
     // Methods - Réduction
     setDiscount,

@@ -11,7 +11,7 @@ interface SaleRow {
   created_at: string;
   client?: { first_name: string; last_name: string } | null;
   vendor?: { first_name: string; last_name: string } | null;
-  items?: { id: string; product_name: string; quantity: number; subtotal_ttc: number }[];
+  items?: { id: string; product_name: string; quantity: number; subtotal_ttc: number; is_free?: boolean }[];
   payments?: { method: string; amount: number }[];
 }
 
@@ -75,11 +75,28 @@ const paymentSummary = computed(() => {
     map[m] = { amount: 0, count: 0 };
   }
   for (const sale of sales.value) {
-    if (!sale.payments) continue;
-    for (const p of sale.payments) {
-      if (!map[p.method]) map[p.method] = { amount: 0, count: 0 };
-      map[p.method].amount += p.amount;
-      map[p.method].count++;
+    const payments = sale.payments || [];
+    const items = sale.items || [];
+    const isFreeSale = sale.total === 0;
+    if (isFreeSale && payments.length === 0) {
+      const gratuitTheorique = items.reduce((s, i) => s + (i.subtotal_ttc ?? 0), 0);
+      map['free'].amount += gratuitTheorique;
+      map['free'].count += 1;
+    } else {
+      let gratuitTheorique = 0;
+      for (const item of items) {
+        if (item.is_free === true) gratuitTheorique += item.subtotal_ttc ?? 0;
+      }
+      if (gratuitTheorique > 0) {
+        map['free'].amount += gratuitTheorique;
+        map['free'].count += 1;
+      }
+      for (const p of payments) {
+        const method = p.method as string;
+        if (!map[method]) map[method] = { amount: 0, count: 0 };
+        map[method].amount += p.amount ?? 0;
+        map[method].count += 1;
+      }
     }
   }
   return PAYMENT_METHODS.map(method => ({
@@ -126,8 +143,10 @@ function formatPrice(n: number): string {
   return n.toFixed(2);
 }
 
-function getPaymentLabels(payments?: { method: string; amount: number }[]): string {
-  if (!payments || payments.length === 0) return '—';
+function getPaymentLabels(sale: SaleRow): string {
+  const payments = sale.payments || [];
+  if (sale.total === 0 && payments.length === 0) return 'Gratuit';
+  if (payments.length === 0) return '—';
   return payments.map(p => PAYMENT_LABELS[p.method] ?? p.method).join(', ');
 }
 
@@ -179,7 +198,7 @@ async function loadData() {
         id, ticket_number, total, discount_amount, created_at,
         client:clients(first_name, last_name),
         vendor:vendors(first_name, last_name),
-        items:sale_items(id, product_name, quantity, subtotal_ttc, vendor:vendors(first_name, last_name)),
+        items:sale_items(id, product_name, quantity, subtotal_ttc, is_free, vendor:vendors(first_name, last_name)),
         payments:payments(method, amount)
       `)
       .gte('created_at', `${startDate}T00:00:00`)
@@ -260,7 +279,7 @@ ${group.sales.map(sale => `<tr>
 <td>${getClientName(sale.client)}</td>
 <td>${getSaleVendorSummary(sale)}</td>
 <td>${getArticlesSummary(sale.items)}</td>
-<td>${getPaymentLabels(sale.payments)}</td>
+<td>${getPaymentLabels(sale)}</td>
 <td class="text-right">${formatPrice(sale.total)} €</td>
 </tr>`).join('')}
 <tr class="subtotal-row"><td colspan="7" class="text-right">Sous-total ${group.label}</td><td class="text-right">${formatPrice(group.subtotal)} €</td></tr>
@@ -399,7 +418,7 @@ ${group.sales.map(sale => `<tr>
               </tr>
             </thead>
             <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
-              <tr v-for="row in paymentSummary" :key="row.method" class="text-gray-900 dark:text-gray-100">
+              <tr v-for="row in paymentSummary" :key="row.method" class="text-gray-900 dark:text-gray-100" :title="row.method === 'free' && row.amount > 0 ? 'CA théorique des ventes gratuites' : undefined">
                 <td class="px-4 py-2">{{ row.label }}</td>
                 <td class="px-4 py-2 text-right tabular-nums">{{ formatPrice(row.amount) }} €</td>
                 <td class="px-4 py-2 text-right tabular-nums">{{ row.count }}</td>
@@ -460,7 +479,7 @@ ${group.sales.map(sale => `<tr>
                     <td class="px-3 py-2 max-w-[200px] truncate" :title="getArticlesSummary(sale.items)">
                       {{ getArticlesSummary(sale.items) }}
                     </td>
-                    <td class="px-3 py-2">{{ getPaymentLabels(sale.payments) }}</td>
+                    <td class="px-3 py-2">{{ getPaymentLabels(sale) }}</td>
                     <td class="px-3 py-2 text-right tabular-nums font-medium">{{ formatPrice(sale.total) }} €</td>
                   </tr>
                   <tr class="bg-gray-50 dark:bg-gray-700/30 border-b-2 border-gray-200 dark:border-gray-600">

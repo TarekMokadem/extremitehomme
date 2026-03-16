@@ -259,7 +259,7 @@ const loadData = async () => {
         id,
         total,
         created_at,
-        items:sale_items(id, product_name, quantity, subtotal_ttc, product_id, vendor_id),
+        items:sale_items(id, product_name, quantity, subtotal_ttc, is_free, product_id, vendor_id),
         payments:payments(method, amount)
       `)
       .gte('created_at', `${start}T00:00:00`)
@@ -306,8 +306,13 @@ const loadData = async () => {
       }
     }
 
+    const getSaleEffectiveTotal = (sale: any) => {
+      if (sale.total > 0) return sale.total;
+      return (sale.items || []).reduce((sum: number, item: any) => sum + (item.subtotal_ttc ?? 0), 0);
+    };
+
     if (isAll) {
-      totalCA.value = allSales.reduce((s: number, sale: any) => s + sale.total, 0);
+      totalCA.value = allSales.reduce((s: number, sale: any) => s + getSaleEffectiveTotal(sale), 0);
     } else {
       totalCA.value = allSales.reduce((s: number, sale: any) => {
         return s + (sale.items || []).reduce((sum: number, item: any) => sum + (item.subtotal_ttc ?? 0), 0);
@@ -331,29 +336,30 @@ const loadData = async () => {
         const productInfo = item.product_id ? productCategoryMap.get(item.product_id) : null;
         const catName = productInfo?.categoryName ?? 'Autre';
         const type = productInfo?.type ?? 'product';
+        const itemTtc = item.subtotal_ttc ?? 0;
 
         if (!catMap.has(catName)) {
           catMap.set(catName, { name: catName, count: 0, amount: 0, amountHT: 0 });
         }
         const stat = catMap.get(catName)!;
         stat.count += item.quantity;
-        stat.amount += item.subtotal_ttc;
-        stat.amountHT += item.subtotal_ttc / (1 + TVA_RATE);
+        stat.amount += itemTtc;
+        stat.amountHT += itemTtc / (1 + TVA_RATE);
 
         if (type === 'service') {
           svcCount += item.quantity;
-          svcAmount += item.subtotal_ttc;
+          svcAmount += itemTtc;
           const svcName = item.product_name || productInfo?.name || 'Service';
           if (!svcMap.has(svcName)) {
             svcMap.set(svcName, { name: svcName, count: 0, amount: 0, amountHT: 0 });
           }
           const svc = svcMap.get(svcName)!;
           svc.count += item.quantity;
-          svc.amount += item.subtotal_ttc;
-          svc.amountHT += item.subtotal_ttc / (1 + TVA_RATE);
+          svc.amount += itemTtc;
+          svc.amountHT += itemTtc / (1 + TVA_RATE);
         } else {
           prodCount += item.quantity;
-          prodAmount += item.subtotal_ttc;
+          prodAmount += itemTtc;
         }
       }
     }
@@ -375,19 +381,33 @@ const loadData = async () => {
 
     const payMap = new Map<string, PaymentStat>();
     for (const sale of allSales) {
-      for (const payment of (sale as any).payments || []) {
-        const method = payment.method;
-        if (!payMap.has(method)) {
-          payMap.set(method, {
-            method,
-            label: PAYMENT_LABELS[method] || method,
-            amount: 0,
-            count: 0,
-          });
+      const payments = (sale as any).payments || [];
+      const isFreeSale = (sale as any).total === 0;
+      if (isFreeSale && payments.length === 0) {
+        const gratuitTheorique = (sale as any).items?.reduce((s: number, i: any) => s + (i.subtotal_ttc ?? 0), 0) ?? 0;
+        if (gratuitTheorique > 0) {
+          if (!payMap.has('free')) {
+            payMap.set('free', { method: 'free', label: PAYMENT_LABELS.free, amount: 0, count: 0 });
+          }
+          const p = payMap.get('free')!;
+          p.amount += gratuitTheorique;
+          p.count += 1;
         }
-        const p = payMap.get(method)!;
-        p.amount += payment.amount;
-        p.count += 1;
+      } else {
+        for (const payment of payments) {
+          const method = payment.method;
+          if (!payMap.has(method)) {
+            payMap.set(method, {
+              method,
+              label: PAYMENT_LABELS[method] || method,
+              amount: 0,
+              count: 0,
+            });
+          }
+          const p = payMap.get(method)!;
+          p.amount += payment.amount ?? 0;
+          p.count += 1;
+        }
       }
     }
     paymentStats.value = Array.from(payMap.values()).sort((a, b) => b.amount - a.amount);
@@ -399,7 +419,8 @@ const loadData = async () => {
         dayMap.set(day, { date: day, total: 0, count: 0 });
       }
       const d = dayMap.get(day)!;
-      d.total += (sale as any).total;
+      const saleTotal = isAll ? getSaleEffectiveTotal(sale) : (sale.items || []).reduce((s: number, i: any) => s + (i.subtotal_ttc ?? 0), 0);
+      d.total += saleTotal;
       d.count += 1;
     }
     dailyData.value = Array.from(dayMap.values()).sort((a, b) => a.date.localeCompare(b.date));

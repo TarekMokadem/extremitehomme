@@ -173,7 +173,7 @@ const loadData = async () => {
 
     const { data: salesData } = await supabase
       .from('sales')
-      .select('id, total, discount_amount, created_at, payments:payments(method, amount)')
+      .select('id, total, discount_amount, created_at, payments:payments(method, amount), items:sale_items(subtotal_ttc, is_free)')
       .gte('created_at', `${startDate}T00:00:00`)
       .lte('created_at', `${endDate}T23:59:59`)
       .eq('status', 'completed')
@@ -202,11 +202,25 @@ const loadData = async () => {
             }
           }
         }
-        // Ventes Gratuit : total=0 sans paiement enregistré → compter dans colonne Gratuit
-        const isFreeNoPayment = sale.total === 0 && (!sale.payments || sale.payments.length === 0);
-        if (isFreeNoPayment) {
-          row.gratuit.montant += 0;
+        // Ventes Gratuit : total=0 sans paiement OU articles is_free → CA théorique
+        const isFreeSale = sale.total === 0 && (!sale.payments || sale.payments.length === 0);
+        const items = sale.items || [];
+        let gratuitTheorique = 0;
+        if (isFreeSale) {
+          gratuitTheorique = items.reduce((s: number, i: any) => s + (i.subtotal_ttc ?? 0), 0);
+          row.gratuit.montant += gratuitTheorique;
           row.gratuit.nb += 1;
+        } else {
+          // Articles passés en gratuit dans une vente mixte
+          for (const item of items) {
+            if (item.is_free === true) {
+              gratuitTheorique += item.subtotal_ttc ?? 0;
+            }
+          }
+          if (gratuitTheorique > 0) {
+            row.gratuit.montant += gratuitTheorique;
+            row.gratuit.nb += 1;
+          }
         }
       }
 
@@ -253,7 +267,7 @@ const loadData = async () => {
       r.ca.montant > 0 || r.depenses > 0 || r.fondCaisse > 0 ||
       r.amex.montant > 0 || r.cb.montant > 0 || r.cheque.montant > 0 ||
       r.especes.montant > 0 || r.sansContact.montant > 0 ||
-      r.chequesCadeau.montant > 0 || r.gratuit.montant > 0;
+      r.chequesCadeau.montant > 0 || r.gratuit.montant > 0 || r.gratuit.nb > 0;
     rows.value = days.map(d => dayMap.get(d)!).filter(hasData);
   } catch (err) {
     console.error('Erreur chargement CA:', err);
@@ -459,7 +473,7 @@ onMounted(loadData);
                 <th colspan="2" class="px-2 py-1 text-center font-semibold text-gray-700 dark:text-gray-300 border-x border-gray-200 dark:border-gray-600">Sans contact</th>
                 <th colspan="2" class="px-2 py-1 text-center font-bold text-blue-700 dark:text-blue-400 border-x-2 border-blue-300 dark:border-blue-600 bg-blue-50 dark:bg-blue-900/20">CA</th>
                 <th colspan="2" class="px-2 py-1 text-center font-semibold text-gray-700 dark:text-gray-300 border-x border-gray-200 dark:border-gray-600">Chq. cadeau</th>
-                <th colspan="2" class="px-2 py-1 text-center font-semibold text-gray-700 dark:text-gray-300 border-x border-gray-200 dark:border-gray-600">Gratuit</th>
+                <th colspan="2" class="px-2 py-1 text-center font-semibold text-gray-700 dark:text-gray-300 border-x border-gray-200 dark:border-gray-600" title="CA théorique des ventes gratuites">Gratuit</th>
                 <th rowspan="2" class="px-2 py-2 text-right font-semibold text-gray-700 dark:text-gray-300 border-x border-gray-200 dark:border-gray-600">Fond caisse</th>
                 <th rowspan="2" class="px-2 py-2 text-right font-semibold text-gray-700 dark:text-gray-300 border-x border-gray-200 dark:border-gray-600">Dépenses</th>
                 <th rowspan="2" class="px-2 py-2 text-right font-semibold text-gray-700 dark:text-gray-300 border-l border-gray-200 dark:border-gray-600">Remise</th>
