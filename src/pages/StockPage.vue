@@ -53,7 +53,7 @@ const filterCategoryId = ref<string>('');
 const displayedProducts = computed(() => {
   let list = productsWithStock.value;
   if (filter.value === 'alert') list = lowStockList.value;
-  else if (filter.value === 'in_stock') list = list.filter((p) => p.stock > 0);
+  else if (filter.value === 'in_stock') list = list.filter((p) => (p.stock ?? 0) > (p.alert_threshold ?? 5));
   else if (filter.value === 'out_of_stock') list = list.filter((p) => p.stock <= 0);
 
   if (filterCategoryId.value) {
@@ -914,7 +914,7 @@ onMounted(() => {
             <thead class="bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
               <tr>
                 <th class="px-3 py-3 text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider min-w-[140px]">Produit</th>
-                <th class="px-3 py-3 text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider min-w-[100px]">Taille</th>
+                <th class="px-3 py-3 text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider w-[120px] max-w-[120px]">Taille</th>
                 <th class="px-3 py-3 text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider min-w-[70px]">Code</th>
                 <th class="px-3 py-3 text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider min-w-[130px]">Code-barres</th>
                 <th class="px-3 py-3 text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider min-w-[100px]">Marque</th>
@@ -942,7 +942,7 @@ onMounted(() => {
                     />
                   </div>
                 </td>
-                <td class="px-3 py-3 text-sm text-gray-600 dark:text-gray-300 whitespace-nowrap">{{ group.sizes.length ? group.sizes.join(', ') : '—' }}</td>
+                <td class="px-3 py-3 text-sm text-gray-600 dark:text-gray-300 w-[120px] max-w-[120px] break-words">{{ group.sizes.length ? group.sizes.join(', ') : '—' }}</td>
                 <td class="px-3 py-3 text-sm text-gray-500 dark:text-gray-400">{{ group.code || '—' }}</td>
                 <td class="px-3 py-3 text-sm text-gray-600 dark:text-gray-300">
                   {{ group.barcodes.length ? (group.barcodes.length > 2 ? group.barcodes.slice(0, 2).join(', ') + '…' : group.barcodes.join(', ')) : '—' }}
