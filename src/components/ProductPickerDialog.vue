@@ -20,6 +20,7 @@ const { addToCart } = useSales();
 const { vendor } = useAuth();
 
 const searchQuery = ref('');
+const barcodeError = ref('');
 const isOpen = computed({
   get: () => props.modelValue,
   set: (v) => emit('update:modelValue', v),
@@ -29,6 +30,7 @@ watch(isOpen, (open) => {
   if (open) {
     loadProducts();
     searchQuery.value = '';
+    barcodeError.value = '';
     const handler = (e: KeyboardEvent) => {
       if (e.key === 'Escape') close();
     };
@@ -112,10 +114,19 @@ const handleSearchKeydown = async (e: KeyboardEvent) => {
   const code = searchQuery.value.trim();
   if (!code || !looksLikeBarcode(code)) return;
   e.preventDefault();
+  barcodeError.value = '';
   const product = await findByBarcode(code);
   if (product) {
-    addProductToCart(product);
-    searchQuery.value = '';
+    if (product.type === 'product' && (product.stock ?? 0) <= 0) {
+      barcodeError.value = 'Stock vide pour ce produit';
+      setTimeout(() => { barcodeError.value = ''; }, 3000);
+    } else {
+      addProductToCart(product);
+      searchQuery.value = '';
+    }
+  } else {
+    barcodeError.value = 'Produit non trouvé ou sans code-barres';
+    setTimeout(() => { barcodeError.value = ''; }, 3000);
   }
 };
 
@@ -173,6 +184,7 @@ const close = () => {
                 @keydown="handleSearchKeydown"
               />
             </div>
+            <p v-if="barcodeError" class="mt-2 text-xs text-red-600 dark:text-red-400">{{ barcodeError }}</p>
           </div>
 
           <!-- Liste des produits -->
