@@ -104,9 +104,12 @@ const productsByBrand = computed(() => {
   return result;
 });
 
-const addProductToCart = (product: Product) => {
-  if ((product.stock ?? 0) <= 0) return;
-  addToCart(product, 1, vendor.value ?? undefined);
+const addProductToCart = async (product: Product) => {
+  const added = await addToCart(product, 1, vendor.value ?? undefined);
+  if (!added) {
+    barcodeError.value = 'Stock insuffisant pour ce produit';
+    setTimeout(() => { barcodeError.value = ''; }, 3000);
+  }
 };
 
 const handleSearchKeydown = async (e: KeyboardEvent) => {
@@ -117,12 +120,12 @@ const handleSearchKeydown = async (e: KeyboardEvent) => {
   barcodeError.value = '';
   const product = await findByBarcode(code);
   if (product) {
-    if (product.type === 'product' && (product.stock ?? 0) <= 0) {
-      barcodeError.value = 'Stock vide pour ce produit';
-      setTimeout(() => { barcodeError.value = ''; }, 3000);
-    } else {
-      addProductToCart(product);
+    const added = await addToCart(product, 1, vendor.value ?? undefined);
+    if (added) {
       searchQuery.value = '';
+    } else {
+      barcodeError.value = 'Stock insuffisant pour ce produit';
+      setTimeout(() => { barcodeError.value = ''; }, 3000);
     }
   } else {
     barcodeError.value = 'Produit non trouvé ou sans code-barres';

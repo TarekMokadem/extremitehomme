@@ -56,25 +56,72 @@ export function useSales() {
   };
 
   // Stock disponible pour ajout au panier (produits uniquement ; services = illimité)
+  // En mode réservation : product.stock = stock DB actuel (déjà décrémenté à chaque ajout)
   const getAvailableStock = (product: Product, excludeLineId?: string) => {
     if (product.type !== 'product') return Infinity;
-    const inCart = cartItems.value
-      .filter((i) => i.product.id === product.id && i.lineId !== excludeLineId)
-      .reduce((sum, i) => sum + i.quantity, 0);
-    return Math.max(0, (product.stock ?? 0) - inCart);
+    return Math.max(0, product.stock ?? 0);
   };
 
-  // Ajouter un produit au panier
-  const addToCart = (product: Product, quantity: number = 1, vendor?: Vendor) => {
-    const maxQty = getAvailableStock(product);
-    const qty = product.type === 'product' ? Math.min(quantity, maxQty) : quantity;
-    if (qty <= 0) return;
+  // Récupérer le stock actuel depuis la DB (produits physiques)
+  const fetchProductStock = async (product: Product): Promise<number> => {
+    if (!isSupabaseConfigured()) return product.stock ?? 0;
+    const { data } = await supabase
+      .from('products')
+      .select('stock')
+      .eq('id', product.id)
+      .single();
+    return (data as { stock?: number } | null)?.stock ?? 0;
+  };
+
+  // Mettre à jour le stock en DB (delta positif = ajout, négatif = retrait)
+  const updateProductStockInDb = async (productId: string, delta: number): Promise<number> => {
+    if (!isSupabaseConfigured() || delta === 0) return 0;
+    const { data } = await supabase
+      .from('products')
+      .select('stock')
+      .eq('id', productId)
+      .single();
+    const current = (data as { stock?: number } | null)?.stock ?? 0;
+    const newStock = Math.max(0, current + delta);
+    await supabase
+      .from('products')
+      .update({ stock: newStock, updated_at: new Date().toISOString() } as Record<string, unknown>)
+      .eq('id', productId);
+    return newStock;
+  };
+
+  // Ajouter un produit au panier (réservation stock : décrémente la DB)
+  const addToCart = async (product: Product, quantity: number = 1, vendor?: Vendor): Promise<boolean> => {
+    if (product.type !== 'product') {
+      const lineId = `line-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+      const newItem: CartItem = {
+        lineId,
+        product,
+        quantity,
+        vendor_id: vendor?.id,
+        vendor: vendor,
+        price_ht: product.price_ht,
+        tva_rate: product.tva_rate || DEFAULT_TVA_RATE,
+        subtotal_ht: 0,
+        tva: 0,
+        subtotal_ttc: 0,
+      };
+      recalculateItem(newItem);
+      cartItems.value.push(newItem);
+      return true;
+    }
+
+    const dbStock = await fetchProductStock(product);
+    const inCart = getCartQuantityForProduct(product.id);
+    const available = Math.max(0, dbStock - inCart);
+    const qtyToAdd = Math.min(quantity, available);
+    if (qtyToAdd <= 0) return false;
 
     const lineId = `line-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
     const newItem: CartItem = {
       lineId,
       product,
-      quantity: qty,
+      quantity: qtyToAdd,
       vendor_id: vendor?.id,
       vendor: vendor,
       price_ht: product.price_ht,
@@ -85,6 +132,10 @@ export function useSales() {
     };
     recalculateItem(newItem);
     cartItems.value.push(newItem);
+
+    const newStock = await updateProductStockInDb(product.id, -qtyToAdd);
+    product.stock = isSupabaseConfigured() ? newStock : Math.max(0, (product.stock ?? 0) - qtyToAdd);
+    return true;
   };
 
   // Recalculer les totaux d'un item
@@ -137,30 +188,58 @@ export function useSales() {
     }
   };
 
-  // Modifier la quantité d'un item (par lineId)
-  const updateQuantity = (lineId: string, quantity: number) => {
+  // Modifier la quantité d'un item (par lineId) — met à jour le stock en DB
+  const updateQuantity = async (lineId: string, quantity: number) => {
     const item = findCartItemByLineId(lineId);
-    if (item) {
-      if (quantity <= 0) {
-        removeFromCart(lineId);
-      } else {
-        const maxQty =
-          item.product.type === 'product'
-            ? getAvailableStock(item.product, lineId) + item.quantity
-            : quantity;
-        item.quantity = Math.min(quantity, maxQty);
-        recalculateItem(item);
-      }
+    if (!item) return;
+    if (quantity <= 0) {
+      await removeFromCart(lineId);
+      return;
+    }
+    if (item.product.type !== 'product') {
+      item.quantity = quantity;
+      recalculateItem(item);
+      return;
+    }
+    const delta = quantity - item.quantity;
+    if (delta > 0) {
+      const available = getAvailableStock(item.product);
+      const canAdd = Math.min(delta, available);
+      if (canAdd <= 0) return;
+      const actualNewQty = item.quantity + canAdd;
+      const actualDelta = actualNewQty - item.quantity;
+      item.quantity = actualNewQty;
+      recalculateItem(item);
+      const newStock = await updateProductStockInDb(item.product.id, -actualDelta);
+      item.product.stock = newStock;
+    } else if (delta < 0) {
+      const release = -delta;
+      item.quantity = quantity;
+      recalculateItem(item);
+      const newStock = await updateProductStockInDb(item.product.id, release);
+      item.product.stock = newStock;
     }
   };
 
-  // Retirer une ligne du panier (par lineId)
-  const removeFromCart = (lineId: string) => {
-    cartItems.value = cartItems.value.filter(item => item.lineId !== lineId);
+  // Retirer une ligne du panier (par lineId) — remet le stock en DB
+  const removeFromCart = async (lineId: string) => {
+    const item = findCartItemByLineId(lineId);
+    if (item && item.product.type === 'product' && item.quantity > 0) {
+      await updateProductStockInDb(item.product.id, item.quantity);
+      item.product.stock = (item.product.stock ?? 0) + item.quantity;
+    }
+    cartItems.value = cartItems.value.filter((i) => i.lineId !== lineId);
   };
 
-  // Vider le panier
-  const clearCart = () => {
+  // Vider le panier (releaseStock: true = remet le stock en DB, false = après validation)
+  const clearCart = async (releaseStock: boolean = true) => {
+    if (releaseStock) {
+      for (const item of [...cartItems.value]) {
+        if (item.product.type === 'product' && item.quantity > 0) {
+          await updateProductStockInDb(item.product.id, item.quantity);
+        }
+      }
+    }
     cartItems.value = [];
     discountValue.value = 0;
     fixedTotal.value = null;
@@ -330,38 +409,7 @@ export function useSales() {
     console.log('Validation vente - vendorId:', vendorId ?? '(aucun)', 'clientId:', clientId);
 
     try {
-      // VÉRIFIER LE STOCK AVANT TOUTE CRÉATION
-      if (isSupabaseConfigured()) {
-        const qtyByProduct = new Map<string, { qty: number; name: string }>();
-        for (const item of cartItems.value) {
-          if (item.product.type === 'product') {
-            const prev = qtyByProduct.get(item.product.id);
-            if (prev) {
-              prev.qty += item.quantity;
-            } else {
-              qtyByProduct.set(item.product.id, { qty: item.quantity, name: item.product.name });
-            }
-          }
-        }
-        for (const [productId, { qty: totalQty, name }] of qtyByProduct) {
-          const { data: productRow, error: fetchErr } = await supabase
-            .from('products')
-            .select('stock')
-            .eq('id', productId)
-            .single();
-
-          if (fetchErr || !productRow) {
-            throw new Error(`Produit ${name} introuvable`);
-          }
-
-          const currentStock = (productRow as Record<string, number>).stock ?? 0;
-          if (currentStock < totalQty) {
-            throw new Error(
-              `Stock insuffisant pour "${name}" : ${currentStock} en stock, ${totalQty} demandé`
-            );
-          }
-        }
-      }
+      // Le stock a déjà été réservé à l'ajout au panier, pas de vérification supplémentaire
 
       // Générer le numéro de ticket
       let ticketNumber: string;
@@ -449,7 +497,7 @@ export function useSales() {
         };
         
         recentSales.value.unshift(mockSale);
-        clearCart();
+        clearCart(false);
         loadTodaySalesCount();
         
         return mockSale;
@@ -514,34 +562,9 @@ export function useSales() {
         }
       }
 
-      // 4. Mettre à jour le stock (produits physiques uniquement)
+      // 4. Créer les mouvements de stock (le stock a déjà été décrémenté à l'ajout au panier)
       for (const item of cartItems.value) {
         if (item.product.type === 'product') {
-          const { data: productRow, error: fetchErr } = await supabase
-            .from('products')
-            .select('stock')
-            .eq('id', item.product.id)
-            .single();
-
-          if (fetchErr || !productRow) {
-            throw new Error(`Produit ${item.product.name} introuvable`);
-          }
-
-          const currentStock = (productRow as Record<string, number>).stock ?? 0;
-          if (currentStock < item.quantity) {
-            throw new Error(
-              `Stock insuffisant pour "${item.product.name}" : ${currentStock} en stock, ${item.quantity} demandé`
-            );
-          }
-
-          const newStock = currentStock - item.quantity;
-          const { error: updateErr } = await supabase
-            .from('products')
-            .update({ stock: newStock, updated_at: new Date().toISOString() } as Record<string, unknown>)
-            .eq('id', item.product.id);
-
-          if (updateErr) throw updateErr;
-
           const { error: moveErr } = await supabase.from('stock_movements').insert({
             product_id: item.product.id,
             variant_id: item.variant?.id || null,
@@ -634,8 +657,8 @@ export function useSales() {
       // Ajouter à l'historique récent
       recentSales.value.unshift(sale);
 
-      // Vider le panier
-      clearCart();
+      // Vider le panier (ne pas remettre le stock, déjà consommé)
+      clearCart(false);
 
       // Rafraîchir le compteur de tickets du jour pour l'affichage
       loadTodaySalesCount();

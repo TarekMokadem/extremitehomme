@@ -44,6 +44,7 @@ const showAutocomplete = ref<boolean>(false);
 const autocompleteResults = ref<Product[]>([]);
 const shortcutCode = ref<string>('');
 const shortcutError = ref<string>('');
+const searchError = ref<string>('');
 const barcodeInput = ref<string>('');
 const barcodeError = ref<string>('');
 const barcodeInputRef = ref<HTMLInputElement | null>(null);
@@ -97,22 +98,36 @@ const handleSearchBlur = (): void => {
   }, 200);
 };
 
-const selectService = (product: Product): void => {
-  addToCart(product, 1, vendor.value ?? undefined);
-  searchQuery.value = '';
-  autocompleteResults.value = [];
-  showAutocomplete.value = false;
-};
-
-// Sélectionner la première suggestion avec Entrée et l'ajouter au panier
-const handleSearchKeydown = (event: KeyboardEvent): void => {
-  if (event.key === 'Enter' && autocompleteResults.value.length > 0) {
-    event.preventDefault();
-    const firstResult = autocompleteResults.value[0];
-    if (firstResult) addToCart(firstResult, 1, vendor.value ?? undefined);
+const selectService = async (product: Product): Promise<void> => {
+  const added = await addToCart(product, 1, vendor.value ?? undefined);
+  if (added) {
     searchQuery.value = '';
     autocompleteResults.value = [];
     showAutocomplete.value = false;
+    searchError.value = '';
+  } else {
+    searchError.value = 'Stock insuffisant pour ce produit';
+    setTimeout(() => { searchError.value = ''; }, 3000);
+  }
+};
+
+// Sélectionner la première suggestion avec Entrée et l'ajouter au panier
+const handleSearchKeydown = async (event: KeyboardEvent): Promise<void> => {
+  if (event.key === 'Enter' && autocompleteResults.value.length > 0) {
+    event.preventDefault();
+    const firstResult = autocompleteResults.value[0];
+    if (firstResult) {
+      const added = await addToCart(firstResult, 1, vendor.value ?? undefined);
+      if (added) {
+        searchQuery.value = '';
+        autocompleteResults.value = [];
+        showAutocomplete.value = false;
+        searchError.value = '';
+      } else {
+        searchError.value = 'Stock insuffisant pour ce produit';
+        setTimeout(() => { searchError.value = ''; }, 3000);
+      }
+    }
   }
 };
 
@@ -124,13 +139,13 @@ const handleBarcodeSubmit = async (): Promise<void> => {
   barcodeSuccess.value = '';
   const product = await findByBarcode(code);
   if (product) {
-    if (product.type === 'product' && (product.stock ?? 0) <= 0) {
-      barcodeError.value = 'Stock de vente vide pour ce produit';
-      setTimeout(() => { barcodeError.value = ''; }, 3000);
-    } else {
-      addToCart(product, 1, vendor.value ?? undefined);
+    const added = await addToCart(product, 1, vendor.value ?? undefined);
+    if (added) {
       barcodeSuccess.value = `${product.name} ajouté au panier`;
       setTimeout(() => { barcodeSuccess.value = ''; }, 2500);
+    } else {
+      barcodeError.value = 'Stock insuffisant pour ce produit';
+      setTimeout(() => { barcodeError.value = ''; }, 3000);
     }
     barcodeInput.value = '';
   } else {
@@ -190,7 +205,7 @@ const handleShortcutKeydown = (event: KeyboardEvent): void => {
   }
 };
 
-const processShortcut = (): void => {
+const processShortcut = async (): Promise<void> => {
   shortcutError.value = '';
   
   const parsed = parseShortcutCode(shortcutCode.value);
@@ -199,8 +214,8 @@ const processShortcut = (): void => {
     return;
   }
   
-  const vendor = findVendorByInitials(parsed.vendorInitials);
-  if (!vendor) {
+  const v = findVendorByInitials(parsed.vendorInitials);
+  if (!v) {
     shortcutError.value = `Vendeur "${parsed.vendorInitials}" non trouvé`;
     return;
   }
@@ -211,12 +226,13 @@ const processShortcut = (): void => {
     return;
   }
   
-  // Ajouter au panier avec le bon vendeur
-  addToCart(product, 1, vendor);
-  
-  // Réinitialiser le champ
-  shortcutCode.value = '';
-  shortcutError.value = '';
+  const added = await addToCart(product, 1, v);
+  if (added) {
+    shortcutCode.value = '';
+  } else {
+    shortcutError.value = 'Stock insuffisant pour ce produit';
+    setTimeout(() => { shortcutError.value = ''; }, 3000);
+  }
 };
 </script>
 
@@ -354,6 +370,7 @@ const processShortcut = (): void => {
             </button>
           </div>
         </Transition>
+        <p v-if="searchError" class="text-xs text-red-500 dark:text-red-400 mt-1.5">{{ searchError }}</p>
       </div>
     </div>
 
