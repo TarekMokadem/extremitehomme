@@ -287,13 +287,9 @@ export function useSales() {
     }
   };
 
+  // Mode mono-paiement : remplace toujours la liste par un seul paiement
   const setPayment = (method: PaymentMethod, amount: number) => {
-    const existing = selectedPaymentMethods.value.find(p => p.method === method);
-    if (existing) {
-      existing.amount = amount;
-    } else {
-      selectedPaymentMethods.value.push({ method, amount });
-    }
+    selectedPaymentMethods.value = [{ method, amount }];
   };
 
   const removePayment = (method: PaymentMethod) => {
